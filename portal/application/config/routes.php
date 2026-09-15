@@ -18,6 +18,7 @@ $route['api/relay/auth']['get']        = 'api/relay/auth';
 
 // 서비스 소개
 $route['home'] = 'home/index';
+$route['lang/(:any)'] = 'home/set_locale/$1';
 
 // 인증
 $route['login']  = 'auth/login';

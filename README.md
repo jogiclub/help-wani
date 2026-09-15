@@ -85,6 +85,8 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
   비워 두면 화면에 표시하지 않습니다.
 - 도입 실적, 인증, 고객사 로고 같은 항목은 **확인된 사실이 생긴 뒤에** 추가하세요.
   현재 페이지에는 실제로 제공하는 기능만 적혀 있습니다.
+- 헤더 오른쪽 언어 선택으로 한국어·영어·일본어를 전환합니다.
+  고른 언어는 `rh_locale` 쿠키에 1년간 기억됩니다.
 
 ## 언어와 시간대
 
@@ -97,6 +99,14 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 | 사전 위치 | `portal/assets/lang/{locale}.json` (PHP 와 JS 가 같은 파일을 사용) |
 | 서버 번역 | `lang_text('key', ['org' => '이름'])` |
 | 화면 번역 | `assets/js/i18n.js` — `__('key')`, `data-i18n="key"` 속성 |
+| 방문자 선택 | `/lang/{locale}` → `rh_locale` 쿠키(1년) |
+
+### 언어 결정 우선순위
+
+| 화면 | 적용 언어 |
+|---|---|
+| 고객 접속 페이지, 만족도 조사 | **조직 설정** (그 조직의 고객이 보는 화면이므로) |
+| 소개 페이지, 상담원 콘솔 | 방문자가 고른 언어 → 없으면 조직 설정 → 없으면 한국어 |
 
 ### 시간은 UTC 로 저장합니다
 

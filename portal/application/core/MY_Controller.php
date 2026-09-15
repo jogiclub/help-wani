@@ -24,6 +24,15 @@ class MY_Controller extends CI_Controller {
             $this->current_locale = $this->session->userdata('locale');
             $this->current_timezone = $this->session->userdata('timezone');
         }
+
+        // 방문자가 직접 고른 언어가 있으면 그것을 우선한다.
+        $chosen = (string) $this->input->cookie('rh_locale', TRUE);
+        $locales = supported_locales();
+
+        if (isset($locales[$chosen]))
+        {
+            $this->current_locale = $chosen;
+        }
     }
 
     /**
