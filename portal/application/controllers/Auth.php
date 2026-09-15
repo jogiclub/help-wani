@@ -39,9 +39,15 @@ class Auth extends MY_Controller {
 
             $org = $this->organization_model->get_by_id($agent->org_id);
 
-            if (empty($org) || $org->status !== 'active')
+            if (empty($org))
             {
-                api_response(FALSE, '조직 승인이 완료되지 않았습니다. 관리자에게 문의해 주세요.', array(), 403);
+                api_response(FALSE, '조직 정보를 찾을 수 없습니다.', array(), 403);
+                return;
+            }
+
+            if ($org->status !== 'active')
+            {
+                api_response(FALSE, $this->status_message($org), array('status' => $org->status), 403);
                 return;
             }
 
@@ -50,6 +56,7 @@ class Auth extends MY_Controller {
                 'agent_id'   => (int) $agent->id,
                 'agent_name' => $agent->name,
                 'agent_role' => $agent->role,
+                'is_super'   => ((int) $agent->is_super === 1),
                 'org_id'     => (int) $agent->org_id,
                 'org_name'   => $org->name,
                 'org_code'   => $org->org_code,
@@ -63,6 +70,31 @@ class Auth extends MY_Controller {
         }
 
         $this->render('auth/login', array('page_title' => '상담원 로그인'), 'layouts/blank');
+    }
+
+    /**
+     * 조직 상태에 따른 로그인 실패 안내 문구
+     */
+    protected function status_message($org)
+    {
+        switch ($org->status)
+        {
+            case 'pending':
+                return '가입 신청이 검토 중입니다. 운영자 승인 후 이용하실 수 있습니다.';
+
+            case 'rejected':
+                return '가입 신청이 반려되었습니다.'
+                    .($org->status_reason ? ' 사유: '.$org->status_reason : '')
+                    .' 문의는 운영자에게 해 주세요.';
+
+            case 'suspended':
+                return '이용이 중지된 조직입니다.'
+                    .($org->status_reason ? ' 사유: '.$org->status_reason : '')
+                    .' 문의는 운영자에게 해 주세요.';
+
+            default:
+                return '지금은 로그인할 수 없습니다. 운영자에게 문의해 주세요.';
+        }
     }
 
     public function logout()
@@ -134,7 +166,10 @@ class Auth extends MY_Controller {
 
             $this->log_model->audit($org_id, $agent_id, 'org_signup', $org_code, client_ip());
 
-            api_response(TRUE, '가입 신청이 접수되었습니다. 승인 후 이용하실 수 있습니다.', array('redirect' => base_url('login')));
+            api_response(TRUE,
+                '가입 신청이 접수되었습니다. 운영자 승인 후 로그인할 수 있습니다. '
+                .'승인 여부는 로그인 화면에서 확인하실 수 있습니다.',
+                array('redirect' => base_url('login')));
             return;
         }
 

@@ -12,7 +12,11 @@ CREATE TABLE IF NOT EXISTS organizations (
   logo_path     VARCHAR(255) DEFAULT NULL,
   biz_no        VARCHAR(20)  DEFAULT NULL COMMENT '사업자등록번호',
   phone         VARCHAR(30)  DEFAULT NULL,
-  status        ENUM('pending','active','suspended') NOT NULL DEFAULT 'pending',
+  status        ENUM('pending','active','rejected','suspended') NOT NULL DEFAULT 'pending'
+                COMMENT '가입 승인 상태',
+  approved_at   DATETIME     DEFAULT NULL COMMENT '승인 시각',
+  approved_by   INT UNSIGNED DEFAULT NULL COMMENT '승인한 운영자',
+  status_reason VARCHAR(300) DEFAULT NULL COMMENT '반려/중지 사유',
   plan          VARCHAR(30)  NOT NULL DEFAULT 'basic',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -30,6 +34,7 @@ CREATE TABLE IF NOT EXISTS agents (
   name          VARCHAR(60)  NOT NULL,
   phone         VARCHAR(30)  DEFAULT NULL,
   role          ENUM('admin','agent') NOT NULL DEFAULT 'agent',
+  is_super      TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '플랫폼 운영자 여부(조직 승인 권한)',
   is_verified   TINYINT(1)   NOT NULL DEFAULT 0,
   is_active     TINYINT(1)   NOT NULL DEFAULT 1,
   last_login_at DATETIME     DEFAULT NULL,
@@ -38,6 +43,7 @@ CREATE TABLE IF NOT EXISTS agents (
   PRIMARY KEY (id),
   UNIQUE KEY uk_agent_email (email),
   KEY idx_agent_org (org_id),
+  KEY idx_agents_super (is_super),
   CONSTRAINT fk_agent_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

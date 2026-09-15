@@ -35,6 +35,7 @@ docker compose up -d --build
 | 주소 | 용도 |
 |---|---|
 | http://localhost:8099/login | 상담원 콘솔 (admin@demo.local / Test1234!admin) |
+| http://localhost:8099/operator | 조직 가입 승인 (operator@demo.local / Test1234!admin) |
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
 
@@ -70,6 +71,39 @@ https://localhost:8443/healthz 를 한 번 방문해 인증서를 허용해야 w
 python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
     --token <1회용 뷰어 토큰> --insecure --frames 3
 ```
+
+## 조직 가입 승인
+
+조직은 가입 신청 후 **플랫폼 운영자 승인을 받아야** 로그인할 수 있습니다.
+
+```
+/signup 신청  →  status=pending  →  운영자가 /operator 에서 승인  →  status=active  →  로그인 가능
+```
+
+| 권한 | 범위 | 판별 |
+|---|---|---|
+| 상담원 | 자기 조직의 상담 | `agents.role = 'agent'` |
+| 조직 관리자 | 자기 조직의 상담원/설정 (`/admin`) | `agents.role = 'admin'` |
+| **플랫폼 운영자** | **전체 조직의 가입 승인 (`/operator`)** | `agents.is_super = 1` |
+
+운영자 콘솔에서 할 수 있는 일:
+
+- **승인** — 로그인 가능 상태로 전환하고 소속 상담원을 확인 처리합니다.
+- **반려** — 사유를 남깁니다. 담당자가 로그인을 시도하면 그 사유가 보입니다.
+- **이용 중지** — 사용 중인 조직을 막습니다. 소속 상담원 전원이 로그인할 수 없게 됩니다.
+- **다시 활성화** — 반려·중지된 조직을 되돌립니다.
+
+모든 처리는 `audit_logs` 에 `org_approved` / `org_rejected` / `org_suspended` / `org_restored` 로 남습니다.
+
+개발 환경 운영자 계정은 `operator@demo.local` / `Test1234!admin` 입니다.
+운영 환경에서는 첫 운영자를 직접 지정해야 합니다.
+
+```sql
+UPDATE agents SET is_super = 1 WHERE email = '운영자이메일';
+```
+
+> 승인 결과를 메일로 알리는 기능은 아직 없습니다. 신청자는 로그인 화면에서 상태를 확인합니다.
+> 메일 발송은 SMTP 설정과 함께 2차로 붙이면 됩니다.
 
 ## 배포 경로
 

@@ -33,6 +33,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
          href="<?= base_url('admin') ?>">조직 관리</a>
       <?php endif; ?>
+      <?php if ($this->session->userdata('is_super')):
+          $pending = $this->organization_model->count_by_status(); ?>
+      <a class="flex items-center gap-1.5 rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+         href="<?= base_url('operator') ?>">
+        조직 가입 관리
+        <?php if ($pending['pending'] > 0): ?>
+          <span class="badge badge-amber"><?= (int) $pending['pending'] ?></span>
+        <?php endif; ?>
+      </a>
+      <?php endif; ?>
     </nav>
 
     <div class="ml-auto flex items-center gap-3">

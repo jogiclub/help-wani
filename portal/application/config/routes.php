@@ -33,6 +33,10 @@ $route['console/api/session/end']          = 'console/api_session_end';
 $route['console/api/session/note']         = 'console/api_session_note';
 $route['console/api/session/log']          = 'console/api_session_log';
 
+// 플랫폼 운영자 (조직 가입 승인)
+$route['operator']              = 'operator/index';
+$route['operator/api/(:any)']   = 'operator/api_$1';
+
 // 조직 관리
 $route['admin']                 = 'admin/index';
 $route['admin/agents']          = 'admin/agents';

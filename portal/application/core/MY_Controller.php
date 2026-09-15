@@ -72,3 +72,30 @@ class Agent_Controller extends MY_Controller {
         return $session;
     }
 }
+
+/**
+ * 플랫폼 운영자만 접근 가능한 컨트롤러 (조직 가입 승인 등)
+ *
+ * 조직 관리자(role=admin)는 자기 조직만 다루고, 플랫폼 운영자(is_super=1)는 전체 조직을 다룬다.
+ */
+class Operator_Controller extends Agent_Controller {
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        if ((int) $this->agent->is_super !== 1)
+        {
+            $this->log_model->audit($this->agent->org_id, $this->agent->id,
+                'operator_access_denied', uri_string(), client_ip());
+
+            if ($this->input->is_ajax_request())
+            {
+                api_response(FALSE, '플랫폼 운영자만 접근할 수 있습니다.', array(), 403);
+                exit;
+            }
+
+            show_error('플랫폼 운영자만 접근할 수 있습니다.', 403);
+        }
+    }
+}
