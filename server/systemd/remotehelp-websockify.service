@@ -1,0 +1,25 @@
+# 파일 위치: server/systemd/remotehelp-websockify.service
+# 역할: websockify 를 127.0.0.1:6080 -> 127.0.0.1:5900 으로 등록
+[Unit]
+Description=RemoteHelp websockify (noVNC bridge)
+After=network-online.target uvncrepeater.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=uvncrep
+Group=uvncrep
+ExecStart=/usr/bin/websockify 127.0.0.1:6080 127.0.0.1:5900
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/remotehelp/websockify.log
+StandardError=append:/var/log/remotehelp/websockify.log
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/remotehelp
+
+[Install]
+WantedBy=multi-user.target

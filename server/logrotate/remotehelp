@@ -1,0 +1,12 @@
+# 파일 위치: server/logrotate/remotehelp
+# 역할: 중계 서버 로그 순환 (설치 위치: /etc/logrotate.d/remotehelp)
+/var/log/remotehelp/*.log {
+    daily
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su root adm
+}

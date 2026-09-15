@@ -1,0 +1,93 @@
+# 파일 위치: docker-compose.yml
+# 역할: RemoteHelp 개발 환경(포털, DB, 중계 서버, 검증용 고객 PC) 구성
+services:
+  db:
+    image: mysql:8.0
+    container_name: remotehelp-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASS:-rootpass}
+      MYSQL_DATABASE: ${DB_NAME:-remotehelp}
+      MYSQL_USER: ${DB_USER:-remotehelp}
+      MYSQL_PASSWORD: ${DB_PASS:-remotehelp}
+      TZ: Asia/Seoul
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "13306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASS:-rootpass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+    container_name: remotehelp-web
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME:-RemoteHelp}
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080/}
+      APP_ENV: development
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME:-remotehelp}
+      DB_USER: ${DB_USER:-remotehelp}
+      DB_PASS: ${DB_PASS:-remotehelp}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      RELAY_HOST: ${RELAY_HOST:-localhost}
+      RELAY_TLS_PORT: ${RELAY_TLS_PORT:-5501}
+      RELAY_WS_URL: ${RELAY_WS_URL:-wss://localhost:8443/ws}
+      RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
+      STORE_PRODUCT_ID: ${STORE_PRODUCT_ID:-0000000000000000}
+      LAUNCHER_MIN_VERSION: ${LAUNCHER_MIN_VERSION:-1.0.0}
+    volumes:
+      - ./portal:/var/www/html
+    ports:
+      - "8099:80"
+
+  relay:
+    build:
+      context: .
+      dockerfile: docker/relay/Dockerfile
+    container_name: remotehelp-relay
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      RELAY_SERVER_NAME: ${RELAY_SERVER_NAME:-localhost}
+      RELAY_HTTPS_PORT: "8443"
+      PORTAL_UPSTREAM: "web:80"
+      PORTAL_HOST: web
+      RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
+    volumes:
+      - relay-certs:/etc/remotehelp/certs
+    ports:
+      - "5501:5501"
+      - "8443:8443"
+
+  # 검증용 고객 PC 모의 컨테이너. 기본 기동하지 않고 profile 로 실행한다.
+  #   docker compose --profile test run --rm -e REPEATER_ID=123456789 -e VNC_PASSWORD=Test1234 vnctest
+  vnctest:
+    build:
+      context: .
+      dockerfile: docker/vnctest/Dockerfile
+    profiles: ["test"]
+    depends_on:
+      - relay
+    environment:
+      RELAY_HOST: relay
+      RELAY_PORT: "5501"
+      REPEATER_ID: ${REPEATER_ID:-123456789}
+      VNC_PASSWORD: ${VNC_PASSWORD:-Test1234}
+
+volumes:
+  db-data:
+  relay-certs:

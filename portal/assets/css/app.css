@@ -1,0 +1,34 @@
+/**
+ * 파일 위치: assets/css/app.css
+ * 역할: 포털 공통 스타일
+ */
+.code-display {
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 3.2rem;
+    letter-spacing: 0.4rem;
+    font-weight: 700;
+}
+
+.session-card { transition: box-shadow .15s ease-in-out; }
+.session-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.1); }
+
+#screen {
+    width: 100%;
+    height: calc(100vh - 210px);
+    min-height: 420px;
+    background: #111;
+}
+
+.viewer-toolbar { gap: .5rem; }
+
+.note-item { border-left: 3px solid var(--bs-primary); }
+
+.star-rating { font-size: 2.2rem; cursor: pointer; color: #d0d0d0; }
+.star-rating .star.active { color: #ffc107; }
+
+.customer-step {
+    width: 2.2rem; height: 2.2rem;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bs-primary); color: #fff; font-weight: 700;
+}

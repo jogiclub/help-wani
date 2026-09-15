@@ -1,0 +1,14 @@
+# 파일 위치: portal/.htaccess
+# 역할: CodeIgniter 3 프런트 컨트롤러 라우팅
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php/$1 [L]
+</IfModule>
+
+<FilesMatch "\.(ini|log|sql|md)$">
+    Require all denied
+</FilesMatch>

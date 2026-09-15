@@ -1,0 +1,27 @@
+# 환경설정
+.env
+*.local.env
+
+# 의존성/벤더
+/portal/assets/vendor/novnc/
+/vendor/
+
+# 빌드 산출물
+/launcher/**/bin/
+/launcher/**/obj/
+/launcher/**/AppPackages/
+*.pfx
+*.cer
+
+# 도커 볼륨/인증서
+/docker/certs/
+/data/
+
+# 로그
+*.log
+/logs/
+
+# 에디터
+.vscode/
+.idea/
+.DS_Store
