@@ -34,6 +34,7 @@ docker compose up -d --build
 
 | 주소 | 용도 |
 |---|---|
+| http://localhost:8099/ | 서비스 소개(홍보) 페이지 |
 | http://localhost:8099/login | 상담원 콘솔 (admin@demo.local / Test1234!admin) |
 | http://localhost:8099/operator | 조직 가입 승인 (operator@demo.local / Test1234!admin) |
 | http://localhost:8099/signup | 조직 가입 신청 (국가·언어·시간대 선택) |
@@ -72,6 +73,18 @@ https://localhost:8443/healthz 를 한 번 방문해 인증서를 허용해야 w
 python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
     --token <1회용 뷰어 토큰> --insecure --frames 3
 ```
+
+## 서비스 소개 페이지
+
+`/` 는 방문자용 홍보 페이지입니다(`application/views/home/landing.php`).
+로그인한 상태로 들어오면 헤더 버튼이 "콘솔로 이동" 으로 바뀝니다.
+
+- **요금은 `Home::index()` 의 `$pricing` 배열 한 곳에서만 관리합니다.**
+  계정 수와 금액을 바꾸면 히어로, 요금 카드, 계정당 단가가 모두 따라 바뀝니다.
+- 문의처는 `.env` 의 `CONTACT_EMAIL` / `CONTACT_PHONE` 으로 설정하며,
+  비워 두면 화면에 표시하지 않습니다.
+- 도입 실적, 인증, 고객사 로고 같은 항목은 **확인된 사실이 생긴 뒤에** 추가하세요.
+  현재 페이지에는 실제로 제공하는 기능만 적혀 있습니다.
 
 ## 언어와 시간대
 

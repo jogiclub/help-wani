@@ -5,7 +5,7 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-$route['default_controller'] = 'auth/login';
+$route['default_controller'] = 'home/index';
 $route['404_override'] = '';
 $route['translate_uri_dashes'] = FALSE;
 
@@ -15,6 +15,9 @@ $route['api/launcher/status']['post']  = 'api/launcher/status';
 $route['api/launcher/heartbeat']['get']= 'api/launcher/heartbeat';
 $route['api/launcher/version']['get']  = 'api/launcher/version';
 $route['api/relay/auth']['get']        = 'api/relay/auth';
+
+// 서비스 소개
+$route['home'] = 'home/index';
 
 // 인증
 $route['login']  = 'auth/login';
