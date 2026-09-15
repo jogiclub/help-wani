@@ -76,6 +76,13 @@ class Download extends MY_Controller {
             return;
         }
 
+        // 직접 다운로드는 코드 서명 인증서가 준비된 뒤에만 연다(docs/code-signing.md).
+        if ( ! env('DIRECT_DOWNLOAD_ENABLED', FALSE))
+        {
+            redirect($org->org_code);
+            return;
+        }
+
         $path = self::launcher_path();
 
         if ( ! is_file($path))

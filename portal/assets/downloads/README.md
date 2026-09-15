@@ -1,5 +1,9 @@
 # 배포 파일 폴더
 
+> **현재 이 경로는 꺼져 있습니다.** 1차 배포는 Microsoft Store 단독입니다.
+> `.env` 의 `DIRECT_DOWNLOAD_ENABLED=true` 로 켤 수 있으며,
+> 켜기 전에 코드 서명 인증서를 먼저 준비해야 합니다(`docs/code-signing.md`).
+
 고객 접속 페이지(`/{org_code}`)의 다운로드 버튼이 내려주는 실행 파일을 여기에 둡니다.
 
 ```

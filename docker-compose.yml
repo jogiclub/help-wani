@@ -46,6 +46,7 @@ services:
       RELAY_VIEWER_WS_URL: ${RELAY_VIEWER_WS_URL:-wss://localhost:8443/viewer}
       RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
       STORE_PRODUCT_ID: ${STORE_PRODUCT_ID:-0000000000000000}
+      DIRECT_DOWNLOAD_ENABLED: ${DIRECT_DOWNLOAD_ENABLED:-false}
       LAUNCHER_MIN_VERSION: ${LAUNCHER_MIN_VERSION:-1.0.0}
     volumes:
       - ./portal:/var/www/html

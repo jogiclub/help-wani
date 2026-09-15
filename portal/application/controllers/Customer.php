@@ -32,6 +32,7 @@ class Customer extends MY_Controller {
             'store_web_url'   => 'https://apps.microsoft.com/detail/'.$store_id,
             'store_app_url'   => 'ms-windows-store://pdp/?productid='.$store_id,
             'protocol_url'    => 'remotehelp://connect?org='.rawurlencode($org->org_code),
+            'download_enabled'=> (bool) env('DIRECT_DOWNLOAD_ENABLED', FALSE),
             'download_url'    => base_url($org->org_code.'/download'),
             'download_info'   => Download::launcher_info(),
         ), 'layouts/customer');

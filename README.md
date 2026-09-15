@@ -71,28 +71,29 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
     --token <1회용 뷰어 토큰> --insecure --frames 3
 ```
 
-## 고객용 실행 파일 배포
+## 배포 경로
 
-고객 접속 페이지에는 두 가지 설치 경로가 있습니다.
+**1차 배포는 Microsoft Store 단독입니다.** MSIX 로 제출하면 Microsoft 가 패키지를 다시 서명하므로
+코드 서명 인증서가 필요 없고 SmartScreen 경고도 뜨지 않습니다(`docs/code-signing.md`).
 
-1. **직접 다운로드** — `/{조직코드}/download` (설치 과정 없는 단일 실행 파일)
-2. Microsoft Store
+고객 접속 페이지는 Store 설치 버튼과 `remotehelp://` 앱 실행 버튼만 보여줍니다.
 
-직접 다운로드용 파일을 준비하려면 윈도우에서 빌드한 뒤 배포 폴더에 둡니다.
+### 직접 다운로드(EXE)를 나중에 켤 때
 
-```powershell
+코드 서명 인증서(OV, 연 $150~300)를 마련한 뒤에 켭니다. 코드는 이미 들어 있습니다.
+
+```bash
+# 1. 윈도우에서 단일 실행 파일 빌드 후 서명
 .\launcher\scripts\build-exe.ps1 -SignPfx 인증서.pfx -SignPassword 비밀번호
+
+# 2. portal/assets/downloads/RemoteHelp.exe 에 배치
+
+# 3. .env 에서 스위치를 켜고 web 컨테이너 재시작
+DIRECT_DOWNLOAD_ENABLED=true
 ```
 
-`portal/assets/downloads/RemoteHelp.exe` 에 올리면 페이지에 파일 크기, 배포일, SHA-256 이
-자동으로 표시됩니다. 파일이 없으면 다운로드 버튼 대신 "준비 중" 안내가 나옵니다.
-
-다운로드 시 파일 이름이 `RemoteHelp_{조직코드}.exe` 로 내려가고,
-런처는 **자기 실행 파일 이름에서 조직 코드를 읽어** 시작 화면에 반영합니다.
-고객이 어느 회사 상담인지 고를 필요가 없습니다.
-
-직접 배포 파일은 Microsoft 서명을 받지 못하므로 **코드 서명 인증서가 필요합니다.**
-자세한 내용은 `portal/assets/downloads/README.md` 를 보세요.
+켜면 `/{조직코드}/download` 가 열리고, 파일 이름이 `RemoteHelp_{조직코드}.exe` 로 내려갑니다.
+런처는 자기 실행 파일 이름에서 조직 코드를 읽습니다. 꺼져 있으면 그 경로는 안내 페이지로 되돌립니다.
 
 ## 화면 스타일 (Tailwind CSS)
 
@@ -116,14 +117,14 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 | 1 | 중계 서버 | 완료 (도커 검증 완료, `server/install.sh` 는 실서버 미적용) |
 | 2 | 웹 포털 | 완료 (스키마, API, 콘솔, 고객 페이지, 관리자) |
 | 3 | 고객 런처 + 원격제어 엔진 | 코드 작성 완료, 윈도우 빌드/실행 미검증 |
-| 4 | MSIX 패키징 / 스토어 제출 | 매니페스트와 제출 문서 준비, 실제 제출 미진행 |
+| 4 | MSIX 패키징 / 스토어 제출 | **1차 배포 경로로 확정.** 매니페스트와 제출 문서 준비, 실제 제출 미진행 |
 | 5 | 통합 테스트 | 서버 구간 시나리오 자동화 완료, 윈도우 실기 시나리오 미수행 |
 
 ## 다음에 필요한 것
 
 1. 윈도우 개발 PC — 런처 빌드와 `docs/spike-report.md` 의 B/C 항목 실기 확인
 2. 실서버와 도메인, Let's Encrypt 인증서 (`server/README.md`)
-3. Partner Center 계정과 앱 이름 예약 (`docs/store-submission.md`)
+3. Partner Center 개발자 계정과 앱 이름 예약 — **1차 배포의 전제 조건** (`docs/store-submission.md`)
 4. 발주자 결정 사항: 서비스명/도메인, 중계 서버 사양, 사업자 인증 방식, 요금제,
    약관·개인정보처리방침 작성 주체
 
