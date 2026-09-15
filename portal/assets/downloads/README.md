@@ -35,4 +35,10 @@ signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
     /f 인증서.pfx /p 비밀번호 RemoteHelp.exe
 ```
 
-OV 인증서는 평판이 쌓일 때까지 SmartScreen 경고가 남을 수 있습니다. EV 인증서는 즉시 신뢰됩니다.
+인증서 선택은 `docs/code-signing.md` 를 보세요. 요점만 적으면,
+
+- **EV 인증서를 SmartScreen 때문에 살 필요는 없습니다.** 2024년에 EV 의 즉시 통과 혜택이 없어져
+  지금은 OV 와 동작이 같습니다.
+- 2023년 6월부터 OV 인증서도 개인키를 HSM 이나 하드웨어 토큰에 보관해야 합니다.
+- 어떤 인증서든 새 파일은 평판이 쌓일 때까지 경고가 납니다. **같은 서명 주체로 계속 배포**해야
+  평판이 누적됩니다.
