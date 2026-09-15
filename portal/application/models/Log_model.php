@@ -26,6 +26,21 @@ class Log_model extends CI_Model {
                         ->result();
     }
 
+    /**
+     * 전체 조직의 감사 로그. 조직명과 수행자 이름을 붙여 돌려준다.
+     */
+    public function list_audit($limit = 500)
+    {
+        return $this->db->select('l.*, o.name AS org_name, o.org_code, a.name AS agent_name, a.email AS agent_email')
+                        ->from('audit_logs l')
+                        ->join('organizations o', 'o.id = l.org_id', 'left')
+                        ->join('agents a', 'a.id = l.agent_id', 'left')
+                        ->order_by('l.id', 'DESC')
+                        ->limit((int) $limit)
+                        ->get()
+                        ->result();
+    }
+
     public function audit($org_id, $agent_id, $action, $detail = NULL, $ip = NULL)
     {
         $this->db->insert('audit_logs', array(

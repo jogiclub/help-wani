@@ -37,6 +37,7 @@ class Admin extends Agent_Controller {
     {
         $this->render('admin/agents', array(
             'page_title' => '상담원 관리',
+            'use_grid'   => TRUE,
             'agents'     => $this->agent_model->list_by_org($this->agent->org_id),
         ));
     }

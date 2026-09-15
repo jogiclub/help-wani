@@ -15,6 +15,7 @@ class Console extends Agent_Controller {
     {
         $this->render('console/queue', array(
             'page_title' => '상담 대기열',
+            'use_grid'   => TRUE,
         ));
     }
 
@@ -47,6 +48,7 @@ class Console extends Agent_Controller {
 
         $this->render('console/history', array(
             'page_title' => '상담 이력',
+            'use_grid'   => TRUE,
             'filters'    => $filters,
             'sessions'   => $this->session_model->search_history($this->agent->org_id, $filters, 100),
         ));

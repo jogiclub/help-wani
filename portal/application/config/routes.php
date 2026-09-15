@@ -35,6 +35,7 @@ $route['console/api/session/log']          = 'console/api_session_log';
 
 // 플랫폼 운영자 (조직 가입 승인)
 $route['operator']              = 'operator/index';
+$route['operator/audit']        = 'operator/audit';
 $route['operator/api/(:any)']   = 'operator/api_$1';
 
 // 조직 관리

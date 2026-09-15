@@ -1,47 +1,33 @@
 <?php
 /**
  * 파일 위치: application/views/admin/agents.php
- * 역할: 상담원 목록과 추가/수정
+ * 역할: 상담원 목록(AG Grid)과 추가/수정
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
+
+$rows = array();
+
+foreach ($agents as $a)
+{
+    $rows[] = array(
+        'id'            => (int) $a->id,
+        'name'          => $a->name,
+        'email'         => $a->email,
+        'phone'         => $a->phone,
+        'role'          => $a->role,
+        'is_active'     => (int) $a->is_active,
+        'last_login_at' => $a->last_login_at,
+        'created_at'    => $a->created_at,
+    );
+}
 ?>
 <div class="mb-4 flex items-center justify-between">
   <h1 class="text-xl font-bold text-slate-800">상담원 관리</h1>
-  <button class="btn btn-sm btn-primary" id="btnAdd">상담원 추가</button>
+  <button class="btn btn-primary btn-sm" id="btnAdd">상담원 추가</button>
 </div>
 
 <div class="card overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="table">
-      <thead>
-        <tr><th>이름</th><th>이메일</th><th>권한</th><th>상태</th><th>최근 로그인</th><th class="w-40">작업</th></tr>
-      </thead>
-      <tbody>
-      <?php foreach ($agents as $a): ?>
-        <tr>
-          <td class="font-medium text-slate-700"><?= html_escape($a->name) ?></td>
-          <td><?= html_escape($a->email) ?></td>
-          <td><?= $a->role === 'admin' ? '관리자' : '상담원' ?></td>
-          <td>
-            <span class="badge <?= $a->is_active ? 'badge-green' : 'badge-gray' ?>">
-              <?= $a->is_active ? '사용' : '중지' ?>
-            </span>
-          </td>
-          <td class="text-xs text-slate-500"><?= html_escape($a->last_login_at ?: '-') ?></td>
-          <td class="whitespace-nowrap">
-            <button class="btn btn-sm btn-secondary btn-edit mr-1"
-                    data-agent='<?= html_escape(json_encode(array(
-                        "id" => (int) $a->id, "name" => $a->name, "email" => $a->email,
-                        "phone" => $a->phone, "role" => $a->role), JSON_UNESCAPED_UNICODE)) ?>'>수정</button>
-            <button class="btn btn-sm btn-secondary btn-toggle" data-id="<?= (int) $a->id ?>">
-              <?= $a->is_active ? '중지' : '사용' ?>
-            </button>
-          </td>
-        </tr>
-      <?php endforeach; ?>
-      </tbody>
-    </table>
-  </div>
+  <div id="agentGrid" style="height: calc(100vh - 260px); min-height: 380px;"></div>
 </div>
 
 <div id="agentModal" data-modal-backdrop
@@ -76,43 +62,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </div>
 
 <script>
-$(function () {
-    function openAgentModal(agent) {
-        $('#agentId').val(agent ? agent.id : '');
-        $('#agentName').val(agent ? agent.name : '');
-        $('#agentEmail').val(agent ? agent.email : '');
-        $('#agentPhone').val(agent ? agent.phone : '');
-        $('#agentRole').val(agent ? agent.role : 'agent');
-        $('#agentPassword').val('');
-        $('#agentModalTitle').text(agent ? '상담원 수정' : '상담원 추가');
-        openModal('agentModal');
-    }
-
-    $('#btnAdd').on('click', function () { openAgentModal(null); });
-    $('.btn-edit').on('click', function () { openAgentModal($(this).data('agent')); });
-
-    $('#btnSaveAgent').on('click', function () {
-        apiPost('<?= base_url('admin/api/agent_save') ?>', {
-            id: $('#agentId').val(),
-            name: $('#agentName').val(),
-            email: $('#agentEmail').val(),
-            phone: $('#agentPhone').val(),
-            role: $('#agentRole').val(),
-            password: $('#agentPassword').val()
-        }, function (data, message) {
-            showToast(message, 'success');
-            setTimeout(function () { window.location.reload(); }, 800);
-        });
-    });
-
-    $('.btn-toggle').on('click', function () {
-        var id = $(this).data('id');
-        showConfirmModal('상태 변경', '이 상담원의 사용 여부를 변경할까요?', function () {
-            apiPost('<?= base_url('admin/api/agent_toggle') ?>', { id: id }, function (data, message) {
-                showToast(message, 'success');
-                setTimeout(function () { window.location.reload(); }, 800);
-            });
-        });
-    });
-});
+var AGENT_ROWS = <?= json_encode($rows, JSON_UNESCAPED_UNICODE) ?>;
+var AGENT_URLS = {
+    save:   '<?= base_url('admin/api/agent_save') ?>',
+    toggle: '<?= base_url('admin/api/agent_toggle') ?>'
+};
 </script>
+<script src="<?= base_url('assets/js/admin/agents.js') ?>"></script>

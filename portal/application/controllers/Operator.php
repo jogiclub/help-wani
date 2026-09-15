@@ -7,6 +7,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Operator extends Operator_Controller {
 
+    /**
+     * 운영자 화면은 조직 소속 사용자 메뉴와 분리된 레이아웃을 쓴다.
+     */
+    protected function render($view, $data = array(), $layout = 'layouts/operator')
+    {
+        return parent::render($view, $data, $layout);
+    }
+
     public function index()
     {
         $status = $this->input->get('status', TRUE);
@@ -19,9 +27,23 @@ class Operator extends Operator_Controller {
 
         $this->render('operator/organizations', array(
             'page_title' => '조직 가입 관리',
+            'use_grid'   => TRUE,
             'filter'     => $status,
             'counts'     => $this->organization_model->count_by_status(),
             'orgs'       => $this->organization_model->list_for_review($status),
+        ));
+    }
+
+    /**
+     * GET /operator/audit
+     * 전체 조직의 관리 행위 감사 로그
+     */
+    public function audit()
+    {
+        $this->render('operator/audit', array(
+            'page_title' => '감사 로그',
+            'use_grid'   => TRUE,
+            'logs'       => $this->log_model->list_audit(1000),
         ));
     }
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/queue.php
- * 역할: 상담원 대기열 화면 (코드 발급, 세션 상태 3초 갱신)
+ * 역할: 상담원 대기열 화면 (코드 발급, 세션 상태 3초 갱신, AG Grid)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
@@ -24,24 +24,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 </div>
 
 <div class="card overflow-hidden">
-  <div class="overflow-x-auto">
-    <table class="table">
-      <thead>
-        <tr>
-          <th class="w-28">코드</th>
-          <th class="w-32">상태</th>
-          <th>고객 PC</th>
-          <th class="w-32">고객 IP</th>
-          <th class="w-24">담당</th>
-          <th class="w-24">남은 시간</th>
-          <th class="w-44">작업</th>
-        </tr>
-      </thead>
-      <tbody id="sessionTbody">
-        <tr><td colspan="7" class="py-8 text-center text-slate-400">불러오는 중...</td></tr>
-      </tbody>
-    </table>
-  </div>
+  <div id="sessionGrid" style="height: calc(100vh - 340px); min-height: 380px;"></div>
 </div>
 
 <script>
