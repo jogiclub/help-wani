@@ -7,7 +7,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 $is_super = (bool) $this->session->userdata('is_super');
 ?>
 <!doctype html>
-<html lang="ko">
+<html lang="<?= html_escape(isset($i18n) ? $i18n["locale"] : "ko") ?>">
 <head>
 <?php $this->load->view('layouts/_head', array('use_grid' => isset($use_grid) ? $use_grid : FALSE)); ?>
 </head>

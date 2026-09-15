@@ -31,7 +31,7 @@
     $(function () {
         RHGrid.create('historyGrid', {
             columnDefs: [
-                { headerName: '일시', field: 'created_at', width: 160, flex: 0 },
+                { headerName: '일시', field: 'created_at', width: 160, flex: 0, valueFormatter: RHGrid.dateTime },
                 { headerName: '코드', field: 'code', width: 100, flex: 0, cellClass: 'font-mono' },
                 { headerName: '상담원', field: 'agent_name', width: 120, flex: 0 },
                 { headerName: '고객 PC', field: 'pc_name', minWidth: 150,

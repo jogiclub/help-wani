@@ -113,13 +113,17 @@
     }
 
     /**
-     * 날짜 문자열을 'MM-DD HH:mm' 으로 짧게 보여준다.
+     * UTC 로 내려온 값을 조직 타임존의 'MM-DD HH:mm' 으로 보여준다.
      */
     function shortDateTime(params) {
-        if (!params.value) {
-            return '-';
-        }
-        return String(params.value).substring(5, 16);
+        return window.RHI18n ? window.RHI18n.formatDate(params.value, 'short') : (params.value || '-');
+    }
+
+    /**
+     * UTC 로 내려온 값을 조직 타임존의 전체 일시로 보여준다.
+     */
+    function dateTime(params) {
+        return window.RHI18n ? window.RHI18n.formatDate(params.value, 'datetime') : (params.value || '-');
     }
 
     /**
@@ -172,6 +176,7 @@
     window.RHGrid = {
         create: create,
         shortDateTime: shortDateTime,
+        dateTime: dateTime,
         badgeRenderer: badgeRenderer,
         buttonsRenderer: buttonsRenderer,
         DEFAULT_PAGE_SIZE: DEFAULT_PAGE_SIZE,

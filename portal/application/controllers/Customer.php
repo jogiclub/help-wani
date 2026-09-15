@@ -20,6 +20,9 @@ class Customer extends MY_Controller {
             return;
         }
 
+        // 고객 화면은 해당 조직이 정한 언어와 시간대를 따른다.
+        $this->use_org_locale($org);
+
         $store_id = env('STORE_PRODUCT_ID', '');
 
         $this->load->helper('download');
@@ -52,6 +55,8 @@ class Customer extends MY_Controller {
             return;
         }
 
+        $this->use_org_locale($org);
+
         $existing = $this->db->get_where('surveys', array('session_id' => $session->id))->row();
 
         if ($this->input->method() === 'post')
@@ -78,7 +83,7 @@ class Customer extends MY_Controller {
 
             $this->log_model->add($session->id, 'survey_submitted', '점수 '.$score, 'customer', client_ip());
 
-            api_response(TRUE, '소중한 의견 감사합니다.', array());
+            api_response(TRUE, lang_text('survey.thanks'), array());
             return;
         }
 

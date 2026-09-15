@@ -62,7 +62,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
         </div>
         <div class="flex justify-between px-5 py-2.5">
           <dt class="text-slate-500">시작</dt>
-          <dd class="font-medium text-slate-700"><?= html_escape($session->started_at ?: '-') ?></dd>
+          <dd class="font-medium text-slate-700"><?= html_escape(to_timezone($session->started_at, $i18n['timezone'])) ?></dd>
         </div>
       </dl>
     </div>
@@ -73,7 +73,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
         <div id="noteList" class="mb-3 space-y-2">
           <?php foreach ($notes as $note): ?>
           <div class="border-l-2 border-brand-500 pl-3">
-            <div class="text-xs text-slate-400"><?= html_escape($note->agent_name) ?> · <?= html_escape($note->created_at) ?></div>
+            <div class="text-xs text-slate-400"><?= html_escape($note->agent_name) ?> · <?= html_escape(to_timezone($note->created_at, $i18n['timezone'])) ?></div>
             <div class="text-sm text-slate-700"><?= nl2br(html_escape($note->content)) ?></div>
           </div>
           <?php endforeach; ?>

@@ -6,7 +6,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <!doctype html>
-<html lang="ko">
+<html lang="<?= html_escape(isset($i18n) ? $i18n["locale"] : "ko") ?>">
 <head>
 <?php $this->load->view('layouts/_head'); ?>
 </head>

@@ -10,8 +10,9 @@ services:
       MYSQL_DATABASE: ${DB_NAME:-remotehelp}
       MYSQL_USER: ${DB_USER:-remotehelp}
       MYSQL_PASSWORD: ${DB_PASS:-remotehelp}
-      TZ: Asia/Seoul
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+      TZ: UTC
+    # 시간은 UTC 로 저장한다. 표시 변환은 애플리케이션이 조직 타임존으로 수행한다.
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+00:00
     volumes:
       - db-data:/var/lib/mysql
       - ./sql:/docker-entrypoint-initdb.d:ro

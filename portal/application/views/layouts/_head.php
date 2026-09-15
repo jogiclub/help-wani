@@ -7,6 +7,7 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 $use_grid = isset($use_grid) ? $use_grid : FALSE;
+$i18n = isset($i18n) ? $i18n : array('locale' => 'ko', 'intl' => 'ko-KR', 'timezone' => 'Asia/Seoul', 'messages' => array());
 ?>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +16,11 @@ $use_grid = isset($use_grid) ? $use_grid : FALSE;
 <title><?= html_escape(isset($page_title) ? $page_title : $app_name) ?> · <?= html_escape($app_name) ?></title>
 <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script>
+    // 서버가 정한 조직 언어/타임존을 그대로 넘겨 추가 요청 없이 번역과 날짜 표시를 처리한다.
+    var RH_I18N = <?= json_encode($i18n, JSON_UNESCAPED_UNICODE) ?>;
+</script>
+<script src="<?= base_url('assets/js/i18n.js') ?>"></script>
 <?php if ($use_grid): ?>
 <!-- AG Grid Community v36. 테마는 CSS 파일 없이 Theming API 로 적용한다. -->
 <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@36.1.0/dist/ag-grid-community.min.js"></script>

@@ -43,7 +43,7 @@
                 },
                 {
                     headerName: '최근 로그인', field: 'last_login_at', width: 160, flex: 0,
-                    valueFormatter: function (p) { return p.value || '-'; }
+                    valueFormatter: RHGrid.dateTime
                 },
                 {
                     headerName: '관리', width: 150, flex: 0, sortable: false, filter: false, pinned: 'right',

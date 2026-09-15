@@ -7,10 +7,35 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 class MY_Controller extends CI_Controller {
 
+    /** 현재 화면 언어 (ko / en / ja) */
+    public $current_locale = 'ko';
+
+    /** 현재 화면 타임존 (IANA) */
+    public $current_timezone = 'Asia/Seoul';
+
     public function __construct()
     {
         parent::__construct();
         $this->load->model(array('organization_model', 'agent_model', 'session_model', 'log_model'));
+
+        // 로그인한 사용자는 소속 조직 설정을 따른다. 고객 화면은 컨트롤러가 직접 지정한다.
+        if ($this->session->userdata('locale'))
+        {
+            $this->current_locale = $this->session->userdata('locale');
+            $this->current_timezone = $this->session->userdata('timezone');
+        }
+    }
+
+    /**
+     * 조직 설정에 맞춰 언어와 타임존을 바꾼다. (고객 화면에서 사용)
+     */
+    protected function use_org_locale($org)
+    {
+        if ( ! empty($org))
+        {
+            $this->current_locale = $org->locale ?: 'ko';
+            $this->current_timezone = $org->timezone ?: 'Asia/Seoul';
+        }
     }
 
     /**
@@ -18,8 +43,18 @@ class MY_Controller extends CI_Controller {
      */
     protected function render($view, $data = array(), $layout = 'layouts/main')
     {
+        $locales = supported_locales();
+        $intl = isset($locales[$this->current_locale]) ? $locales[$this->current_locale]['intl'] : 'ko-KR';
+
         $data['content_view'] = $view;
         $data['app_name'] = env('APP_NAME', 'RemoteHelp');
+        $data['i18n'] = array(
+            'locale'   => $this->current_locale,
+            'intl'     => $intl,
+            'timezone' => $this->current_timezone,
+            'messages' => load_messages($this->current_locale),
+        );
+
         $this->load->view($layout, $data);
     }
 }

@@ -60,6 +60,8 @@ class Auth extends MY_Controller {
                 'org_id'     => (int) $agent->org_id,
                 'org_name'   => $org->name,
                 'org_code'   => $org->org_code,
+                'locale'     => $org->locale ?: 'ko',
+                'timezone'   => $org->timezone ?: 'Asia/Seoul',
             ));
 
             $this->agent_model->touch_login($agent->id);
@@ -147,11 +149,27 @@ class Auth extends MY_Controller {
                 return;
             }
 
+            // 국가/언어/시간대는 허용 목록 안의 값만 받는다.
+            $countries = supported_countries();
+            $locales   = supported_locales();
+            $timezones = supported_timezones();
+
+            $country  = (string) $this->input->post('country', TRUE);
+            $locale   = (string) $this->input->post('locale', TRUE);
+            $timezone = (string) $this->input->post('timezone', TRUE);
+
+            $country  = isset($countries[$country]) ? $country : 'KR';
+            $locale   = isset($locales[$locale]) ? $locale : $countries[$country]['locale'];
+            $timezone = isset($timezones[$timezone]) ? $timezone : $countries[$country]['timezone'];
+
             $org_id = $this->organization_model->insert(array(
                 'org_code' => $org_code,
                 'name'     => $this->input->post('org_name', TRUE),
                 'biz_no'   => $this->input->post('biz_no', TRUE),
                 'phone'    => $this->input->post('phone', TRUE),
+                'country'  => $country,
+                'locale'   => $locale,
+                'timezone' => $timezone,
                 'status'   => 'pending',
             ));
 
@@ -173,6 +191,11 @@ class Auth extends MY_Controller {
             return;
         }
 
-        $this->render('auth/signup', array('page_title' => '조직 가입 신청'), 'layouts/blank');
+        $this->render('auth/signup', array(
+            'page_title' => '조직 가입 신청',
+            'countries'  => supported_countries(),
+            'locales'    => supported_locales(),
+            'timezones'  => supported_timezones(),
+        ), 'layouts/blank');
     }
 }

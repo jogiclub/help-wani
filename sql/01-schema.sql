@@ -2,7 +2,9 @@
 -- 역할: RemoteHelp 포털 데이터베이스 스키마
 
 SET NAMES utf8mb4;
-SET time_zone = '+09:00';
+
+-- 시간은 모두 UTC 로 저장하고, 화면에 보여줄 때 조직 타임존으로 변환한다.
+SET time_zone = '+00:00';
 
 -- 조직
 CREATE TABLE IF NOT EXISTS organizations (
@@ -18,6 +20,9 @@ CREATE TABLE IF NOT EXISTS organizations (
   approved_by   INT UNSIGNED DEFAULT NULL COMMENT '승인한 운영자',
   status_reason VARCHAR(300) DEFAULT NULL COMMENT '반려/중지 사유',
   plan          VARCHAR(30)  NOT NULL DEFAULT 'basic',
+  country       CHAR(2)      NOT NULL DEFAULT 'KR' COMMENT '국가 코드(ISO 3166-1 alpha-2)',
+  locale        VARCHAR(10)  NOT NULL DEFAULT 'ko' COMMENT '화면 언어(ko/en/ja)',
+  timezone      VARCHAR(50)  NOT NULL DEFAULT 'Asia/Seoul' COMMENT 'IANA 타임존',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

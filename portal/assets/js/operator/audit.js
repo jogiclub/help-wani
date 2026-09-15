@@ -39,7 +39,7 @@
     $(function () {
         RHGrid.create('auditGrid', {
             columnDefs: [
-                { headerName: '일시', field: 'created_at', width: 160, flex: 0 },
+                { headerName: '일시', field: 'created_at', width: 160, flex: 0, valueFormatter: RHGrid.dateTime },
                 {
                     headerName: '행위', field: 'action', width: 180, flex: 0,
                     cellRenderer: RHGrid.badgeRenderer(ACTION_CLASS, ACTION_LABEL),

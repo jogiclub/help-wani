@@ -36,6 +36,7 @@ docker compose up -d --build
 |---|---|
 | http://localhost:8099/login | 상담원 콘솔 (admin@demo.local / Test1234!admin) |
 | http://localhost:8099/operator | 조직 가입 승인 (operator@demo.local / Test1234!admin) |
+| http://localhost:8099/signup | 조직 가입 신청 (국가·언어·시간대 선택) |
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
 
@@ -71,6 +72,34 @@ https://localhost:8443/healthz 를 한 번 방문해 인증서를 허용해야 w
 python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
     --token <1회용 뷰어 토큰> --insecure --frames 3
 ```
+
+## 언어와 시간대
+
+조직마다 **화면 언어와 시간대**를 정합니다. 가입 신청(`/signup`)에서 국가를 고르면
+언어와 시간대 기본값이 자동으로 맞춰지고, 이후 `/admin/organization` 에서 바꿀 수 있습니다.
+
+| 항목 | 값 |
+|---|---|
+| 지원 언어 | 한국어(ko), English(en), 日本語(ja) |
+| 사전 위치 | `portal/assets/lang/{locale}.json` (PHP 와 JS 가 같은 파일을 사용) |
+| 서버 번역 | `lang_text('key', ['org' => '이름'])` |
+| 화면 번역 | `assets/js/i18n.js` — `__('key')`, `data-i18n="key"` 속성 |
+
+### 시간은 UTC 로 저장합니다
+
+조직마다 시간대가 다르므로 **저장은 UTC, 표시만 조직 시간대로 변환**합니다.
+
+```
+MySQL  --default-time-zone=+00:00
+PHP    date.timezone = UTC
+표시   서버: to_timezone($utc, $tz)   화면: RHI18n.formatDate(utc)
+```
+
+운영 서버에 올릴 때 이 두 설정을 반드시 맞춰야 합니다. 기존 데이터가 한국 시각으로
+저장되어 있다면 `sql/migrations/003-locale-timezone.sql` 의 `CONVERT_TZ` 구문으로 옮깁니다.
+
+새 언어를 추가하려면 사전 파일을 하나 더 만들고 `i18n_helper.php` 의
+`supported_locales()` 에 등록하면 됩니다.
 
 ## 조직 가입 승인
 

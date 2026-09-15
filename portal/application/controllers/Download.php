@@ -87,8 +87,10 @@ class Download extends MY_Controller {
 
         if ( ! is_file($path))
         {
+            $this->use_org_locale($org);
+
             $this->render('customer/download_unavailable', array(
-                'page_title' => '프로그램 준비 중',
+                'page_title' => lang_text('customer.download.unavailable.title'),
                 'org'        => $org,
             ), 'layouts/customer');
             return;

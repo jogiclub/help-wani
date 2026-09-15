@@ -420,7 +420,8 @@
                 var $list = $('#noteList').empty();
                 (data.notes || []).forEach(function (n) {
                     $('<div class="border-l-2 border-brand-500 pl-3">')
-                        .append($('<div class="text-xs text-slate-400">').text(n.agent_name + ' · ' + n.created_at))
+                        .append($('<div class="text-xs text-slate-400">')
+                            .text(n.agent_name + ' · ' + window.RHI18n.formatDate(n.created_at)))
                         .append($('<div class="text-sm text-slate-700">').text(n.content))
                         .appendTo($list);
                 });

@@ -47,6 +47,8 @@ class Admin extends Agent_Controller {
         $this->render('admin/organization', array(
             'page_title' => '조직 정보',
             'org'        => $this->organization_model->get_by_id($this->agent->org_id),
+            'locales'    => supported_locales(),
+            'timezones'  => supported_timezones(),
         ));
     }
 
@@ -165,12 +167,28 @@ class Admin extends Agent_Controller {
             return;
         }
 
+        // 언어와 시간대는 허용 목록 안의 값만 받는다.
+        $locales   = supported_locales();
+        $timezones = supported_timezones();
+
+        $locale   = (string) $this->input->post('locale', TRUE);
+        $timezone = (string) $this->input->post('timezone', TRUE);
+
+        $locale   = isset($locales[$locale]) ? $locale : 'ko';
+        $timezone = isset($timezones[$timezone]) ? $timezone : 'Asia/Seoul';
+
         $this->organization_model->update($this->agent->org_id, array(
-            'name'  => $name,
-            'phone' => $phone,
+            'name'     => $name,
+            'phone'    => $phone,
+            'locale'   => $locale,
+            'timezone' => $timezone,
         ));
 
-        $this->session->set_userdata('org_name', $name);
+        $this->session->set_userdata(array(
+            'org_name' => $name,
+            'locale'   => $locale,
+            'timezone' => $timezone,
+        ));
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'org_update', NULL, client_ip());
 
         api_response(TRUE, '조직 정보를 저장했습니다.', array());
