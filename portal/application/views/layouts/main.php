@@ -16,6 +16,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
+<!-- 각 화면의 인라인 스크립트가 본문에서 바로 실행되므로 라이브러리를 먼저 불러온다. -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= base_url('assets/js/common.js') ?>"></script>
 </head>
 <body class="bg-body-tertiary">
 
@@ -61,9 +65,6 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/common.js') ?>"></script>
 <?php if (isset($page_scripts)): foreach ($page_scripts as $src): ?>
 <script <?= (isset($module_scripts) && in_array($src, $module_scripts, TRUE)) ? 'type="module"' : '' ?> src="<?= $src ?>"></script>
 <?php endforeach; endif; ?>

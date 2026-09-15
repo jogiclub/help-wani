@@ -15,6 +15,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <title><?= html_escape(isset($page_title) ? $page_title : $app_name) ?> · <?= html_escape($app_name) ?></title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
+<!-- 각 화면의 인라인 스크립트가 본문에서 바로 실행되므로 라이브러리를 먼저 불러온다. -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= base_url('assets/js/common.js') ?>"></script>
 </head>
 <body class="bg-body-tertiary">
 <main class="container py-5">
@@ -33,8 +37,5 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     </div>
   </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="<?= base_url('assets/js/common.js') ?>"></script>
 </body>
 </html>
