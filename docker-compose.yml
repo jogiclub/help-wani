@@ -42,9 +42,8 @@ services:
       DB_USER: ${DB_USER:-remotehelp}
       DB_PASS: ${DB_PASS:-remotehelp}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      RELAY_HOST: ${RELAY_HOST:-localhost}
-      RELAY_TLS_PORT: ${RELAY_TLS_PORT:-5501}
-      RELAY_WS_URL: ${RELAY_WS_URL:-wss://localhost:8443/ws}
+      RELAY_AGENT_WS_URL: ${RELAY_AGENT_WS_URL:-wss://localhost:8443/agent}
+      RELAY_VIEWER_WS_URL: ${RELAY_VIEWER_WS_URL:-wss://localhost:8443/viewer}
       RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
       STORE_PRODUCT_ID: ${STORE_PRODUCT_ID:-0000000000000000}
       LAUNCHER_MIN_VERSION: ${LAUNCHER_MIN_VERSION:-1.0.0}
@@ -64,29 +63,31 @@ services:
     environment:
       RELAY_SERVER_NAME: ${RELAY_SERVER_NAME:-localhost}
       RELAY_HTTPS_PORT: "8443"
-      PORTAL_UPSTREAM: "web:80"
-      PORTAL_HOST: web
+      RELAY_UPSTREAM: "127.0.0.1:8081"
+      RELAY_PORT: "8081"
+      RELAY_HOST: "127.0.0.1"
+      PORTAL_ORIGIN: http://web
       RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
+      RELAY_LOG_LEVEL: ${RELAY_LOG_LEVEL:-info}
     volumes:
       - relay-certs:/etc/remotehelp/certs
     ports:
-      - "5501:5501"
       - "8443:8443"
 
-  # 검증용 고객 PC 모의 컨테이너. 기본 기동하지 않고 profile 로 실행한다.
-  #   docker compose --profile test run --rm -e REPEATER_ID=123456789 -e VNC_PASSWORD=Test1234 vnctest
-  vnctest:
+  # 검증용 고객 PC 에이전트 모의 컨테이너. 기본 기동하지 않고 profile 로 실행한다.
+  #   docker compose --profile test run --rm -e AGENT_TOKEN=... agentsim
+  agentsim:
     build:
       context: .
-      dockerfile: docker/vnctest/Dockerfile
+      dockerfile: docker/agentsim/Dockerfile
     profiles: ["test"]
     depends_on:
       - relay
     environment:
-      RELAY_HOST: relay
-      RELAY_PORT: "5501"
-      REPEATER_ID: ${REPEATER_ID:-123456789}
-      VNC_PASSWORD: ${VNC_PASSWORD:-Test1234}
+      RELAY_URL: ${AGENT_RELAY_URL:-wss://relay:8443/agent}
+      AGENT_TOKEN: ${AGENT_TOKEN:-}
+      SCREEN_WIDTH: "1280"
+      SCREEN_HEIGHT: "800"
 
 volumes:
   db-data:

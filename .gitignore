@@ -28,3 +28,4 @@
 .vscode/
 .idea/
 .DS_Store
+portal/application/cache/

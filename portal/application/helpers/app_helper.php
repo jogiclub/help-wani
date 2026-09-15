@@ -65,25 +65,6 @@ if ( ! function_exists('random_digits'))
     }
 }
 
-if ( ! function_exists('random_vnc_password'))
-{
-    /**
-     * VNC 인증(DES)은 8바이트 고정이므로 정확히 8자를 생성한다.
-     * 혼동하기 쉬운 문자(0/O, 1/l/I)는 제외한다.
-     */
-    function random_vnc_password()
-    {
-        $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-        $max = strlen($alphabet) - 1;
-        $out = '';
-        for ($i = 0; $i < RH_VNC_PASSWORD_LEN; $i++)
-        {
-            $out .= $alphabet[random_int(0, $max)];
-        }
-        return $out;
-    }
-}
-
 if ( ! function_exists('client_ip'))
 {
     function client_ip()

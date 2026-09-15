@@ -27,9 +27,15 @@ public partial class OverlayWindow : Window
         _timer.Tick += (_, _) =>
         {
             var elapsed = DateTime.Now - _startedAt;
-            TxtElapsed.Text = $"경과 {elapsed:mm\\:ss}";
+            TxtElapsed.Text = $"{TxtState.Text} · 경과 {elapsed:mm\\:ss}";
         };
         _timer.Start();
+    }
+
+    /// <summary>상담원 접속 여부를 표시에 반영한다.</summary>
+    public void SetConnected(bool connected)
+    {
+        TxtState.Text = connected ? "상담원 접속 중" : "연결 대기 중";
     }
 
     /// <summary>주 화면 오른쪽 위에 배치한다.</summary>

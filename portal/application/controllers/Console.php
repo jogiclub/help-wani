@@ -32,7 +32,7 @@ class Console extends Agent_Controller {
             'page_title'  => '원격 화면',
             'session'     => $session,
             'notes'       => $this->session_model->list_notes($session->id),
-            'relay_ws_url'=> env('RELAY_WS_URL', 'wss://localhost:8443/ws'),
+            'relay_ws_url'=> env('RELAY_VIEWER_WS_URL', 'wss://localhost:8443/viewer'),
         ));
     }
 
@@ -138,7 +138,7 @@ class Console extends Agent_Controller {
 
     /**
      * POST /console/api/session/viewer-token
-     * noVNC 접속에 필요한 1회용 토큰과 접속 정보를 돌려준다.
+     * 중계 서버 접속에 필요한 1회용 토큰과 접속 주소를 돌려준다.
      */
     public function api_viewer_token()
     {
@@ -151,24 +151,15 @@ class Console extends Agent_Controller {
             return;
         }
 
-        $token    = $this->session_model->issue_viewer_token($session->id);
-        $password = $this->session_model->decrypt_password($session);
-
-        if ($password === NULL)
-        {
-            api_response(FALSE, '세션 비밀번호를 복호화하지 못했습니다.', array(), 500);
-            return;
-        }
+        $token = $this->session_model->issue_viewer_token($session->id);
 
         $this->log_model->add($session->id, 'viewer_token_issued', '상담원 '.$this->agent->name, 'agent', client_ip());
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'viewer_token', 'session_id='.$session->id, client_ip());
 
         api_response(TRUE, '', array(
-            'token'        => $token['token'],
-            'expires_in'   => $token['expires_in'],
-            'repeater_id'  => (string) $session->repeater_id,
-            'vnc_password' => $password,
-            'ws_url'       => env('RELAY_WS_URL', 'wss://localhost:8443/ws'),
+            'token'      => $token['token'],
+            'expires_in' => $token['expires_in'],
+            'ws_url'     => env('RELAY_VIEWER_WS_URL', 'wss://localhost:8443/viewer'),
         ));
     }
 
@@ -223,7 +214,7 @@ class Console extends Agent_Controller {
 
     /**
      * POST /console/api/session/log
-     * 뷰어(noVNC) 측 이벤트를 세션 로그로 남긴다.
+     * 뷰어 측 이벤트를 세션 로그로 남긴다.
      */
     public function api_session_log()
     {
@@ -234,7 +225,8 @@ class Console extends Agent_Controller {
         $session = $this->require_own_session($session_id);
 
         $allowed = array('viewer_connected', 'viewer_disconnected', 'viewer_auth_failed',
-                         'viewer_reconnecting', 'viewer_clipboard', 'viewer_ctrl_alt_del');
+                         'viewer_reconnecting', 'viewer_clipboard', 'viewer_ctrl_alt_del',
+                         'viewer_quality_changed', 'viewer_peer_lost');
 
         if ( ! in_array($event, $allowed, TRUE))
         {

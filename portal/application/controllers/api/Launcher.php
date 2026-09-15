@@ -56,10 +56,8 @@ class Launcher extends MY_Controller {
 
         api_response(TRUE, '', array(
             'session_id'      => (int) $session->id,
-            'repeater_id'     => (string) $session->repeater_id,
-            'vnc_password'    => $verified['password'],
-            'relay_host'      => env('RELAY_HOST', 'localhost'),
-            'relay_port'      => (int) env('RELAY_TLS_PORT', 5501),
+            'relay_ws_url'    => env('RELAY_AGENT_WS_URL', 'wss://localhost:8443/agent'),
+            'agent_token'     => $verified['agent_token'],
             'org_name'        => $org ? $org->name : '',
             'org_logo_url'    => ($org && $org->logo_path) ? base_url($org->logo_path) : '',
             'launcher_secret' => $verified['launcher_secret'],

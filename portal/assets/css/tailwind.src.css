@@ -91,11 +91,17 @@
         @apply font-mono text-5xl font-bold tracking-[0.35em] text-slate-900;
     }
 
-    /* noVNC 화면 영역 */
-    .vnc-screen {
-        @apply w-full bg-black;
-        height: calc(100vh - 230px);
+    /* 원격 화면 캔버스 */
+    .remote-screen {
+        @apply block bg-black outline-none;
+        max-width: 100%;
+        max-height: calc(100vh - 240px);
+        cursor: crosshair;
+    }
+
+    #screenWrap {
         min-height: 420px;
+        max-height: calc(100vh - 240px);
     }
 
     /* 고객 페이지 단계 번호 */

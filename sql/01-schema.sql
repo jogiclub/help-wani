@@ -47,8 +47,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   org_id           INT UNSIGNED NOT NULL,
   agent_id         INT UNSIGNED NOT NULL,
   code             CHAR(6)      NOT NULL COMMENT '고객이 입력하는 6자리 숫자',
-  repeater_id      BIGINT UNSIGNED NOT NULL COMMENT 'UltraVNC Repeater Mode2 ID (양의 정수)',
-  vnc_password_enc TEXT         NOT NULL COMMENT 'CI3 Encryption 으로 암호화된 8자 VNC 비밀번호',
+  agent_token      CHAR(64)     DEFAULT NULL COMMENT '에이전트 중계 서버 접속 토큰(세션당 1개)',
   launcher_secret  CHAR(64)     DEFAULT NULL COMMENT '런처 후속 호출 인증용',
   status           ENUM('issued','verified','waiting','connected','ended','expired','canceled')
                    NOT NULL DEFAULT 'issued',
@@ -69,7 +68,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   KEY idx_sessions_org_created (org_id, created_at),
   KEY idx_sessions_agent (agent_id),
   KEY idx_sessions_status (status),
-  KEY idx_sessions_repeater (repeater_id),
+  KEY idx_sessions_agent_token (agent_token),
   CONSTRAINT fk_sessions_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE,
   CONSTRAINT fk_sessions_agent FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

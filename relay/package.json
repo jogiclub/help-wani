@@ -1,0 +1,17 @@
+{
+  "name": "remotehelp-relay",
+  "version": "1.0.0",
+  "description": "RemoteHelp 원격지원 중계 서버",
+  "private": true,
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

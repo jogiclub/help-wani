@@ -8,9 +8,7 @@ export RELAY_SSL_CERT="${RELAY_SSL_CERT:-$CERT_DIR/relay.crt}"
 export RELAY_SSL_KEY="${RELAY_SSL_KEY:-$CERT_DIR/relay.key}"
 export RELAY_SERVER_NAME="${RELAY_SERVER_NAME:-localhost}"
 export RELAY_HTTPS_PORT="${RELAY_HTTPS_PORT:-8443}"
-export PORTAL_UPSTREAM="${PORTAL_UPSTREAM:-web:80}"
-export PORTAL_HOST="${PORTAL_HOST:-web}"
-export RELAY_AUTH_SHARED_SECRET="${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}"
+export RELAY_UPSTREAM="${RELAY_UPSTREAM:-127.0.0.1:8081}"
 
 if [ ! -f "$RELAY_SSL_CERT" ]; then
     echo "[entrypoint] 개발용 자체 서명 인증서를 생성합니다: $RELAY_SERVER_NAME"
@@ -21,8 +19,7 @@ if [ ! -f "$RELAY_SSL_CERT" ]; then
         -addext "subjectAltName=DNS:$RELAY_SERVER_NAME,DNS:relay,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 fi
 
-SUBST='${RELAY_SSL_CERT} ${RELAY_SSL_KEY} ${RELAY_SERVER_NAME} ${RELAY_HTTPS_PORT} ${PORTAL_UPSTREAM} ${PORTAL_HOST} ${RELAY_AUTH_SHARED_SECRET}'
-envsubst "$SUBST" < /etc/remotehelp/templates/stream.conf     > /etc/nginx/conf.d-stream/stream.conf
+SUBST='${RELAY_SSL_CERT} ${RELAY_SSL_KEY} ${RELAY_SERVER_NAME} ${RELAY_HTTPS_PORT} ${RELAY_UPSTREAM}'
 envsubst "$SUBST" < /etc/remotehelp/templates/remotehelp.conf > /etc/nginx/sites-enabled/remotehelp.conf
 
 nginx -t

@@ -27,9 +27,6 @@ public partial class App : Application
             AppLogger.Info($"프로토콜 실행: org={LaunchOrgCode}");
         }
 
-        // 이전 실행이 비정상 종료된 경우 남은 세션 폴더를 정리한다.
-        SessionWorkspace.CleanupOrphans();
-
         DispatcherUnhandledException += (_, args) =>
         {
             AppLogger.Error("처리되지 않은 예외", args.Exception);

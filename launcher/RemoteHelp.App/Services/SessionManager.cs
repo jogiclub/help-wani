@@ -1,7 +1,9 @@
 /**
  * 파일 위치: launcher/RemoteHelp.App/Services/SessionManager.cs
- * 역할: 세션 전체 수명 관리 (코드 검증 -> 터널 -> winvnc -> 하트비트 -> 정리)
+ * 역할: 세션 전체 수명 관리 (코드 검증 -> 원격제어 엔진 시작 -> 하트비트 -> 정리)
  */
+using RemoteHelp.Services.Engine;
+
 namespace RemoteHelp.Services;
 
 public enum SessionState
@@ -10,6 +12,7 @@ public enum SessionState
     Verifying,
     Confirming,
     Connecting,
+    Waiting,
     Connected,
     Ended,
 }
@@ -19,9 +22,7 @@ public sealed class SessionManager : IAsyncDisposable
     private readonly PortalApiClient _api = new(AppInfo.PortalBaseUrl);
     private readonly CancellationTokenSource _cts = new();
 
-    private SessionWorkspace? _workspace;
-    private TlsTunnel? _tunnel;
-    private VncRunner? _vnc;
+    private RemoteSession? _remote;
     private Task? _heartbeatTask;
     private bool _cleaned;
 
@@ -30,6 +31,9 @@ public sealed class SessionManager : IAsyncDisposable
     public SessionState State { get; private set; } = SessionState.Idle;
 
     public DateTime? StartedAt { get; private set; }
+
+    /// <summary>현재 사용 중인 화면 캡처 방식 (GDI / DXGI)</summary>
+    public string CaptureMethod => _remote?.CaptureMethod ?? "-";
 
     /// <summary>상태가 바뀔 때 발생 (UI 갱신용)</summary>
     public event Action<SessionState>? StateChanged;
@@ -56,7 +60,7 @@ public sealed class SessionManager : IAsyncDisposable
         }
     }
 
-    /// <summary>고객이 허용을 누른 뒤 실제 원격 연결을 준비한다.</summary>
+    /// <summary>고객이 허용을 누른 뒤 원격제어 엔진을 시작한다.</summary>
     public async Task ConnectAsync()
     {
         if (Session == null)
@@ -66,28 +70,42 @@ public sealed class SessionManager : IAsyncDisposable
 
         SetState(SessionState.Connecting);
 
-        _workspace = SessionWorkspace.Create();
+        _remote = new RemoteSession(Session.RelayWsUrl, Session.AgentToken);
+        _remote.ViewerStateChanged += OnViewerStateChanged;
+        _remote.Closed += OnRelayClosed;
 
-        _vnc = new VncRunner(_workspace);
-        _vnc.WriteIni(Session.VncPassword);
-
-        _tunnel = new TlsTunnel(Session.RelayHost, Session.RelayPort);
-        _tunnel.TunnelClosed += OnTunnelClosed;
-        _tunnel.Start();
-
-        _vnc.Start(Session.RepeaterId, _tunnel.LocalPort);
+        await _remote.StartAsync();
 
         await _api.ReportStatusAsync(Session.SessionId, Session.LauncherSecret, "waiting", null, _cts.Token);
 
         StartedAt = DateTime.Now;
-        SetState(SessionState.Connected);
+        SetState(SessionState.Waiting);
 
         _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token));
     }
 
-    private void OnTunnelClosed()
+    private void OnViewerStateChanged(bool connected)
     {
-        AppLogger.Warn("중계 서버와의 연결이 끊어졌습니다.");
+        if (connected)
+        {
+            SetState(SessionState.Connected);
+
+            if (Session != null)
+            {
+                _ = _api.ReportStatusAsync(Session.SessionId, Session.LauncherSecret, "connected", null, _cts.Token);
+            }
+        }
+        else if (State == SessionState.Connected)
+        {
+            SetState(SessionState.Waiting);
+        }
+    }
+
+    private void OnRelayClosed(string reason)
+    {
+        AppLogger.Warn("중계 연결이 닫혔습니다: " + reason);
+
+        // 상담원이 끝냈거나 세션이 만료된 경우다. 하트비트가 곧 확인한다.
     }
 
     private async Task HeartbeatLoopAsync(CancellationToken ct)
@@ -113,14 +131,6 @@ public sealed class SessionManager : IAsyncDisposable
                     SessionTerminated?.Invoke(result.EndReason ?? "agent_ended");
                     return;
                 }
-
-                // winvnc 가 죽었으면 세션을 유지할 이유가 없다.
-                if (_vnc is { IsRunning: false })
-                {
-                    AppLogger.Warn("원격지원 엔진이 종료되어 세션을 끝냅니다.");
-                    SessionTerminated?.Invoke("engine_exited");
-                    return;
-                }
             }
             catch (OperationCanceledException)
             {
@@ -133,10 +143,7 @@ public sealed class SessionManager : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// 어떤 경로로 끝나든 반드시 호출한다.
-    /// winvnc 종료 -> 터널 종료 -> 작업 폴더 삭제 -> 서버에 종료 보고 순서로 정리한다.
-    /// </summary>
+    /// <summary>어떤 경로로 끝나든 반드시 호출한다.</summary>
     public async Task EndAsync(string reason)
     {
         if (_cleaned)
@@ -147,19 +154,13 @@ public sealed class SessionManager : IAsyncDisposable
         _cleaned = true;
         AppLogger.Info("세션 종료 처리 시작: " + reason);
 
-        _vnc?.Stop();
-        _vnc?.Dispose();
-        _vnc = null;
-
-        if (_tunnel != null)
+        if (_remote != null)
         {
-            _tunnel.TunnelClosed -= OnTunnelClosed;
-            await _tunnel.DisposeAsync();
-            _tunnel = null;
+            _remote.ViewerStateChanged -= OnViewerStateChanged;
+            _remote.Closed -= OnRelayClosed;
+            await _remote.DisposeAsync();
+            _remote = null;
         }
-
-        _workspace?.Dispose();
-        _workspace = null;
 
         if (Session != null)
         {

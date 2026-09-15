@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!--
     파일 위치: launcher/RemoteHelp.App/RemoteHelp.App.csproj
-    역할: 고객 런처(WPF) 프로젝트 정의
+    역할: 고객 런처(WPF) 프로젝트 정의. 원격제어 엔진을 직접 포함하므로 외부 실행 파일이 없다.
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -18,17 +18,17 @@
     <Version>1.0.0</Version>
     <NeutralLanguage>ko-KR</NeutralLanguage>
     <SatelliteResourceLanguages>ko-KR</SatelliteResourceLanguages>
+    <Platforms>x64</Platforms>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
   </PropertyGroup>
 
   <ItemGroup>
     <!--
-      동봉한 UltraVNC(1.8.3.0 x64)를 빌드 출력의 ultravnc\ 폴더로 복사한다.
-      런처는 AppContext.BaseDirectory\ultravnc\winvnc.exe 를 실행한다.
-      구성과 출처는 launcher/vendor/README.md 참고.
+      DXGI Desktop Duplication 용. 사용할 수 없는 환경에서는 GDI 로 자동 전환하므로
+      이 패키지가 없어도 기능은 동작하지만, 빌드에는 필요하다.
     -->
-    <None Include="..\vendor\ultravnc\**\*.*" Exclude="..\vendor\ultravnc\SHA256SUMS">
-      <Link>ultravnc\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <PackageReference Include="Vortice.Direct3D11" Version="3.6.2" />
+    <PackageReference Include="Vortice.DXGI" Version="3.6.2" />
   </ItemGroup>
 </Project>

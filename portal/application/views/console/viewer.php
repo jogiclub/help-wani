@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/viewer.php
- * 역할: 상담원 원격 화면(noVNC)과 상담 메모
+ * 역할: 상담원 원격 화면(자체 캔버스 뷰어)과 상담 메모
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
@@ -15,21 +15,31 @@ defined('BASEPATH') OR exit('No direct script access allowed');
           <span class="badge badge-gray ml-1" id="viewerStatus"><?= html_escape(status_label($session->status)) ?></span>
         </span>
 
-        <div class="flex flex-wrap gap-1">
+        <div class="flex flex-wrap items-center gap-1">
           <button class="btn btn-sm btn-secondary" id="btnConnect">연결</button>
           <button class="btn btn-sm btn-secondary" id="btnFit">화면 맞춤</button>
           <button class="btn btn-sm btn-secondary" id="btnCad">Ctrl+Alt+Del</button>
           <button class="btn btn-sm btn-secondary" id="btnClipboard">클립보드</button>
           <button class="btn btn-sm btn-secondary" id="btnFullscreen">전체화면</button>
+          <select class="form-input btn-sm w-auto py-1" id="selQuality" title="화질">
+            <option value="50,15,100">빠름 (품질 50 / 15fps)</option>
+            <option value="70,10,100" selected>기본 (품질 70 / 10fps)</option>
+            <option value="90,6,100">선명 (품질 90 / 6fps)</option>
+          </select>
         </div>
 
         <button class="btn btn-sm btn-danger ml-auto" id="btnEnd">원격 종료</button>
       </div>
 
-      <div id="screen" class="vnc-screen"></div>
+      <div id="screenWrap" class="relative flex items-center justify-center bg-black">
+        <canvas id="screen" class="remote-screen"></canvas>
+        <!-- 고객 PC 의 마우스 위치 표시 (입력을 가로채지 않는다) -->
+        <canvas id="cursorLayer" class="pointer-events-none absolute"></canvas>
+      </div>
 
-      <div class="card-footer" id="viewerMessage">
-        [연결] 을 누르면 고객 화면에 접속합니다.
+      <div class="card-footer flex justify-between gap-3">
+        <span id="viewerMessage">[연결] 을 누르면 고객 화면에 접속합니다.</span>
+        <span id="viewerStats" class="shrink-0 text-xs text-slate-400"></span>
       </div>
     </div>
   </div>
@@ -104,4 +114,6 @@ var VIEWER_CONFIG = {
     queueUrl:  '<?= base_url('console') ?>'
 };
 </script>
-<script type="module" src="<?= base_url('assets/js/console/viewer.js') ?>"></script>
+<script src="<?= base_url('assets/js/console/protocol.js') ?>"></script>
+<script src="<?= base_url('assets/js/console/keymap.js') ?>"></script>
+<script src="<?= base_url('assets/js/console/viewer.js') ?>"></script>

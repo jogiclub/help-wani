@@ -1,0 +1,27 @@
+# 파일 위치: server/systemd/remotehelp-relay.service
+# 역할: RemoteHelp 중계 서버(Node.js) 데몬 등록
+[Unit]
+Description=RemoteHelp Relay Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=remotehelp
+Group=remotehelp
+WorkingDirectory=/opt/remotehelp/relay
+ExecStart=/usr/bin/node /opt/remotehelp/relay/src/server.js
+EnvironmentFile=/etc/remotehelp/relay.env
+Restart=always
+RestartSec=3
+StandardOutput=append:/var/log/remotehelp/relay.log
+StandardError=append:/var/log/remotehelp/relay.log
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/remotehelp
+
+[Install]
+WantedBy=multi-user.target

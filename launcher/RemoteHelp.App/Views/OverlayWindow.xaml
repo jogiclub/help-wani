@@ -24,6 +24,7 @@
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="원격지원 중" Foreground="White" FontWeight="Bold" FontSize="14" />
                 <TextBlock x:Name="TxtElapsed" Foreground="#FFE0E0" FontSize="11.5" />
+                <TextBlock x:Name="TxtState" Visibility="Collapsed" Text="연결 대기 중" />
             </StackPanel>
 
             <Button Grid.Column="1" Content="종료" Padding="10,4"

@@ -92,24 +92,20 @@ class Session_model extends CI_Model {
 
     /**
      * 6자리 코드와 리피터 ID 를 발급해 새 세션을 만든다.
-     * 반환값에는 평문 VNC 비밀번호가 포함되므로 저장하지 않는다.
+     * 6자리 코드는 활성 세션 안에서 중복되지 않는다.
      */
     public function create_session($org_id, $agent_id)
     {
         $this->expire_stale();
 
-        $code        = $this->generate_unique_code();
-        $repeater_id = $this->generate_unique_repeater_id();
-        $password    = random_vnc_password();
+        $code = $this->generate_unique_code();
 
         $data = array(
-            'org_id'           => (int) $org_id,
-            'agent_id'         => (int) $agent_id,
-            'code'             => $code,
-            'repeater_id'      => $repeater_id,
-            'vnc_password_enc' => $this->encryption->encrypt($password),
-            'status'           => 'issued',
-            'expires_at'       => date('Y-m-d H:i:s', time() + RH_CODE_TTL),
+            'org_id'     => (int) $org_id,
+            'agent_id'   => (int) $agent_id,
+            'code'       => $code,
+            'status'     => 'issued',
+            'expires_at' => date('Y-m-d H:i:s', time() + RH_CODE_TTL),
         );
 
         $this->db->insert($this->table, $data);
@@ -118,10 +114,9 @@ class Session_model extends CI_Model {
         $this->log_model->add($id, 'session_created', '코드 발급', 'agent');
 
         return array(
-            'id'          => $id,
-            'code'        => $code,
-            'repeater_id' => $repeater_id,
-            'expires_at'  => $data['expires_at'],
+            'id'         => $id,
+            'code'       => $code,
+            'expires_at' => $data['expires_at'],
         );
     }
 
@@ -146,29 +141,6 @@ class Session_model extends CI_Model {
         }
 
         throw new RuntimeException('사용 가능한 코드를 생성하지 못했습니다.');
-    }
-
-    /**
-     * 리피터 ID 는 양의 정수여야 하며(uvncrepeater 사양), 활성 세션 내에서 유일해야 한다.
-     */
-    protected function generate_unique_repeater_id()
-    {
-        for ($i = 0; $i < 50; $i++)
-        {
-            $rid = random_int(100000000, 999999999);
-
-            $exists = $this->db->from($this->table)
-                               ->where('repeater_id', $rid)
-                               ->where_in('status', $this->active_statuses)
-                               ->count_all_results();
-
-            if ($exists === 0)
-            {
-                return $rid;
-            }
-        }
-
-        throw new RuntimeException('사용 가능한 리피터 ID 를 생성하지 못했습니다.');
     }
 
     // ------------------------------------------------------------------
@@ -220,6 +192,7 @@ class Session_model extends CI_Model {
         }
 
         $launcher_secret = bin2hex(random_bytes(32));
+        $agent_token     = bin2hex(random_bytes(32));
 
         // 동시 검증 경쟁을 막기 위해 상태 조건을 포함해 갱신한다.
         $this->db->where('id', $session->id)
@@ -227,6 +200,7 @@ class Session_model extends CI_Model {
                  ->update($this->table, array(
                      'status'           => 'verified',
                      'launcher_secret'  => $launcher_secret,
+                     'agent_token'      => $agent_token,
                      'customer_ip'      => $ip,
                      'customer_pc_name' => isset($meta['pc_name']) ? $meta['pc_name'] : NULL,
                      'customer_os'      => isset($meta['os_version']) ? $meta['os_version'] : NULL,
@@ -245,15 +219,22 @@ class Session_model extends CI_Model {
 
         return array(
             'session'         => $session,
-            'password'        => $this->decrypt_password($session),
             'launcher_secret' => $launcher_secret,
+            'agent_token'     => $agent_token,
         );
     }
 
-    public function decrypt_password($session)
+    /**
+     * 에이전트 토큰으로 세션을 찾는다. 중계 서버 인증에 쓴다.
+     */
+    public function get_by_agent_token($token)
     {
-        $plain = $this->encryption->decrypt($session->vnc_password_enc);
-        return $plain === FALSE ? NULL : $plain;
+        if ( ! preg_match('/^[a-f0-9]{64}$/', (string) $token))
+        {
+            return NULL;
+        }
+
+        return $this->db->get_where($this->table, array('agent_token' => $token))->row();
     }
 
     /**
@@ -297,6 +278,7 @@ class Session_model extends CI_Model {
         {
             $data['ended_at'] = date('Y-m-d H:i:s');
             $data['launcher_secret'] = NULL;
+            $data['agent_token'] = NULL;
         }
 
         $this->db->where('id', (int) $session_id)->update($this->table, $data);
@@ -332,6 +314,7 @@ class Session_model extends CI_Model {
                      'ended_at'        => date('Y-m-d H:i:s'),
                      'end_reason'      => 'heartbeat_timeout',
                      'launcher_secret' => NULL,
+                     'agent_token'     => NULL,
                  ));
     }
 

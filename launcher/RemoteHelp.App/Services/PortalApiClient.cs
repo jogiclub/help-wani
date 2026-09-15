@@ -19,10 +19,8 @@ public sealed class ApiResponse<T>
 public sealed class VerifyResult
 {
     [JsonPropertyName("session_id")] public long SessionId { get; set; }
-    [JsonPropertyName("repeater_id")] public string RepeaterId { get; set; } = string.Empty;
-    [JsonPropertyName("vnc_password")] public string VncPassword { get; set; } = string.Empty;
-    [JsonPropertyName("relay_host")] public string RelayHost { get; set; } = string.Empty;
-    [JsonPropertyName("relay_port")] public int RelayPort { get; set; }
+    [JsonPropertyName("relay_ws_url")] public string RelayWsUrl { get; set; } = string.Empty;
+    [JsonPropertyName("agent_token")] public string AgentToken { get; set; } = string.Empty;
     [JsonPropertyName("org_name")] public string OrgName { get; set; } = string.Empty;
     [JsonPropertyName("org_logo_url")] public string OrgLogoUrl { get; set; } = string.Empty;
     [JsonPropertyName("launcher_secret")] public string LauncherSecret { get; set; } = string.Empty;

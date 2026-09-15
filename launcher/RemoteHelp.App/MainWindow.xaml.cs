@@ -27,6 +27,7 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         _session.SessionTerminated += OnSessionTerminated;
+        _session.StateChanged += OnSessionStateChanged;
         _elapsedTimer.Tick += (_, _) => UpdateElapsed();
 
         Loaded += OnLoaded;
@@ -143,6 +144,7 @@ public partial class MainWindow : Window
             await _session.ConnectAsync();
 
             TxtConnState.Text = "상담원 연결을 기다리는 중입니다.";
+            AppLogger.Info($"화면 캡처 방식: {_session.CaptureMethod}");
             _elapsedTimer.Start();
 
             _overlay = new OverlayWindow(OnOverlayEndRequested);
@@ -206,6 +208,23 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>엔진 상태를 연결 중 화면에 반영한다.</summary>
+    private void OnSessionStateChanged(SessionState state)
+    {
+        Dispatcher.Invoke(() =>
+        {
+            TxtConnState.Text = state switch
+            {
+                SessionState.Connecting => "연결 중입니다...",
+                SessionState.Waiting => "상담원 연결을 기다리는 중입니다.",
+                SessionState.Connected => "상담원이 접속했습니다.",
+                _ => TxtConnState.Text,
+            };
+
+            _overlay?.SetConnected(state == SessionState.Connected);
+        });
+    }
+
     private void OnSessionTerminated(string reason)
     {
         Dispatcher.Invoke(async () =>
@@ -231,7 +250,7 @@ public partial class MainWindow : Window
         {
             "agent_ended" => "상담원이 원격지원을 종료했습니다.",
             "customer_ended" => "고객님이 원격지원을 종료했습니다.",
-            "engine_exited" => "원격지원 엔진이 종료되었습니다.",
+            "relay_closed" => "중계 서버 연결이 끊어졌습니다.",
             _ => string.Empty,
         };
 
