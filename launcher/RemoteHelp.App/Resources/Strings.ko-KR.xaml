@@ -1,0 +1,22 @@
+<!--
+    파일 위치: launcher/RemoteHelp.App/Resources/Strings.ko-KR.xaml
+    역할: 한국어 문자열 리소스 (다국어 확장 시 같은 키로 언어별 파일을 추가한다)
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:s="clr-namespace:System;assembly=System.Runtime">
+
+    <s:String x:Key="Str.AppTitle">RemoteHelp 원격지원</s:String>
+    <s:String x:Key="Str.CodePrompt">상담원이 알려준 6자리 코드를 입력해 주세요.</s:String>
+    <s:String x:Key="Str.Connect">연결</s:String>
+    <s:String x:Key="Str.Allow">허용</s:String>
+    <s:String x:Key="Str.Cancel">취소</s:String>
+    <s:String x:Key="Str.EndSupport">원격지원 종료</s:String>
+    <s:String x:Key="Str.PrivacyConsent">개인정보 처리방침에 동의하며, 상담원의 원격 접속에 동의합니다.</s:String>
+    <s:String x:Key="Str.PhishingWarning">상담원을 직접 확인한 경우에만 코드를 입력하세요. 금융기관이나 수사기관은 원격제어를 요구하지 않습니다.</s:String>
+    <s:String x:Key="Str.Connecting">연결 중입니다...</s:String>
+    <s:String x:Key="Str.AgentConnected">상담원이 접속했습니다.</s:String>
+    <s:String x:Key="Str.Ended">원격지원이 종료되었습니다.</s:String>
+    <s:String x:Key="Str.OpenSurvey">만족도 조사 참여하기</s:String>
+    <s:String x:Key="Str.OverlayText">원격지원 중</s:String>
+</ResourceDictionary>

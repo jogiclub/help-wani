@@ -4,7 +4,9 @@
 set -e
 
 BASE="${BASE:-http://localhost:8099}"
-RELAY="${RELAY:-https://localhost:8443}"
+RELAY_HOSTNAME="${RELAY_HOSTNAME:-localhost}"
+RELAY_PORT="${RELAY_PORT:-8443}"
+RELAY="${RELAY:-https://$RELAY_HOSTNAME:$RELAY_PORT}"
 EMAIL="${EMAIL:-admin@demo.local}"
 PASSWORD="${PASSWORD:-Test1234!admin}"
 JAR="$(mktemp)"
@@ -68,13 +70,11 @@ curl -sk -o /dev/null -w "status=%{http_code}\n" \
     -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
     "$RELAY/ws?token=0000000000000000000000000000000000000000000000000000000000000000"
 
-say "9. 정상 토큰으로 /ws 접근 (101 이어야 함)"
-curl -sk -o /dev/null -w "status=%{http_code}\n" --max-time 5 \
-    -H "Connection: Upgrade" -H "Upgrade: websocket" \
-    -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
-    "$RELAY/ws?token=$TOKEN" || true
+say "9. 정상 토큰으로 실제 RFB 세션 수립 (wss -> websockify -> 리피터 -> 고객 PC)"
+python3 "$(dirname "$0")/rfb-probe.py" --host "${RELAY_HOSTNAME:-localhost}" --port "${RELAY_PORT:-8443}" \
+    --ws-token "$TOKEN" --repeater-id "$REPEATER_ID" --password "$VNC_PASSWORD"
 
-say "10. 토큰 재사용 차단 확인 (403 이어야 함)"
+say "10. 같은 토큰 재사용 차단 확인 (403 이어야 함)"
 curl -sk -o /dev/null -w "status=%{http_code}\n" --max-time 5 \
     -H "Connection: Upgrade" -H "Upgrade: websocket" \
     -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \

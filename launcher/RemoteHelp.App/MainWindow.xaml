@@ -1,0 +1,85 @@
+<!--
+    파일 위치: launcher/RemoteHelp.App/MainWindow.xaml
+    역할: 시작 / 확인 / 연결 중 / 종료 화면
+-->
+<Window x:Class="RemoteHelp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{StaticResource Str.AppTitle}"
+        Width="460" Height="560"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen"
+        Background="#F7F8FA">
+
+    <Grid Margin="24">
+
+        <!-- 1. 시작 화면 -->
+        <StackPanel x:Name="PanelStart" Visibility="Visible">
+            <TextBlock Text="{StaticResource Str.AppTitle}" FontSize="22" FontWeight="Bold" />
+            <TextBlock x:Name="TxtOrgName" FontSize="14" Foreground="#555" Margin="0,4,0,0" />
+
+            <Border Background="#FDECEA" BorderBrush="#F5C2C0" BorderThickness="1"
+                    CornerRadius="6" Padding="12" Margin="0,18,0,0">
+                <TextBlock Text="{StaticResource Str.PhishingWarning}"
+                           TextWrapping="Wrap" Foreground="#8A1F1B" FontSize="12.5" />
+            </Border>
+
+            <TextBlock Text="{StaticResource Str.CodePrompt}" Margin="0,22,0,6" FontSize="13" />
+            <TextBox x:Name="TxtCode" FontSize="30" MaxLength="6" Padding="10"
+                     HorizontalContentAlignment="Center" FontFamily="Consolas"
+                     PreviewTextInput="TxtCode_PreviewTextInput" />
+
+            <CheckBox x:Name="ChkConsent" Margin="0,16,0,0" FontSize="12.5"
+                      Content="{StaticResource Str.PrivacyConsent}" />
+
+            <Button x:Name="BtnConnect" Style="{StaticResource PrimaryButton}"
+                    Content="{StaticResource Str.Connect}" Margin="0,18,0,0"
+                    Click="BtnConnect_Click" />
+
+            <TextBlock x:Name="TxtStartMessage" Foreground="#C62828" Margin="0,12,0,0"
+                       TextWrapping="Wrap" FontSize="12.5" />
+        </StackPanel>
+
+        <!-- 2. 확인 화면 -->
+        <StackPanel x:Name="PanelConfirm" Visibility="Collapsed" VerticalAlignment="Center">
+            <TextBlock x:Name="TxtConfirmMessage" FontSize="17" TextWrapping="Wrap"
+                       TextAlignment="Center" LineHeight="26" />
+            <TextBlock Text="허용하면 상담원이 내 화면을 보고 조작할 수 있습니다."
+                       FontSize="12.5" Foreground="#666" TextAlignment="Center" Margin="0,12,0,0" />
+
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,28,0,0">
+                <Button x:Name="BtnAllow" Style="{StaticResource PrimaryButton}"
+                        Content="{StaticResource Str.Allow}" Width="120" Click="BtnAllow_Click" />
+                <Button x:Name="BtnCancelConfirm" Content="{StaticResource Str.Cancel}"
+                        Width="120" Margin="12,0,0,0" Padding="18,10" Click="BtnCancelConfirm_Click" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- 3. 연결 중 화면 -->
+        <StackPanel x:Name="PanelConnected" Visibility="Collapsed" VerticalAlignment="Center">
+            <TextBlock x:Name="TxtConnState" FontSize="18" TextAlignment="Center" FontWeight="SemiBold" />
+            <TextBlock x:Name="TxtElapsed" FontSize="14" Foreground="#555"
+                       TextAlignment="Center" Margin="0,10,0,0" />
+            <TextBlock Text="원격지원 중에는 화면 오른쪽 위의 표시창이 계속 보입니다."
+                       FontSize="12.5" Foreground="#666" TextAlignment="Center"
+                       TextWrapping="Wrap" Margin="0,18,0,0" />
+            <Button x:Name="BtnEnd" Content="{StaticResource Str.EndSupport}"
+                    Background="#C62828" Foreground="White" BorderThickness="0"
+                    Padding="18,10" FontSize="15" Margin="0,26,0,0" Click="BtnEnd_Click" />
+        </StackPanel>
+
+        <!-- 4. 종료 화면 -->
+        <StackPanel x:Name="PanelEnded" Visibility="Collapsed" VerticalAlignment="Center">
+            <TextBlock Text="{StaticResource Str.Ended}" FontSize="18"
+                       TextAlignment="Center" FontWeight="SemiBold" />
+            <TextBlock x:Name="TxtEndDetail" FontSize="13" Foreground="#555"
+                       TextAlignment="Center" Margin="0,10,0,0" />
+            <Button x:Name="BtnSurvey" Style="{StaticResource PrimaryButton}"
+                    Content="{StaticResource Str.OpenSurvey}" Margin="0,24,0,0"
+                    Click="BtnSurvey_Click" />
+            <Button x:Name="BtnClose" Content="닫기" Padding="18,10" Margin="0,10,0,0"
+                    Click="BtnClose_Click" />
+        </StackPanel>
+
+    </Grid>
+</Window>

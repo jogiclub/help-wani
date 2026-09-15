@@ -1,0 +1,34 @@
+<!--
+    파일 위치: launcher/RemoteHelp.App/Views/OverlayWindow.xaml
+    역할: 원격지원 중 화면 오른쪽 위에 항상 표시되는 알림 창 (숨기기 옵션 없음)
+-->
+<Window x:Class="RemoteHelp.Views.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="원격지원 중"
+        Width="230" Height="64"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Border Background="#C62828" CornerRadius="8" Padding="12,8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="원격지원 중" Foreground="White" FontWeight="Bold" FontSize="14" />
+                <TextBlock x:Name="TxtElapsed" Foreground="#FFE0E0" FontSize="11.5" />
+            </StackPanel>
+
+            <Button Grid.Column="1" Content="종료" Padding="10,4"
+                    Background="White" Foreground="#C62828" BorderThickness="0"
+                    VerticalAlignment="Center" Click="BtnEnd_Click" />
+        </Grid>
+    </Border>
+</Window>
