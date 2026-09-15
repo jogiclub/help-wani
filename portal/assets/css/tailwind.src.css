@@ -12,6 +12,9 @@
 @theme {
     --color-brand-50:  #eef5ff;
     --color-brand-100: #d9e8ff;
+    --color-brand-200: #bcd8ff;
+    --color-brand-300: #8dbcff;
+    --color-brand-400: #5c9aff;
     --color-brand-500: #1f6feb;
     --color-brand-600: #1a5ed0;
     --color-brand-700: #164ea9;
@@ -84,7 +87,32 @@
     .alert-info   { @apply bg-blue-50 border-blue-200 text-blue-800; }
 }
 
+@layer components {
+
+    /* Material Symbols 아이콘 (https://fonts.google.com/icons) */
+    .icon-tile {
+        @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-lg;
+    }
+    .icon-tile-brand { @apply bg-brand-50 text-brand-600; }
+    .icon-tile-dark  { @apply bg-slate-700/60 text-brand-400; }
+    .icon-tile-red   { @apply bg-red-500/15 text-red-300; }
+}
+
 @layer utilities {
+
+    /* 아이콘 크기 */
+    .icon-sm { font-size: 18px; }
+    .icon-md { font-size: 22px; }
+    .icon-lg { font-size: 26px; }
+    .icon-xl { font-size: 34px; }
+
+    /* 아이콘 폰트가 아직 안 왔을 때 글자(리거처)가 그대로 보이는 것을 막는다 */
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        vertical-align: middle;
+        user-select: none;
+    }
+
 
     /* 상담원 콘솔의 코드 표시 */
     .code-display {

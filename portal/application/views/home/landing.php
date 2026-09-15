@@ -35,6 +35,7 @@ $unit = lang_text('home.pricing.currency_unit');
         <div class="mt-8 flex flex-wrap gap-3">
           <a class="btn btn-primary btn-lg" href="<?= base_url('signup') ?>">
             <?= html_escape(lang_text('home.hero.cta')) ?>
+            <span class="material-symbols-outlined icon-sm"><?= $icons['misc']['arrow'] ?></span>
           </a>
           <a class="btn btn-lg border border-slate-600 text-slate-200 hover:bg-slate-800" href="#how">
             <?= html_escape(lang_text('home.hero.cta2')) ?>
@@ -57,9 +58,14 @@ $unit = lang_text('home.pricing.currency_unit');
         <ol class="space-y-4">
           <?php for ($i = 1; $i <= 3; $i++): ?>
           <li class="flex gap-3">
-            <span class="step-badge shrink-0"><?= $i ?></span>
+            <span class="icon-tile icon-tile-dark shrink-0">
+              <span class="material-symbols-outlined icon-md"><?= $icons['flow'][$i] ?></span>
+            </span>
             <div>
-              <div class="font-medium text-white"><?= html_escape(lang_text('home.flow.step'.$i.'.title')) ?></div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-brand-400"><?= $i ?></span>
+                <span class="font-medium text-white"><?= html_escape(lang_text('home.flow.step'.$i.'.title')) ?></span>
+              </div>
               <div class="text-sm text-slate-400"><?= html_escape(lang_text('home.flow.step'.$i.'.body')) ?></div>
             </div>
           </li>
@@ -79,9 +85,14 @@ $unit = lang_text('home.pricing.currency_unit');
 <section class="border-b border-slate-200 bg-white">
   <div class="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-2 lg:grid-cols-3">
     <?php for ($i = 1; $i <= 6; $i++): ?>
-    <div>
-      <div class="text-xl font-bold text-slate-900"><?= html_escape(lang_text('home.value.'.$i.'.title')) ?></div>
-      <p class="mt-2 text-sm leading-relaxed text-slate-500"><?= html_escape(lang_text('home.value.'.$i.'.body')) ?></p>
+    <div class="flex gap-4">
+      <span class="icon-tile icon-tile-brand">
+        <span class="material-symbols-outlined icon-lg"><?= $icons['value'][$i] ?></span>
+      </span>
+      <div>
+        <div class="text-lg font-bold text-slate-900"><?= html_escape(lang_text('home.value.'.$i.'.title')) ?></div>
+        <p class="mt-1 text-sm leading-relaxed text-slate-500"><?= html_escape(lang_text('home.value.'.$i.'.body')) ?></p>
+      </div>
     </div>
     <?php endfor; ?>
   </div>
@@ -95,9 +106,14 @@ $unit = lang_text('home.pricing.currency_unit');
 
     <div class="mt-10 grid gap-6 md:grid-cols-3">
       <?php for ($i = 1; $i <= 3; $i++): ?>
-      <div class="card">
+      <div class="card transition-shadow hover:shadow-md">
         <div class="card-body">
-          <span class="step-badge"><?= $i ?></span>
+          <div class="flex items-center gap-3">
+            <span class="step-badge"><?= $i ?></span>
+            <span class="icon-tile icon-tile-brand">
+              <span class="material-symbols-outlined icon-lg"><?= $icons['how'][$i] ?></span>
+            </span>
+          </div>
           <div class="mt-3 font-semibold text-slate-800"><?= html_escape(lang_text('home.how.'.$i.'.title')) ?></div>
           <p class="mt-2 text-sm leading-relaxed text-slate-500"><?= html_escape(lang_text('home.how.'.$i.'.body')) ?></p>
           <?php if ($i === 1): ?>
@@ -120,9 +136,12 @@ $unit = lang_text('home.pricing.currency_unit');
 
     <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       <?php for ($i = 1; $i <= 9; $i++): ?>
-      <div class="card h-full">
+      <div class="card h-full transition-shadow hover:shadow-md">
         <div class="card-body">
-          <div class="font-semibold text-slate-800"><?= html_escape(lang_text('home.features.'.$i.'.title')) ?></div>
+          <span class="icon-tile icon-tile-brand">
+            <span class="material-symbols-outlined icon-lg"><?= $icons['features'][$i] ?></span>
+          </span>
+          <div class="mt-3 font-semibold text-slate-800"><?= html_escape(lang_text('home.features.'.$i.'.title')) ?></div>
           <p class="mt-2 text-sm leading-relaxed text-slate-500"><?= html_escape(lang_text('home.features.'.$i.'.body')) ?></p>
         </div>
       </div>
@@ -142,7 +161,10 @@ $unit = lang_text('home.pricing.currency_unit');
         <p class="mt-3 text-sm leading-relaxed text-slate-300"><?= html_escape(lang_text('home.security.body')) ?></p>
 
         <div class="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-          <div class="font-semibold text-red-300"><?= html_escape(lang_text('home.security.phishing.title')) ?></div>
+          <div class="flex items-center gap-2 font-semibold text-red-300">
+            <span class="material-symbols-outlined icon-md"><?= $icons['misc']['phishing'] ?></span>
+            <?= html_escape(lang_text('home.security.phishing.title')) ?>
+          </div>
           <p class="mt-1 text-sm leading-relaxed text-red-100/80">
             <?= html_escape(lang_text('home.security.phishing.body')) ?>
           </p>
@@ -151,9 +173,14 @@ $unit = lang_text('home.pricing.currency_unit');
 
       <div class="space-y-4">
         <?php for ($i = 1; $i <= 6; $i++): ?>
-        <div class="rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-          <div class="font-medium text-white"><?= html_escape(lang_text('home.security.'.$i.'.title')) ?></div>
-          <p class="mt-1 text-sm leading-relaxed text-slate-400"><?= html_escape(lang_text('home.security.'.$i.'.body')) ?></p>
+        <div class="flex gap-3 rounded-lg border border-slate-700 bg-slate-800/60 p-4">
+          <span class="icon-tile icon-tile-dark">
+            <span class="material-symbols-outlined icon-md"><?= $icons['security'][$i] ?></span>
+          </span>
+          <div>
+            <div class="font-medium text-white"><?= html_escape(lang_text('home.security.'.$i.'.title')) ?></div>
+            <p class="mt-1 text-sm leading-relaxed text-slate-400"><?= html_escape(lang_text('home.security.'.$i.'.body')) ?></p>
+          </div>
         </div>
         <?php endfor; ?>
       </div>
@@ -194,8 +221,8 @@ $unit = lang_text('home.pricing.currency_unit');
 
           <ul class="mt-6 space-y-2 text-left text-sm text-slate-600">
             <?php for ($i = 1; $i <= 6; $i++): ?>
-            <li class="flex gap-2">
-              <span class="text-brand-500">✓</span>
+            <li class="flex items-start gap-2">
+              <span class="material-symbols-outlined icon-sm mt-0.5 text-brand-500"><?= $icons['misc']['check'] ?></span>
               <span><?= html_escape(lang_text('home.pricing.item'.$i, array('accounts' => $pricing['accounts']))) ?></span>
             </li>
             <?php endfor; ?>
@@ -213,11 +240,17 @@ $unit = lang_text('home.pricing.currency_unit');
       <div class="mt-6 text-center text-sm text-slate-500">
         <?= html_escape(lang_text('home.pricing.contact')) ?>
         <?php if ( ! empty($contact_phone)): ?>
-          <span class="font-medium text-slate-700"><?= html_escape($contact_phone) ?></span>
+          <span class="inline-flex items-center gap-1 font-medium text-slate-700">
+            <span class="material-symbols-outlined icon-sm"><?= $icons['misc']['call'] ?></span>
+            <?= html_escape($contact_phone) ?>
+          </span>
         <?php endif; ?>
         <?php if ( ! empty($contact_email)): ?>
-          <a class="font-medium text-brand-600 hover:underline"
-             href="mailto:<?= html_escape($contact_email) ?>"><?= html_escape($contact_email) ?></a>
+          <a class="inline-flex items-center gap-1 font-medium text-brand-600 hover:underline"
+             href="mailto:<?= html_escape($contact_email) ?>">
+            <span class="material-symbols-outlined icon-sm"><?= $icons['misc']['mail'] ?></span>
+            <?= html_escape($contact_email) ?>
+          </a>
         <?php endif; ?>
       </div>
       <?php endif; ?>
@@ -235,7 +268,7 @@ $unit = lang_text('home.pricing.currency_unit');
       <details class="card group">
         <summary class="card-body flex cursor-pointer items-center justify-between font-medium text-slate-800">
           <?= html_escape(lang_text('home.faq.'.$i.'.q')) ?>
-          <span class="text-slate-400 group-open:rotate-180">⌄</span>
+          <span class="material-symbols-outlined icon-md shrink-0 text-slate-400 transition-transform group-open:rotate-180"><?= $icons['misc']['expand'] ?></span>
         </summary>
         <div class="border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-500">
           <?= html_escape(lang_text('home.faq.'.$i.'.a', array('accounts' => $pricing['accounts']))) ?>
@@ -253,6 +286,7 @@ $unit = lang_text('home.pricing.currency_unit');
     <p class="mt-3 text-sm text-blue-100"><?= html_escape(lang_text('home.cta.body')) ?></p>
     <a class="btn btn-lg mt-6 bg-white text-brand-600 hover:bg-blue-50" href="<?= base_url('signup') ?>">
       <?= html_escape(lang_text('home.cta.button')) ?>
+      <span class="material-symbols-outlined icon-sm"><?= $icons['misc']['arrow'] ?></span>
     </a>
   </div>
 </section>

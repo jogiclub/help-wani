@@ -9,7 +9,10 @@ $logged_in = (bool) $this->session->userdata('agent_id');
 <!doctype html>
 <html lang="<?= html_escape(isset($i18n) ? $i18n['locale'] : 'ko') ?>">
 <head>
-<?php $this->load->view('layouts/_head'); ?>
+<?php $this->load->view('layouts/_head', array(
+    'i18n'       => $i18n,
+    'icon_names' => isset($icon_names) ? $icon_names : array(),
+)); ?>
 <meta name="description" content="<?= html_escape(lang_text('home.meta.description')) ?>">
 </head>
 <body class="min-h-screen bg-white">
@@ -40,7 +43,7 @@ $logged_in = (bool) $this->session->userdata('agent_id');
                 class="btn btn-sm btn-secondary"
                 aria-haspopup="true" aria-expanded="false"
                 title="<?= html_escape(lang_text('nav.language')) ?>">
-          <span class="text-base leading-none">🌐</span>
+          <span class="material-symbols-outlined text-[18px] leading-none">language</span>
           <span><?= html_escape($locales[$i18n['locale']]['name']) ?></span>
         </button>
 

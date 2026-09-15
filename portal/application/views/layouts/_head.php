@@ -8,6 +8,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 $use_grid = isset($use_grid) ? $use_grid : FALSE;
 $i18n = isset($i18n) ? $i18n : array('locale' => 'ko', 'intl' => 'ko-KR', 'timezone' => 'Asia/Seoul', 'messages' => array());
+$icon_names = isset($icon_names) ? $icon_names : array();
 ?>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,6 +16,17 @@ $i18n = isset($i18n) ? $i18n : array('locale' => 'ko', 'intl' => 'ko-KR', 'timez
 <meta name="csrf-hash" content="<?= $this->security->get_csrf_hash() ?>">
 <title><?= html_escape(isset($page_title) ? $page_title : $app_name) ?> · <?= html_escape($app_name) ?></title>
 <link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
+<?php if ( ! empty($icon_names)): ?>
+<!--
+  Material Symbols (https://fonts.google.com/icons)
+  icon_names 로 실제 쓰는 아이콘만 받아 온다. 전체 폰트는 약 315KB, 서브셋은 약 5KB.
+  아이콘을 추가하려면 Home::landing_icons() 목록에 넣어야 한다.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=<?= implode(',', $icon_names) ?>&display=block">
+<?php endif; ?>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>
     // 서버가 정한 조직 언어/타임존을 그대로 넘겨 추가 요청 없이 번역과 날짜 표시를 처리한다.

@@ -87,6 +87,9 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
   현재 페이지에는 실제로 제공하는 기능만 적혀 있습니다.
 - 헤더 오른쪽 언어 선택으로 한국어·영어·일본어를 전환합니다.
   고른 언어는 `rh_locale` 쿠키에 1년간 기억됩니다.
+- 아이콘은 [Material Symbols](https://fonts.google.com/icons) 를 씁니다.
+  **`Home::landing_icons()` 목록으로 폰트 서브셋을 요청**하므로(전체 315KB → 약 5.5KB),
+  아이콘을 추가할 때는 반드시 그 목록에도 넣어야 화면에 나옵니다.
 
 ## 언어와 시간대
 
