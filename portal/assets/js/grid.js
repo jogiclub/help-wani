@@ -165,7 +165,11 @@
                 btn.type = 'button';
                 btn.className = 'btn btn-sm ' + (def.className || 'btn-secondary');
                 btn.textContent = def.label;
-                btn.addEventListener('click', function () { def.onClick(params.data); });
+                btn.addEventListener('click', function (event) {
+                    // 행 클릭(상세 모달 열기)까지 번지지 않게 막는다.
+                    event.stopPropagation();
+                    def.onClick(params.data);
+                });
                 wrap.appendChild(btn);
             });
 

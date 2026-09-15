@@ -28,6 +28,9 @@ class Operator extends Operator_Controller {
         $this->render('operator/organizations', array(
             'page_title' => '조직 가입 관리',
             'use_grid'   => TRUE,
+            'countries'  => supported_countries(),
+            'locales'    => supported_locales(),
+            'timezones'  => supported_timezones(),
             'filter'     => $status,
             'counts'     => $this->organization_model->count_by_status(),
             'orgs'       => $this->organization_model->list_for_review($status),
@@ -45,6 +48,83 @@ class Operator extends Operator_Controller {
             'use_grid'   => TRUE,
             'logs'       => $this->log_model->list_audit(1000),
         ));
+    }
+
+    /**
+     * POST /operator/api/org_save
+     * 조직 기본 정보 수정 (운영자 전용)
+     */
+    public function api_org_save()
+    {
+        $org = $this->require_org((int) $this->input->post('org_id'));
+
+        $name     = trim((string) $this->input->post('name', TRUE));
+        $org_code = strtolower(trim((string) $this->input->post('org_code', TRUE)));
+        $biz_no   = trim((string) $this->input->post('biz_no', TRUE));
+        $phone    = trim((string) $this->input->post('phone', TRUE));
+        $plan     = trim((string) $this->input->post('plan', TRUE));
+
+        if ($name === '')
+        {
+            api_response(FALSE, '조직명을 입력해 주세요.', array(), 400);
+            return;
+        }
+
+        if ( ! preg_match('/^[a-z0-9_-]{3,32}$/', $org_code))
+        {
+            api_response(FALSE, '조직 주소는 영문 소문자, 숫자, -, _ 조합 3~32자여야 합니다.', array(), 400);
+            return;
+        }
+
+        // 주소를 바꾸면 기존 안내 링크가 끊기므로 중복 검사를 확실히 한다.
+        $duplicate = $this->organization_model->get_by_code($org_code);
+
+        if ($duplicate && (int) $duplicate->id !== (int) $org->id)
+        {
+            api_response(FALSE, '이미 사용 중인 조직 주소입니다.', array(), 409);
+            return;
+        }
+
+        // 국가/언어/시간대는 허용 목록 안의 값만 받는다.
+        $countries = supported_countries();
+        $locales   = supported_locales();
+        $timezones = supported_timezones();
+
+        $country  = (string) $this->input->post('country', TRUE);
+        $locale   = (string) $this->input->post('locale', TRUE);
+        $timezone = (string) $this->input->post('timezone', TRUE);
+
+        $country  = isset($countries[$country]) ? $country : $org->country;
+        $locale   = isset($locales[$locale]) ? $locale : $org->locale;
+        $timezone = isset($timezones[$timezone]) ? $timezone : $org->timezone;
+
+        $changes = array();
+
+        foreach (array('name' => $name, 'org_code' => $org_code, 'biz_no' => $biz_no,
+                       'phone' => $phone, 'plan' => $plan, 'country' => $country,
+                       'locale' => $locale, 'timezone' => $timezone) as $field => $value)
+        {
+            if ((string) $org->{$field} !== (string) $value)
+            {
+                $changes[] = $field.': '.$org->{$field}.' -> '.$value;
+            }
+        }
+
+        $this->organization_model->update($org->id, array(
+            'name'     => $name,
+            'org_code' => $org_code,
+            'biz_no'   => $biz_no,
+            'phone'    => $phone,
+            'plan'     => $plan === '' ? 'basic' : $plan,
+            'country'  => $country,
+            'locale'   => $locale,
+            'timezone' => $timezone,
+        ));
+
+        $this->log_model->audit($org->id, $this->agent->id, 'org_update_by_operator',
+            empty($changes) ? '변경 없음' : implode(', ', $changes), client_ip());
+
+        api_response(TRUE, $name.' 조직 정보를 저장했습니다.', array('changed' => count($changes)));
     }
 
     /**

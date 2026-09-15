@@ -48,7 +48,78 @@
         });
     }
 
+    /**
+     * 행을 클릭하면 조직 정보를 모달에 채워 연다.
+     */
+    function openOrgModal(row) {
+        $('#orgModalId').val(row.id);
+        $('#orgModalName').val(row.name);
+        $('#orgModalCode').val(row.org_code);
+        $('#orgModalBizNo').val(row.biz_no || '');
+        $('#orgModalPhone').val(row.phone || '');
+        $('#orgModalPlan').val(row.plan || '');
+        $('#orgModalCountry').val(row.country || 'KR');
+        $('#orgModalLocale').val(row.locale || 'ko');
+        $('#orgModalTimezone').val(row.timezone || 'Asia/Seoul');
+
+        $('#orgModalStatus')
+            .removeClass()
+            .addClass('badge ' + (STATUS_CLASS[row.status] || 'badge-gray'))
+            .text(STATUS_LABEL[row.status] || row.status);
+
+        $('#orgModalOwner').text(row.owner_name ? (row.owner_name + ' <' + row.owner_email + '>') : '-');
+        $('#orgModalAgents').text(row.agent_count + '명');
+        $('#orgModalSessions').text(row.session_count + '건');
+        $('#orgModalCreated').text(RHI18n.formatDate(row.created_at));
+        $('#orgModalApproved').text(row.approved_at ? RHI18n.formatDate(row.approved_at) : '-');
+        $('#orgModalReason').text(row.status_reason || '-');
+        $('#orgModalVisit').attr('href', ORG_BASE_URL + row.org_code);
+
+        updateModalTzPreview();
+        openModal('orgModal');
+    }
+
+    /** 선택한 시간대의 현재 시각 미리보기 */
+    function updateModalTzPreview() {
+        try {
+            $('#orgModalTzPreview').text(new Intl.DateTimeFormat(RHI18n.intlLocale, {
+                timeZone: $('#orgModalTimezone').val(), dateStyle: 'medium', timeStyle: 'short'
+            }).format(new Date()));
+        } catch (e) {
+            $('#orgModalTzPreview').text('-');
+        }
+    }
+
+    function saveOrg() {
+        apiPost(ORG_URLS.save, {
+            org_id:   $('#orgModalId').val(),
+            name:     $('#orgModalName').val(),
+            org_code: $('#orgModalCode').val(),
+            biz_no:   $('#orgModalBizNo').val(),
+            phone:    $('#orgModalPhone').val(),
+            plan:     $('#orgModalPlan').val(),
+            country:  $('#orgModalCountry').val(),
+            locale:   $('#orgModalLocale').val(),
+            timezone: $('#orgModalTimezone').val()
+        }, function (data, message) {
+            closeModal('orgModal');
+            showToast(message, 'success');
+            setTimeout(function () { window.location.reload(); }, 800);
+        });
+    }
+
     $(function () {
+        // 국가를 바꾸면 언어와 시간대 기본값을 따라 바꾼다.
+        $('#orgModalCountry').on('change', function () {
+            var opt = $(this).find('option:selected');
+            $('#orgModalLocale').val(opt.data('locale'));
+            $('#orgModalTimezone').val(opt.data('timezone'));
+            updateModalTzPreview();
+        });
+
+        $('#orgModalTimezone').on('change', updateModalTzPreview);
+        $('#orgModalSave').on('click', saveOrg);
+
         var columnDefs = [
             {
                 headerName: '조직명', field: 'name', minWidth: 160,
@@ -156,7 +227,11 @@
         RHGrid.create('orgGrid', {
             columnDefs: columnDefs,
             rowData: ORG_ROWS,
-            tooltipShowDelay: 300
+            tooltipShowDelay: 300,
+            rowClass: 'cursor-pointer',
+            onRowClicked: function (event) {
+                openOrgModal(event.data);
+            }
         });
     });
 })(jQuery);
