@@ -10,7 +10,7 @@ namespace RemoteHelp;
 
 public partial class App : Application
 {
-    /// <summary>remotehelp://connect?org=... 로 전달된 조직 코드</summary>
+    /// <summary>프로토콜 인자 또는 실행 파일 이름에서 얻은 조직 코드</summary>
     public static string? LaunchOrgCode { get; private set; }
 
     protected override void OnStartup(StartupEventArgs e)
@@ -20,11 +20,11 @@ public partial class App : Application
         AppLogger.Initialize();
         AppLogger.Info("런처 시작");
 
-        LaunchOrgCode = ProtocolArguments.ParseOrgCode(e.Args);
+        LaunchOrgCode = ProtocolArguments.ResolveOrgCode(e.Args);
 
         if (LaunchOrgCode != null)
         {
-            AppLogger.Info($"프로토콜 실행: org={LaunchOrgCode}");
+            AppLogger.Info($"조직 코드 확인: org={LaunchOrgCode}");
         }
 
         DispatcherUnhandledException += (_, args) =>

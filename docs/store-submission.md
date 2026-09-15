@@ -110,7 +110,26 @@ Visual Studio 의 에셋 생성기로 한 번에 만들 수 있습니다.
 앱은 제3자 원격제어 엔진을 포함하지 않으므로 GPL 소스 공개 의무가 없습니다.
 사용하는 구성요소는 모두 허용적 라이선스(MIT 등)이며 `launcher/THIRD_PARTY_NOTICES.md` 에 정리되어 있습니다.
 
-## 8. WACK 실행
+## 8. 직접 다운로드 배포 (스토어와 별개 경로)
+
+고객 접속 페이지에서 바로 내려받는 단일 실행 파일도 함께 제공합니다.
+Store 설치가 막힌 기업 환경이나 스토어 계정이 없는 고객을 위한 경로입니다.
+
+| 항목 | Store(MSIX) | 직접 다운로드(EXE) |
+|---|---|---|
+| 서명 | Microsoft 가 수행 | **직접 코드 서명 필요** |
+| 배포 위치 | Microsoft Store | `portal/assets/downloads/RemoteHelp.exe` |
+| 빌드 | `launcher/scripts/sideload-test.ps1` / Partner Center | `launcher/scripts/build-exe.ps1` |
+| 조직 코드 전달 | `remotehelp://connect?org=...` 프로토콜 | 파일 이름 `RemoteHelp_{조직코드}.exe` |
+| 업데이트 | Store 자동 업데이트 | 재다운로드 안내(최소 버전 확인 API) |
+
+**코드 서명 인증서 준비가 필요합니다.**
+
+- OV 인증서: 상대적으로 저렴하지만 평판이 쌓일 때까지 SmartScreen 경고가 남습니다.
+- EV 인증서: 즉시 신뢰되지만 하드웨어 토큰 발급과 심사가 필요합니다.
+- 서명하지 않으면 다운로드와 실행 단계에서 경고가 뜨고 일부 백신이 차단합니다.
+
+## 9. WACK 실행
 
 ```powershell
 # Windows SDK 에 포함된 appcert 사용

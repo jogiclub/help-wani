@@ -40,5 +40,6 @@ $route['admin/organization']    = 'admin/organization';
 $route['admin/api/(:any)']      = 'admin/api_$1';
 
 // 고객 화면 (가장 마지막에 둔다)
+$route['(:any)/download'] = 'download/launcher/$1';
 $route['(:any)/survey/(:num)'] = 'customer/survey/$1/$2';
 $route['(:any)'] = 'customer/index/$1';

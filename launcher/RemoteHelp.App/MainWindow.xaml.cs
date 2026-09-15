@@ -40,7 +40,7 @@ public partial class MainWindow : Window
 
         if (App.LaunchOrgCode != null)
         {
-            TxtOrgName.Text = $"{App.LaunchOrgCode} 고객센터 연결";
+            TxtOrgName.Text = $"{App.LaunchOrgCode} 원격지원";
         }
 
         _tray = new TrayIconHost(OnTrayEndRequested);

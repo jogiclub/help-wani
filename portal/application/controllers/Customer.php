@@ -22,6 +22,9 @@ class Customer extends MY_Controller {
 
         $store_id = env('STORE_PRODUCT_ID', '');
 
+        $this->load->helper('download');
+        require_once APPPATH.'controllers/Download.php';
+
         $this->render('customer/landing', array(
             'page_title'      => $org->name.' 원격지원',
             'org'             => $org,
@@ -29,6 +32,8 @@ class Customer extends MY_Controller {
             'store_web_url'   => 'https://apps.microsoft.com/detail/'.$store_id,
             'store_app_url'   => 'ms-windows-store://pdp/?productid='.$store_id,
             'protocol_url'    => 'remotehelp://connect?org='.rawurlencode($org->org_code),
+            'download_url'    => base_url($org->org_code.'/download'),
+            'download_info'   => Download::launcher_info(),
         ), 'layouts/customer');
     }
 

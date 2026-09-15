@@ -71,6 +71,29 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
     --token <1회용 뷰어 토큰> --insecure --frames 3
 ```
 
+## 고객용 실행 파일 배포
+
+고객 접속 페이지에는 두 가지 설치 경로가 있습니다.
+
+1. **직접 다운로드** — `/{조직코드}/download` (설치 과정 없는 단일 실행 파일)
+2. Microsoft Store
+
+직접 다운로드용 파일을 준비하려면 윈도우에서 빌드한 뒤 배포 폴더에 둡니다.
+
+```powershell
+.\launcher\scripts\build-exe.ps1 -SignPfx 인증서.pfx -SignPassword 비밀번호
+```
+
+`portal/assets/downloads/RemoteHelp.exe` 에 올리면 페이지에 파일 크기, 배포일, SHA-256 이
+자동으로 표시됩니다. 파일이 없으면 다운로드 버튼 대신 "준비 중" 안내가 나옵니다.
+
+다운로드 시 파일 이름이 `RemoteHelp_{조직코드}.exe` 로 내려가고,
+런처는 **자기 실행 파일 이름에서 조직 코드를 읽어** 시작 화면에 반영합니다.
+고객이 어느 회사 상담인지 고를 필요가 없습니다.
+
+직접 배포 파일은 Microsoft 서명을 받지 못하므로 **코드 서명 인증서가 필요합니다.**
+자세한 내용은 `portal/assets/downloads/README.md` 를 보세요.
+
 ## 화면 스타일 (Tailwind CSS)
 
 ```bash
