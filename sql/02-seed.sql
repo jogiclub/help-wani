@@ -2,6 +2,9 @@
 -- 역할: 개발/검증용 초기 데이터
 -- 주의: 운영 환경에는 적용하지 않는다.
 
+-- mysql 클라이언트 기본 문자셋이 utf8mb4 가 아닐 때 한글이 이중 인코딩되는 것을 막는다.
+SET NAMES utf8mb4;
+
 INSERT INTO organizations (org_code, name, biz_no, phone, status, plan)
 VALUES ('demo', '데모 고객센터', '000-00-00000', '02-000-0000', 'active', 'basic')
 ON DUPLICATE KEY UPDATE name = VALUES(name);

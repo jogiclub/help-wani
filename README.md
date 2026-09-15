@@ -19,7 +19,7 @@ UltraVNC(SC 역방향 접속) + UltraVNC Repeater + noVNC 구성입니다.
 | `launcher/` | 고객 런처 (.NET 8 WPF) + MSIX 패키징 프로젝트 |
 | `docker/` | 개발용 컨테이너 정의 (web, relay, vnctest) |
 | `sql/` | 스키마와 개발용 시드 데이터 |
-| `scripts/` | 검증 도구 (`e2e-test.sh`, `rfb-probe.py`, `fetch-vendor.sh`) |
+| `scripts/` | 검증 도구와 빌드 스크립트 (`e2e-test.sh`, `rfb-probe.py`, `fetch-vendor.sh`, `build-css.sh`) |
 | `docs/` | Phase 0 검증 보고서, 스토어 제출 준비 문서 |
 
 ## 개발 환경 실행
@@ -41,6 +41,23 @@ docker compose up -d --build
 
 중계 서버는 개발용 자체 서명 인증서를 사용하므로, 브라우저에서 원격 화면을 열기 전에
 https://localhost:8443/healthz 를 한 번 방문해 인증서를 허용해야 wss 연결이 됩니다.
+
+## 화면 스타일 (Tailwind CSS)
+
+포털 화면은 Tailwind CSS v4 로 작성합니다. Node.js 없이 독립 실행 CLI 로 빌드합니다.
+
+```bash
+./scripts/build-css.sh           # portal/assets/css/app.css 생성
+./scripts/build-css.sh --watch   # 뷰를 수정하며 작업할 때
+```
+
+- 입력: `portal/assets/css/tailwind.src.css` (색상 토큰과 `.btn` / `.card` / `.table` 등 공통 클래스 정의)
+- 출력: `portal/assets/css/app.css` (저장소에 포함하므로 빌드 없이도 화면은 정상 동작)
+- 뷰나 JS 에 **새 Tailwind 클래스를 추가하면 반드시 다시 빌드**해야 반영됩니다.
+
+알림과 모달은 외부 UI 프레임워크 없이 `assets/js/common.js` 의
+`showToast(message, type)` / `showConfirmModal(title, message, onConfirm, onCancel)` /
+`openModal(id)` / `closeModal(id)` 로 처리합니다.
 
 ## 동작 검증
 

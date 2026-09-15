@@ -5,43 +5,43 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h1 class="h4 mb-0">상담 대기열</h1>
-  <button class="btn btn-primary" id="btnCreate">
-    <i class="bi bi-plus-lg"></i> 새 세션
-  </button>
+<div class="mb-4 flex items-center justify-between">
+  <h1 class="text-xl font-bold text-slate-800">상담 대기열</h1>
+  <button class="btn btn-primary" id="btnCreate">새 세션</button>
 </div>
 
-<div class="card mb-4 d-none" id="codeCard">
+<div class="card mb-6 hidden" id="codeCard">
   <div class="card-body text-center">
-    <div class="text-muted">고객에게 안내할 접속 코드</div>
-    <div class="code-display my-2" id="codeValue">------</div>
-    <div class="mb-2">
-      남은 시간 <span class="badge text-bg-secondary" id="codeRemain">10:00</span>
+    <div class="text-sm text-slate-500">고객에게 안내할 접속 코드</div>
+    <div class="code-display my-3" id="codeValue">------</div>
+    <div class="mb-2 text-sm text-slate-600">
+      남은 시간 <span class="badge badge-gray" id="codeRemain">10:00</span>
     </div>
-    <div class="small text-muted">
-      고객 접속 주소: <span id="customerUrl" class="fw-semibold"></span>
+    <div class="text-xs text-slate-500">
+      고객 접속 주소: <span class="font-medium text-slate-700" id="customerUrl"></span>
     </div>
   </div>
 </div>
 
-<div class="table-responsive">
-  <table class="table table-hover align-middle bg-white">
-    <thead class="table-light">
-      <tr>
-        <th style="width:110px">코드</th>
-        <th style="width:140px">상태</th>
-        <th>고객 PC</th>
-        <th style="width:130px">고객 IP</th>
-        <th style="width:110px">담당</th>
-        <th style="width:100px">남은 시간</th>
-        <th style="width:180px">작업</th>
-      </tr>
-    </thead>
-    <tbody id="sessionTbody">
-      <tr><td colspan="7" class="text-center text-muted py-4">불러오는 중...</td></tr>
-    </tbody>
-  </table>
+<div class="card overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="table">
+      <thead>
+        <tr>
+          <th class="w-28">코드</th>
+          <th class="w-32">상태</th>
+          <th>고객 PC</th>
+          <th class="w-32">고객 IP</th>
+          <th class="w-24">담당</th>
+          <th class="w-24">남은 시간</th>
+          <th class="w-44">작업</th>
+        </tr>
+      </thead>
+      <tbody id="sessionTbody">
+        <tr><td colspan="7" class="py-8 text-center text-slate-400">불러오는 중...</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <script>

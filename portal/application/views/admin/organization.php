@@ -5,25 +5,25 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
-<h1 class="h4 mb-3">조직 정보</h1>
+<h1 class="mb-4 text-xl font-bold text-slate-800">조직 정보</h1>
 
-<div class="card">
-  <div class="card-body">
-    <div class="mb-3">
+<div class="card max-w-2xl">
+  <div class="card-body space-y-4">
+    <div>
       <label class="form-label">고객 접속 주소</label>
-      <input class="form-control" value="<?= base_url($org->org_code) ?>" readonly>
+      <input class="form-input bg-slate-50" value="<?= base_url($org->org_code) ?>" readonly>
     </div>
-    <div class="mb-3">
+    <div>
       <label class="form-label" for="orgName">조직명</label>
-      <input class="form-control" id="orgName" value="<?= html_escape($org->name) ?>">
+      <input class="form-input" id="orgName" value="<?= html_escape($org->name) ?>">
     </div>
-    <div class="mb-3">
+    <div>
       <label class="form-label" for="orgPhone">대표 전화</label>
-      <input class="form-control" id="orgPhone" value="<?= html_escape($org->phone) ?>">
+      <input class="form-input" id="orgPhone" value="<?= html_escape($org->phone) ?>">
     </div>
-    <div class="mb-3">
+    <div>
       <label class="form-label">사업자등록번호</label>
-      <input class="form-control" value="<?= html_escape($org->biz_no) ?>" readonly>
+      <input class="form-input bg-slate-50" value="<?= html_escape($org->biz_no) ?>" readonly>
     </div>
     <button class="btn btn-primary" id="btnSaveOrg">저장</button>
   </div>

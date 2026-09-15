@@ -14,9 +14,17 @@ let reconnectCount = 0;
 let lastCredentials = null;
 let manualDisconnect = false;
 
+const BADGE_CLASS = {
+    waiting: 'badge-amber',
+    connecting: 'badge-amber',
+    connected: 'badge-green',
+    error: 'badge-red',
+    ended: 'badge-dark',
+};
+
 function setStatus(text, type) {
     const $badge = jQuery('#viewerStatus');
-    $badge.removeClass().addClass('badge ms-1 text-bg-' + (type || 'secondary')).text(text);
+    $badge.removeClass().addClass('badge ml-1 ' + (BADGE_CLASS[type] || 'badge-gray')).text(text);
 }
 
 function setMessage(text) {
@@ -57,7 +65,7 @@ function openRfb(data) {
 
     const url = data.ws_url + '?token=' + encodeURIComponent(data.token);
     setMessage('연결 중입니다...');
-    setStatus('연결 중', 'warning');
+    setStatus('연결 중', 'connecting');
 
     rfb = new RFB(document.getElementById('screen'), url, {
         repeaterID: data.repeater_id,
@@ -70,7 +78,7 @@ function openRfb(data) {
 
     rfb.addEventListener('connect', function () {
         reconnectCount = 0;
-        setStatus('원격 중', 'success');
+        setStatus('원격 중', 'connected');
         setMessage('고객 화면에 연결되었습니다.');
         window.showToast('고객 화면에 연결되었습니다.', 'success');
         logEvent('viewer_connected', '');
@@ -78,7 +86,7 @@ function openRfb(data) {
 
     rfb.addEventListener('disconnect', function (e) {
         const clean = e.detail && e.detail.clean;
-        setStatus('연결 끊김', 'dark');
+        setStatus('연결 끊김', 'ended');
 
         if (manualDisconnect) {
             setMessage('원격 연결을 종료했습니다.');
@@ -132,7 +140,7 @@ jQuery(function ($) {
     });
 
     $('#btnClipboard').on('click', function () {
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('clipboardModal')).show();
+        window.openModal('clipboardModal');
     });
 
     $('#btnClipboardSend').on('click', function () {
@@ -144,7 +152,7 @@ jQuery(function ($) {
         rfb.clipboardPasteFrom(text);
         logEvent('viewer_clipboard', String(text.length) + '자');
         window.showToast('클립보드를 보냈습니다.', 'success');
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('clipboardModal')).hide();
+        window.closeModal('clipboardModal');
     });
 
     $('#btnFullscreen').on('click', function () {
@@ -199,7 +207,7 @@ jQuery(function ($) {
                 if (rfb) {
                     try { rfb.disconnect(); } catch (e) { /* 무시 */ }
                 }
-                setStatus(data.status_label, 'dark');
+                setStatus(data.status_label, 'ended');
                 setMessage('세션이 종료되었습니다. (' + (data.end_reason || '') + ')');
             }
         });

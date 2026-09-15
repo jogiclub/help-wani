@@ -5,25 +5,27 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body p-4">
-        <h1 class="h4 mb-4 text-center"><?= html_escape($app_name) ?> 상담원 로그인</h1>
-        <form id="loginForm">
-          <div class="mb-3">
-            <label class="form-label" for="email">이메일</label>
-            <input type="email" class="form-control" id="email" name="email" required autofocus>
-          </div>
-          <div class="mb-3">
-            <label class="form-label" for="password">비밀번호</label>
-            <input type="password" class="form-control" id="password" name="password" required>
-          </div>
-          <button type="submit" class="btn btn-primary w-100">로그인</button>
-        </form>
-        <div class="text-center mt-3">
-          <a href="<?= base_url('signup') ?>">조직 가입 신청</a>
+<div class="mx-auto max-w-md">
+  <div class="card">
+    <div class="card-body">
+      <h1 class="mb-6 text-center text-xl font-bold text-slate-800">
+        <?= html_escape($app_name) ?> 상담원 로그인
+      </h1>
+
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="form-label" for="email">이메일</label>
+          <input type="email" class="form-input" id="email" name="email" required autofocus>
         </div>
+        <div>
+          <label class="form-label" for="password">비밀번호</label>
+          <input type="password" class="form-input" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">로그인</button>
+      </form>
+
+      <div class="mt-4 text-center text-sm">
+        <a class="text-brand-600 hover:underline" href="<?= base_url('signup') ?>">조직 가입 신청</a>
       </div>
     </div>
   </div>

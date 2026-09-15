@@ -8,48 +8,50 @@
     var POLL_INTERVAL = 3000;
     var codeExpiresAt = null;
 
-    function statusBadge(status) {
-        var map = {
-            issued: 'secondary',
-            verified: 'info',
-            waiting: 'warning',
-            connected: 'success',
-            ended: 'dark',
-            expired: 'light',
-            canceled: 'light'
-        };
-        return map[status] || 'secondary';
-    }
+    var BADGE_CLASS = {
+        issued: 'badge-gray',
+        verified: 'badge-blue',
+        waiting: 'badge-amber',
+        connected: 'badge-green',
+        ended: 'badge-dark',
+        expired: 'badge-gray',
+        canceled: 'badge-gray'
+    };
 
     function renderRows(sessions) {
         var $tbody = $('#sessionTbody');
         $tbody.empty();
 
         if (!sessions.length) {
-            $tbody.append('<tr><td colspan="7" class="text-center text-muted py-4">진행 중인 상담이 없습니다.</td></tr>');
+            $tbody.append('<tr><td colspan="7" class="py-8 text-center text-slate-400">' +
+                '진행 중인 상담이 없습니다.</td></tr>');
             return;
         }
 
         sessions.forEach(function (s) {
             var $tr = $('<tr>');
-            $tr.append($('<td class="fw-bold">').text(s.code));
-            $tr.append($('<td>').html('<span class="badge text-bg-' + statusBadge(s.status) + '"></span>')
-                .find('.badge').text(s.status_label).end());
+
+            $tr.append($('<td>').addClass('font-mono font-semibold').text(s.code));
+            $tr.append($('<td>').append(
+                $('<span>').addClass('badge ' + (BADGE_CLASS[s.status] || 'badge-gray')).text(s.status_label)
+            ));
             $tr.append($('<td>').text(s.pc_name || '-'));
-            $tr.append($('<td class="small text-muted">').text(s.customer_ip || '-'));
+            $tr.append($('<td>').addClass('text-xs text-slate-500').text(s.customer_ip || '-'));
             $tr.append($('<td>').text(s.agent_name));
             $tr.append($('<td>').text(s.status === 'issued' ? formatRemain(s.remain_sec) : '-'));
 
-            var $actions = $('<td>');
+            var $actions = $('<td>').addClass('whitespace-nowrap');
 
             if (s.status === 'waiting' || s.status === 'connected') {
-                $('<a class="btn btn-sm btn-success me-1">원격 시작</a>')
+                $('<a>').addClass('btn btn-sm btn-success mr-1')
                     .attr('href', CONSOLE_URLS.viewer + s.id)
+                    .text('원격 시작')
                     .appendTo($actions);
             }
 
             if (['ended', 'expired', 'canceled'].indexOf(s.status) === -1) {
-                $('<button class="btn btn-sm btn-outline-danger">종료</button>')
+                $('<button type="button">').addClass('btn btn-sm btn-secondary')
+                    .text('종료')
                     .on('click', function () { endSession(s.id); })
                     .appendTo($actions);
             }
@@ -76,22 +78,25 @@
 
     function tickCode() {
         if (!codeExpiresAt) { return; }
+
         var remain = Math.floor((codeExpiresAt - Date.now()) / 1000);
         $('#codeRemain').text(formatRemain(remain));
+
         if (remain <= 0) {
             codeExpiresAt = null;
-            $('#codeRemain').removeClass('text-bg-secondary').addClass('text-bg-danger').text('만료');
+            $('#codeRemain').removeClass('badge-gray').addClass('badge-red').text('만료');
         }
     }
 
     $(function () {
         $('#btnCreate').on('click', function () {
             var $btn = $(this).prop('disabled', true);
+
             apiPost(CONSOLE_URLS.create, {}, function (data, message) {
-                $('#codeCard').removeClass('d-none');
+                $('#codeCard').removeClass('hidden');
                 $('#codeValue').text(data.code);
                 $('#customerUrl').text(data.customer_url);
-                $('#codeRemain').removeClass('text-bg-danger').addClass('text-bg-secondary');
+                $('#codeRemain').removeClass('badge-red').addClass('badge-gray');
                 codeExpiresAt = Date.now() + (data.expires_in * 1000);
                 tickCode();
                 showToast(message, 'success');
