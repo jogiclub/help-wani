@@ -22,11 +22,11 @@
 
   <ItemGroup>
     <!--
-      UltraVNC 실행 파일은 저장소에 포함하지 않는다.
-      launcher/vendor/ultravnc 에 배치한 뒤 빌드 시 출력 폴더로 복사한다.
-      배치 방법은 launcher/vendor/README.md 참고.
+      동봉한 UltraVNC(1.8.3.0 x64)를 빌드 출력의 ultravnc\ 폴더로 복사한다.
+      런처는 AppContext.BaseDirectory\ultravnc\winvnc.exe 를 실행한다.
+      구성과 출처는 launcher/vendor/README.md 참고.
     -->
-    <None Include="..\vendor\ultravnc\**\*.*" Condition="Exists('..\vendor\ultravnc')">
+    <None Include="..\vendor\ultravnc\**\*.*" Exclude="..\vendor\ultravnc\SHA256SUMS">
       <Link>ultravnc\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

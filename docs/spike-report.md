@@ -21,7 +21,7 @@
 | S-3 | 세션별 VNC 비밀번호 | 소스 확인 + 프로토콜 검증 완료 | 정확히 8자. ini 에는 DES 암호화된 8바이트로 저장 |
 | S-4 | 리피터 + websockify + noVNC 연결 | **검증 완료** | 실제 화면 데이터 수신까지 확인 |
 | S-5 | TLS 터널 구간 암호화 | **검증 완료** | 패킷 캡처에서 평문 미검출 |
-| S-6 | MSIX(runFullTrust) 에서 winvnc 실행 | 미검증 | 윈도우 실기 필요 |
+| S-6 | MSIX(runFullTrust) 에서 winvnc 실행 | 미검증 | 바이너리는 동봉 완료(1.8.3.0 x64), 윈도우 실기 필요 |
 | S-7 | UAC / 관리자 권한 화면 제어 | 미검증(제약은 확정) | 비관리자 실행 시 UAC 화면 제어 불가 |
 | S-8 | 백신 오진 | 미검증 | 윈도우 실기 + 국내 백신 필요 |
 | S-9 | Microsoft Store 정책 | 미검증(요건 정리) | `docs/store-submission.md` 참조 |
@@ -208,6 +208,25 @@ C# `SslStream` 도 같은 함정이 있습니다. **`ReadTimeout` 을 걸어 두
   런처가 비정상 종료해도 남지 않게 합니다.
 - 확인 방법: 자체 서명 인증서로 MSIX 를 만들어 사이드로드(`launcher/scripts/sideload-test.ps1`)한 뒤
   스토어 설치와 동일한 조건에서 실행합니다.
+
+### 동봉한 바이너리 (2026-09-15 배치)
+
+공식 배포본 UltraVNC 1.8.3.0 의 x64 파일 중 아래 6개만 포함했습니다.
+`winvnc.exe` 의 정적 임포트를 확인한 결과 모두 윈도우 시스템 DLL 이었고,
+UltraVNC 자체 DLL 은 기능을 켰을 때 `LoadLibrary` 로 불러옵니다.
+바이너리 문자열에서 참조가 확인된 `vnchooks` / `logging` / `ddengine64` / `authSSP` 를 포함했고,
+MS-Logon(ldapauth 계열), DSM 플러그인, 가상 디스플레이 드라이버는 사용하지 않으므로 제외했습니다.
+
+| 파일 | 크기 |
+|---|---|
+| winvnc.exe | 3.67 MB |
+| vnchooks.dll | 0.47 MB |
+| logging.dll | 0.48 MB |
+| authSSP.dll | 0.52 MB |
+| ddengine64.dll | 0.32 MB |
+| logmessages.dll | 0.01 MB |
+
+출처와 체크섬은 `launcher/vendor/README.md`, 재배치는 `scripts/fetch-ultravnc.sh` 입니다.
 
 ## S-7. UAC / 관리자 권한 프로그램 제어 — 제약은 확정, 실기 미검증
 
