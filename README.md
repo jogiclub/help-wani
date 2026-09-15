@@ -12,6 +12,19 @@
 
 외부에 열리는 포트는 포털 443 과 중계 서버 443 뿐입니다.
 
+## 작업 규칙
+
+이 저장소에서 작업할 때 지켜야 할 규칙은 **[CLAUDE.md](CLAUDE.md)** 에 모아 두었습니다.
+Tailwind 재빌드, 다국어 사전 3종 동기화, 아이콘 목록, UTC 시간 처리처럼
+어기면 조용히 깨지는 것들이라 자동 검사를 붙여 두었습니다.
+
+```bash
+./scripts/check-conventions.sh          # 규칙 점검
+./scripts/check-conventions.sh --live   # 개발 서버까지 점검
+```
+
+파일을 고칠 때마다 이 검사가 자동으로 돌도록 `.claude/settings.json` 에 훅이 걸려 있습니다.
+
 ## 저장소 구성
 
 | 경로 | 내용 |
