@@ -14,12 +14,13 @@ foreach ($stats['daily'] as $d) { $max_cnt = max($max_cnt, (int) $d->cnt); }
   <div class="flex gap-2">
     <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/agents') ?>">상담원 관리</a>
     <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/organization') ?>">조직 정보</a>
+    <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/widget') ?>">상담 위젯</a>
   </div>
 </div>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
   <div class="card"><div class="card-body">
-    <div class="text-xs text-slate-500">최근 30일 상담 건수</div>
+    <div class="text-xs text-slate-500">최근 30일 원격지원</div>
     <div class="mt-1 text-2xl font-bold text-slate-800"><?= (int) $summary->total ?></div>
   </div></div>
   <div class="card"><div class="card-body">
@@ -27,7 +28,7 @@ foreach ($stats['daily'] as $d) { $max_cnt = max($max_cnt, (int) $d->cnt); }
     <div class="mt-1 text-2xl font-bold text-slate-800"><?= (int) $summary->ended ?></div>
   </div></div>
   <div class="card"><div class="card-body">
-    <div class="text-xs text-slate-500">평균 상담 시간</div>
+    <div class="text-xs text-slate-500">평균 원격 시간</div>
     <div class="mt-1 text-2xl font-bold text-slate-800"><?= format_duration($summary->avg_seconds) ?></div>
   </div></div>
   <div class="card"><div class="card-body">
@@ -37,7 +38,7 @@ foreach ($stats['daily'] as $d) { $max_cnt = max($max_cnt, (int) $d->cnt); }
 </div>
 
 <div class="card">
-  <div class="card-header">일별 상담 건수</div>
+  <div class="card-header">일별 원격지원 건수</div>
   <div class="card-body">
     <?php if (empty($stats['daily'])): ?>
       <p class="text-sm text-slate-400">데이터가 없습니다.</p>

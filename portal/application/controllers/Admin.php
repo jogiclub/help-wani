@@ -53,6 +53,35 @@ class Admin extends Agent_Controller {
     }
 
     /**
+     * GET /admin/widget
+     */
+    public function widget()
+    {
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+        // 화면을 처음 열 때 키가 없으면 바로 발급한다.
+        if (empty($org->widget_key))
+        {
+            $this->organization_model->regenerate_widget_key($org->id);
+            $org = $this->organization_model->get_by_id($org->id);
+        }
+
+        $this->render('admin/widget', array(
+            'page_title' => '상담 위젯',
+            'org'        => $org,
+            'snippet'    => $this->widget_snippet($org),
+        ));
+    }
+
+    /**
+     * 고객사 사이트에 붙여 넣는 스니펫 한 줄
+     */
+    protected function widget_snippet($org)
+    {
+        return '<script src="'.base_url('widget.js').'" data-key="'.$org->widget_key.'" defer></script>';
+    }
+
+    /**
      * POST /admin/api/agent_save
      */
     public function api_agent_save()
@@ -192,5 +221,67 @@ class Admin extends Agent_Controller {
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'org_update', NULL, client_ip());
 
         api_response(TRUE, '조직 정보를 저장했습니다.', array());
+    }
+
+    /**
+     * POST /admin/api/widget_save
+     */
+    public function api_widget_save()
+    {
+        // 색상과 위치는 허용 목록 검사를 거친다. (CLAUDE.md 3.7)
+        $color = (string) $this->input->post('color', TRUE);
+        $color = preg_match('/^#[0-9a-fA-F]{6}$/', $color) ? strtolower($color) : '#2563eb';
+
+        $position = (string) $this->input->post('position', TRUE);
+        $position = in_array($position, array('right', 'left'), TRUE) ? $position : 'right';
+
+        $email = (string) $this->input->post('offline_email', TRUE);
+        $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : NULL;
+
+        // 도메인은 줄 단위로 받아 호스트만 남긴다.
+        $lines = preg_split('/[\r\n,]+/', (string) $this->input->post('domains', TRUE));
+        $domains = array();
+
+        foreach ($lines as $line)
+        {
+            $line = strtolower(trim($line));
+            $line = preg_replace('#^https?://#', '', $line);
+            $line = trim(preg_replace('#/.*$#', '', $line));
+
+            if ($line !== '' && preg_match('/^[a-z0-9.\-*]+$/', $line))
+            {
+                $domains[] = $line;
+            }
+        }
+
+        $this->organization_model->update($this->agent->org_id, array(
+            'widget_enabled'       => $this->input->post('enabled') ? 1 : 0,
+            'widget_color'         => $color,
+            'widget_position'      => $position,
+            'widget_domains'       => empty($domains) ? NULL : mb_substr(implode("\n", $domains), 0, 500),
+            'widget_offline_email' => $email,
+        ));
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'widget_update',
+            'domains='.count($domains), client_ip());
+
+        api_response(TRUE, '위젯 설정을 저장했습니다.');
+    }
+
+    /**
+     * POST /admin/api/widget_regenerate
+     * 키를 새로 발급하면 기존 스니펫은 즉시 동작하지 않는다.
+     */
+    public function api_widget_regenerate()
+    {
+        $key = $this->organization_model->regenerate_widget_key($this->agent->org_id);
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'widget_key_regenerate', NULL, client_ip());
+
+        api_response(TRUE, '새 키를 발급했습니다. 기존 스니펫은 더 이상 동작하지 않습니다.', array(
+            'widget_key' => $key,
+            'snippet'    => $this->widget_snippet($org),
+        ));
     }
 }

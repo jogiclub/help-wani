@@ -65,7 +65,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
             <?php endforeach; ?>
           </select>
           <div class="form-help">
-            상담 이력과 통계의 시각이 이 시간대로 표시됩니다.
+            원격 이력과 상담 기록의 시각이 이 시간대로 표시됩니다.
             현재 시각: <span id="tzPreview" class="font-medium text-slate-700"></span>
           </div>
         </div>

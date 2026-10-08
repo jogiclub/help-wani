@@ -24,6 +24,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       DXGI Desktop Duplication 용. 사용할 수 없는 환경에서는 GDI 로 자동 전환하므로
       이 패키지가 없어도 기능은 동작하지만, 빌드에는 필요하다.

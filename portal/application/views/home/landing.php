@@ -81,6 +81,54 @@ $unit = lang_text('home.pricing.currency_unit');
   </div>
 </section>
 
+<!-- 채팅 상담 + 원격지원 (두 기능을 함께 쓰는 것이 이 서비스의 핵심) -->
+<section id="dual" class="border-b border-slate-200 bg-white">
+  <div class="mx-auto max-w-6xl px-4 py-16">
+    <div class="text-center">
+      <span class="badge badge-blue"><?= html_escape(lang_text('home.dual.badge')) ?></span>
+      <h2 class="mt-4 text-2xl font-bold text-slate-900"><?= html_escape(lang_text('home.dual.title')) ?></h2>
+      <p class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
+        <?= html_escape(lang_text('home.dual.subtitle')) ?>
+      </p>
+    </div>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-3">
+      <?php for ($i = 1; $i <= 3; $i++): ?>
+      <div class="card h-full transition-shadow hover:shadow-md">
+        <div class="card-body">
+          <span class="icon-tile icon-tile-brand">
+            <span class="material-symbols-outlined icon-lg"><?= $icons['dual'][$i] ?></span>
+          </span>
+          <div class="mt-3 font-semibold text-slate-800"><?= html_escape(lang_text('home.dual.'.$i.'.title')) ?></div>
+          <p class="mt-2 text-sm leading-relaxed text-slate-500"><?= html_escape(lang_text('home.dual.'.$i.'.body')) ?></p>
+        </div>
+      </div>
+      <?php endfor; ?>
+    </div>
+
+    <!-- 상담에서 원격지원으로 넘어가는 흐름 -->
+    <div class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-6">
+      <div class="mb-4 text-sm font-semibold text-slate-700"><?= html_escape(lang_text('home.dual.flow.title')) ?></div>
+
+      <ol class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <?php for ($i = 1; $i <= 4; $i++): ?>
+        <li class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3">
+          <span class="step-badge"><?= $i ?></span>
+          <span class="text-sm text-slate-600"><?= html_escape(lang_text('home.dual.flow.'.$i)) ?></span>
+        </li>
+        <?php endfor; ?>
+      </ol>
+
+      <?php if ( ! empty($widget_key)): ?>
+      <p class="mt-4 flex items-center gap-2 text-sm text-brand-600">
+        <span class="material-symbols-outlined icon-sm"><?= $icons['dual'][1] ?></span>
+        <?= html_escape(lang_text('home.dual.try')) ?>
+      </p>
+      <?php endif; ?>
+    </div>
+  </div>
+</section>
+
 <!-- 핵심 가치 -->
 <section class="border-b border-slate-200 bg-white">
   <div class="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,6 +168,15 @@ $unit = lang_text('home.pricing.currency_unit');
           <code class="mt-3 block rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
             <?= base_url() ?><?= html_escape(lang_text('home.how.1.sample')) ?>
           </code>
+          <?php elseif ($i === 2 && ! empty($demo_download)): ?>
+          <a class="btn btn-primary btn-sm mt-3" href="<?= html_escape($demo_download) ?>">
+            <?= html_escape(lang_text('home.how.2.download')) ?>
+          </a>
+          <?php endif; ?>
+          <?php if ($i === 1): ?>
+          <a class="mt-2 inline-block text-xs text-brand-600 hover:underline" href="<?= html_escape($demo_url) ?>">
+            <?= html_escape(lang_text('home.how.1.demo')) ?>
+          </a>
           <?php endif; ?>
         </div>
       </div>

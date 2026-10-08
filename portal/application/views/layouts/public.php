@@ -19,7 +19,12 @@ $logged_in = (bool) $this->session->userdata('agent_id');
 
 <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
   <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-    <a class="text-lg font-bold text-slate-900" href="<?= base_url() ?>"><?= html_escape($app_name) ?></a>
+    <a class="flex items-center gap-2 text-lg font-bold text-slate-900" href="<?= base_url() ?>">
+      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white">
+        <span class="material-symbols-outlined icon-lg">support_agent</span>
+      </span>
+      <?= html_escape($app_name) ?>
+    </a>
 
     <nav class="hidden gap-1 md:flex">
       <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#how"><?= html_escape(lang_text('nav.how')) ?></a>
@@ -70,7 +75,12 @@ $logged_in = (bool) $this->session->userdata('agent_id');
   <div class="mx-auto max-w-6xl px-4 py-10">
     <div class="flex flex-wrap items-start justify-between gap-6">
       <div>
-        <div class="text-base font-bold text-slate-900"><?= html_escape($app_name) ?></div>
+        <div class="flex items-center gap-2 text-base font-bold text-slate-900">
+          <span class="flex h-7 w-7 items-center justify-center rounded-md bg-brand-500 text-white">
+            <span class="material-symbols-outlined icon-sm">support_agent</span>
+          </span>
+          <?= html_escape($app_name) ?>
+        </div>
         <p class="mt-2 max-w-md text-sm text-slate-500"><?= html_escape(lang_text('footer.tagline')) ?></p>
       </div>
 
@@ -120,5 +130,9 @@ $(function () {
     });
 });
 </script>
+<?php if ( ! empty($widget_key)): ?>
+<!-- 우리 소개 페이지에도 같은 상담 위젯을 붙여 둔다. 고객사가 받는 스니펫과 형태가 같다. -->
+<script src="<?= base_url('widget.js') ?>" data-key="<?= html_escape($widget_key) ?>" defer></script>
+<?php endif; ?>
 </body>
 </html>

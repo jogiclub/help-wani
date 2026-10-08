@@ -35,7 +35,8 @@ services:
         condition: service_healthy
     environment:
       APP_NAME: ${APP_NAME:-RemoteHelp}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:8080/}
+      # 비워 두면 포털이 접속한 주소를 그대로 쓴다(내부망 IP 로도 접속 가능).
+      APP_BASE_URL: ${APP_BASE_URL:-}
       APP_ENV: development
       DB_HOST: db
       DB_PORT: "3306"
@@ -43,6 +44,11 @@ services:
       DB_USER: ${DB_USER:-remotehelp}
       DB_PASS: ${DB_PASS:-remotehelp}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      REALTIME_WS_URL: ${REALTIME_WS_URL:-}
+      REALTIME_PUBLIC_PORT: ${REALTIME_PUBLIC_PORT:-8091}
+      REALTIME_PUBLISH_URL: ${REALTIME_PUBLISH_URL:-http://realtime-msg:8091/publish}
+      REALTIME_SHARED_SECRET: ${REALTIME_SHARED_SECRET:-change-me-realtime-secret}
+      REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-dev-realtime-token-secret}
       RELAY_AGENT_WS_URL: ${RELAY_AGENT_WS_URL:-wss://localhost:8443/agent}
       RELAY_VIEWER_WS_URL: ${RELAY_VIEWER_WS_URL:-wss://localhost:8443/viewer}
       RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
@@ -75,6 +81,24 @@ services:
       - relay-certs:/etc/remotehelp/certs
     ports:
       - "8443:8443"
+
+  # 상담 실시간 메시지 서버. 메시지 저장은 포털이 하고 이 서버는 전달만 한다.
+  realtime-msg:
+    build:
+      context: .
+      dockerfile: docker/realtime/Dockerfile
+    container_name: remotehelp-realtime
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      REALTIME_PORT: "8091"
+      REALTIME_HOST: "0.0.0.0"
+      PORTAL_ORIGIN: http://web
+      REALTIME_SHARED_SECRET: ${REALTIME_SHARED_SECRET:-change-me-realtime-secret}
+      REALTIME_LOG_LEVEL: ${REALTIME_LOG_LEVEL:-info}
+    ports:
+      - "8091:8091"
 
   # 검증용 고객 PC 에이전트 모의 컨테이너. 기본 기동하지 않고 profile 로 실행한다.
   #   docker compose --profile test run --rm -e AGENT_TOKEN=... agentsim

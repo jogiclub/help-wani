@@ -34,32 +34,34 @@ $show_download = $download_enabled && $download_info;
         <div class="font-semibold text-slate-800"><?= html_escape(lang_text('customer.step1.title')) ?></div>
         <div class="mt-1 text-sm text-slate-500"><?= html_escape(lang_text('customer.step1.body')) ?></div>
 
+        <?php if ($show_download): ?>
+        <a class="btn btn-primary btn-lg mt-3 w-full sm:w-auto" href="<?= html_escape($download_url) ?>">
+          <?= html_escape(lang_text('customer.step1.download_button')) ?>
+        </a>
+        <div class="form-help">
+          RemoteHelp_<?= html_escape($org->org_code) ?>.exe ·
+          <?= html_escape($download_info['size_mb']) ?>MB ·
+          <span data-i18n-date="<?= html_escape($download_info['modified']) ?>" data-i18n-date-style="date"></span>
+        </div>
+        <details class="mt-2 text-xs text-slate-400">
+          <summary class="cursor-pointer"><?= html_escape(lang_text('customer.step1.checksum')) ?></summary>
+          <code class="mt-1 block break-all"><?= html_escape($download_info['sha256']) ?></code>
+        </details>
+        <div class="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+          <?= html_escape(lang_text('customer.step1.store_note')) ?>
+          <a class="text-brand-600 hover:underline" href="<?= html_escape($store_app_url) ?>">
+            <?= html_escape(lang_text('customer.step1.button')) ?>
+          </a>
+        </div>
+        <?php else: ?>
         <a class="btn btn-primary btn-lg mt-3 w-full sm:w-auto" href="<?= html_escape($store_app_url) ?>">
           <?= html_escape(lang_text('customer.step1.button')) ?>
         </a>
-
         <div class="mt-2">
           <a class="text-xs text-brand-600 hover:underline"
              href="<?= html_escape($store_web_url) ?>" target="_blank" rel="noopener">
             <?= html_escape(lang_text('customer.step1.fallback')) ?>
           </a>
-        </div>
-
-        <?php if ($show_download): ?>
-        <div class="mt-3 border-t border-slate-100 pt-3">
-          <div class="text-xs text-slate-500"><?= html_escape(lang_text('customer.step1.download_note')) ?></div>
-          <a class="btn btn-secondary btn-sm mt-2" href="<?= html_escape($download_url) ?>">
-            <?= html_escape(lang_text('customer.step1.download_button')) ?>
-          </a>
-          <div class="form-help">
-            RemoteHelp_<?= html_escape($org->org_code) ?>.exe ·
-            <?= html_escape($download_info['size_mb']) ?>MB ·
-            <span data-i18n-date="<?= html_escape($download_info['modified']) ?>" data-i18n-date-style="date"></span>
-          </div>
-          <details class="mt-2 text-xs text-slate-400">
-            <summary class="cursor-pointer"><?= html_escape(lang_text('customer.step1.checksum')) ?></summary>
-            <code class="mt-1 block break-all"><?= html_escape($download_info['sha256']) ?></code>
-          </details>
         </div>
         <?php endif; ?>
       </div>

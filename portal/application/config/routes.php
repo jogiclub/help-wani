@@ -15,6 +15,13 @@ $route['api/launcher/status']['post']  = 'api/launcher/status';
 $route['api/launcher/heartbeat']['get']= 'api/launcher/heartbeat';
 $route['api/launcher/version']['get']  = 'api/launcher/version';
 $route['api/relay/auth']['get']        = 'api/relay/auth';
+$route['api/realtime/auth']['get']     = 'api/realtime_auth/auth';
+
+// 상담 위젯 (고객사 사이트에서 호출한다. CSRF 제외 대상이라 Origin 과 방문자 토큰으로 막는다)
+$route['widget.js']                 = 'widget/script';
+$route['api/widget/init']['post']   = 'widget/init';
+$route['api/widget/send']['post']   = 'widget/send';
+$route['api/widget/poll']['get']    = 'widget/poll';
 
 // 서비스 소개
 $route['home'] = 'home/index';
@@ -37,6 +44,14 @@ $route['console/api/session/end']          = 'console/api_session_end';
 $route['console/api/session/note']         = 'console/api_session_note';
 $route['console/api/session/log']          = 'console/api_session_log';
 
+// 상담 위젯 대화 (상담원 쪽)
+$route['console/chat']                     = 'console/chat';
+$route['console/api/chat/list']            = 'console/api_chat_list';
+$route['console/api/chat/messages/(:num)'] = 'console/api_chat_messages/$1';
+$route['console/api/chat/send']            = 'console/api_chat_send';
+$route['console/api/chat/close']           = 'console/api_chat_close';
+$route['console/api/chat/remote']          = 'console/api_chat_remote';
+
 // 플랫폼 운영자 (조직 가입 승인)
 $route['operator']              = 'operator/index';
 $route['operator/audit']        = 'operator/audit';
@@ -46,6 +61,7 @@ $route['operator/api/(:any)']   = 'operator/api_$1';
 $route['admin']                 = 'admin/index';
 $route['admin/agents']          = 'admin/agents';
 $route['admin/organization']    = 'admin/organization';
+$route['admin/widget']          = 'admin/widget';
 $route['admin/api/(:any)']      = 'admin/api_$1';
 
 // 고객 화면 (가장 마지막에 둔다)

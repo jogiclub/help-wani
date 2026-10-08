@@ -28,6 +28,24 @@ class Agent_model extends CI_Model {
             ->result();
     }
 
+    /**
+     * 조직의 대표 관리자 이메일. 위젯 오프라인 알림의 기본 수신자로 쓴다.
+     */
+    public function admin_email($org_id)
+    {
+        $row = $this->db->select('email')
+                        ->from('agents')
+                        ->where('org_id', (int) $org_id)
+                        ->where('role', 'admin')
+                        ->where('is_active', 1)
+                        ->order_by('id', 'ASC')
+                        ->limit(1)
+                        ->get()
+                        ->row();
+
+        return empty($row) ? NULL : $row->email;
+    }
+
     public function insert($data)
     {
         if (isset($data['password']))

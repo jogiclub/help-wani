@@ -19,9 +19,11 @@ $is_super = (bool) $this->session->userdata('is_super');
 
     <nav class="hidden gap-1 sm:flex">
       <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('console') ?>">대기열</a>
+         href="<?= base_url('console') ?>">원격 대기열</a>
       <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('console/history') ?>">상담 이력</a>
+         href="<?= base_url('console/chat') ?>">상담 대화</a>
+      <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
+         href="<?= base_url('console/history') ?>">원격 이력</a>
       <?php if ($this->session->userdata('agent_role') === 'admin'): ?>
       <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
          href="<?= base_url('admin') ?>">조직 관리</a>

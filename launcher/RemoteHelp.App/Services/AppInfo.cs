@@ -15,8 +15,13 @@ public static class AppInfo
     /// 포털 주소. 배포 빌드에서는 appsettings 나 빌드 상수로 고정한다.
     /// 개발 중에는 REMOTEHELP_PORTAL 환경변수로 바꿀 수 있다.
     /// </summary>
+#if TEST_BUILD
+    public static string PortalBaseUrl =>
+        Environment.GetEnvironmentVariable("REMOTEHELP_PORTAL") ?? "http://118.36.197.219:8099/";
+#else
     public static string PortalBaseUrl =>
         Environment.GetEnvironmentVariable("REMOTEHELP_PORTAL") ?? "https://portal.example.com/";
+#endif
 
     public const string ProductName = "RemoteHelp";
 }

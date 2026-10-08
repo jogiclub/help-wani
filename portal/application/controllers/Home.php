@@ -57,7 +57,14 @@ class Home extends MY_Controller {
                 5 => 'delete_forever',      // 잔류 없음
                 6 => 'receipt_long',        // 기록
             ),
+            // 채팅 상담 + 원격지원 섹션
+            'dual' => array(
+                1 => 'forum',          // 웹사이트 채팅 상담
+                2 => 'screen_share',   // 필요할 때 원격지원
+                3 => 'history',        // 기록은 한곳에
+            ),
             'misc' => array(
+                'brand'     => 'support_agent',
                 'phishing'  => 'gpp_maybe',
                 'check'     => 'check_circle',
                 'arrow'     => 'arrow_forward',
@@ -134,12 +141,25 @@ class Home extends MY_Controller {
 
         $icons = $this->landing_icons();
 
+        // 소개 페이지의 상담 버블은 우리 쪽 조직(기본 system)이 응대한다.
+        // 그 조직이 위젯을 꺼 두면 버블을 띄우지 않는다.
+        $landing_org = $this->organization_model->get_active_by_code(env('LANDING_WIDGET_ORG', 'system'));
+        $widget_key = ( ! empty($landing_org) && (int) $landing_org->widget_enabled === 1)
+            ? $landing_org->widget_key
+            : '';
+
         $this->render('home/landing', array(
             'locales'       => supported_locales(),
             'icons'         => $icons,
             'icon_names'    => $this->flatten_icons($icons),
             'page_title'    => '기업용 원격지원 서비스',
             'pricing'       => $pricing,
+            'widget_key'    => $widget_key,
+            // 데모 조직의 고객 접속 페이지 / 실행 파일 다운로드 주소 (파일이 있고 켜져 있을 때만)
+            'demo_url'      => base_url(env('DEMO_ORG', 'demo')),
+            'demo_download' => (env('DIRECT_DOWNLOAD_ENABLED', FALSE) && is_file(FCPATH.'assets/downloads/RemoteHelp.exe'))
+                ? base_url(env('DEMO_ORG', 'demo').'/download')
+                : '',
             // 문의처는 .env 에서 설정한다. 값이 없으면 화면에 노출하지 않는다.
             'contact_email' => env('CONTACT_EMAIL', ''),
             'contact_phone' => env('CONTACT_PHONE', ''),

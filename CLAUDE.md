@@ -38,13 +38,14 @@
 | 경로 | 내용 |
 |---|---|
 | `portal/` | CodeIgniter 3 포털 |
-| `relay/` | Node.js 중계 서버 |
+| `relay/` | Node.js 중계 서버(원격 화면 중계) |
+| `realtime/` | Node.js 상담 실시간 메시지 서버(realtime-msg) |
 | `launcher/` | .NET 8 WPF 런처 + 원격제어 엔진 |
 | `docker/` | 개발용 컨테이너 |
 | `server/` | 중계 서버 설치 스크립트 |
 | `sql/` | 스키마, 마이그레이션, 시드 |
 | `scripts/` | 검증/빌드 스크립트 |
-| `docs/` | 프로토콜, 검증 보고서, 제출 문서 |
+| `docs/` | 프로토콜, 검증 보고서, 제출 문서, 작업요청서 |
 
 **원격제어는 자체 프로토콜입니다. VNC 를 쓰지 않습니다.** 명세는 `docs/protocol.md`.
 
@@ -130,6 +131,8 @@ PHP    date.timezone = UTC
 - 모든 API 응답은 `{ "result": true|false, "message": "", "data": {} }` 형식입니다. `api_response()` 를 씁니다.
 - 알림은 `showToast(message, type)`, 확인은 `showConfirmModal(title, message, onConfirm, onCancel)`,
   모달은 `openModal(id)` / `closeModal(id)` 를 씁니다. 외부 UI 프레임워크를 쓰지 않습니다.
+- **JS 에서 API 주소를 상대 경로로 적지 않습니다.** 뷰에서 `base_url()` 로 만든 절대 주소를
+  `XXX_URLS` 전역에 담아 넘깁니다. 상대 경로는 보는 화면의 깊이에 따라 `/console/console/...` 로 어긋납니다.
 - 관리 행위는 `audit_logs`, 세션 이벤트는 `session_logs` 에 남깁니다.
 - 사용자 입력으로 상태를 바꿀 때는 **허용 목록 검사**를 합니다(언어, 시간대, 국가, 상태값 등).
 
@@ -137,6 +140,54 @@ PHP    date.timezone = UTC
 
 `$route['(:any)']` 는 조직 코드를 받는 규칙이라 **반드시 맨 아래**에 둡니다.
 새 최상위 경로를 추가할 때는 그보다 위에 넣습니다.
+
+### 3.9 상담 위젯 — 고객사 사이트 안에서 도는 코드
+
+`portal/assets/js/widget.js` 는 **우리 화면이 아니라 고객사 웹사이트에 삽입**됩니다.
+포털의 자산을 쓸 수 없고, 써도 고객사 스타일과 충돌합니다.
+
+- **Tailwind(`app.css`), `common.js`, `i18n.js`, jQuery 를 쓰지 않습니다.** 의존성 없이 혼자 돕니다.
+- 화면은 `attachShadow` 안에 그리고 CSS 도 그 안에 넣습니다. 고객사 CSS 와 섞이면 안 됩니다.
+- 문구는 위젯이 사전을 읽지 않고 **서버가 `/api/widget/init` 응답에 담아 내려줍니다.**
+  언어는 조직 설정을 따릅니다(고객이 보는 화면, 3.2 표).
+- 위젯 API 는 외부 도메인에서 호출되므로 `csrf_exclude_uris` 에 `api/widget/.*` 를 넣고,
+  대신 **Origin 허용 도메인 검사와 방문자 토큰 대조**로 막습니다.
+
+자세한 설계는 `docs/widget-plan.md`.
+
+### 3.10 용어 — 원격과 상담을 섞지 않는다
+
+두 기능이 한 포털 안에 있으므로 **화면 문구에서 반드시 구분**합니다. 섞으면 사용자가 목록을 잘못 읽습니다.
+
+| 용어 | 가리키는 것 | 테이블 | 화면 이름 |
+|---|---|---|---|
+| **원격지원**(줄여서 원격) | 고객 PC 화면을 보고 조작하는 것 | `sessions` | 원격 대기열 / 원격 이력 / 원격 메모 |
+| **상담** | 위젯을 통한 글 대화 | `conversations` | 상담 대화 / 상담 위젯 |
+| **상담원** | 사람. 원격과 상담을 모두 맡는다 | `agents` | 상담원 관리 / 상담원 콘솔 |
+
+- 원격 세션을 세는 곳에 "상담 건수", "상담 이력" 이라고 쓰지 않습니다. "원격지원 건수", "원격 이력" 입니다.
+- 위젯 대화를 가리키며 "원격 대화" 라고 쓰지 않습니다.
+- "상담원" 은 사람을 가리키므로 두 기능 어디서나 그대로 씁니다.
+
+### 3.11 상담 실시간 — 저장은 포털, 전달은 realtime-msg
+
+상담 메시지는 **포털이 DB 에 저장한 뒤** `realtime-msg` 컨테이너가 구독자에게 밀어 줍니다.
+중계 서버(`relay/`)와는 다른 서버입니다. 원격 화면은 `relay`, 상담 글은 `realtime-msg` 입니다.
+
+```
+위젯 / 콘솔  --ws  /ws?token=-->  realtime-msg   (구독만)
+포털         --POST /publish--->  realtime-msg   (발행)
+realtime-msg --GET /api/realtime/auth--> 포털    (토큰 검증)
+```
+
+- **메시지를 웹소켓으로 받지 않습니다.** 전송은 기존 HTTP API 로만 합니다. 저장 경로가 하나여야
+  순서와 권한 검사가 어긋나지 않습니다.
+- 새 메시지를 저장하는 곳을 만들면 **발행도 함께 넣습니다.** 빠뜨리면 상대 화면이 폴링 간격만큼 늦습니다.
+- 구독 토큰은 포털이 HMAC 으로 서명합니다(`REALTIME_TOKEN_SECRET`). 방문자는 자기 대화(`conv:{id}`),
+  상담원은 자기 조직(`org:{id}`) 만 구독합니다.
+- 실시간이 끊겨도 화면이 멈추면 안 됩니다. **폴링을 제거하지 말고 간격만 늘립니다.**
+- 컨트롤러 클래스 이름을 라이브러리와 같게 짓지 않습니다. `Realtime` 라이브러리가 있으므로
+  검증 API 컨트롤러는 `Realtime_auth` 입니다. 같은 이름이면 CI3 가 라이브러리를 읽지 못합니다.
 
 ---
 
@@ -180,6 +231,7 @@ docker compose up -d --build
 | http://localhost:8099/operator | 조직 가입 승인 (operator@demo.local / Test1234!admin) |
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
+| http://localhost:8091/healthz | 상담 실시간 메시지 서버 상태 |
 
 윈도우 런처는 이 환경에서 빌드할 수 없습니다. 코드 작성까지만 하고 실기 검증은 별도로 표시합니다.
 
@@ -189,11 +241,14 @@ docker compose up -d --build
 
 | 항목 | 결정 |
 |---|---|
-| 배포 경로 | **1차는 Microsoft Store(MSIX) 단독.** 직접 다운로드는 `DIRECT_DOWNLOAD_ENABLED=false` 로 꺼 둠 |
+| 배포 경로 | **운영은 1차 Microsoft Store(MSIX) 단독.** 직접 다운로드는 `DIRECT_DOWNLOAD_ENABLED` 로 켜고 끈다(운영 기본 false). 개발 `.env` 는 true 이며 `portal/assets/downloads/RemoteHelp.exe` 를 내려준다. 켜지면 고객 페이지의 주 버튼이 다운로드로 바뀐다 |
+| 런처 빌드 후 배포 | **런처 exe 를 빌드하면 항상 시험 서버에 배포한다(시험 서버 한정, 사용자 승인).** `launcher/scripts/build-exe.ps1 -TestBuild` 가 `portal/assets/downloads/RemoteHelp.exe` 로 복사하고, 그것이 `http://118.36.197.219:8099/demo/download` 로 내려간다(`.env` 의 `DIRECT_DOWNLOAD_ENABLED=true`). 시험 빌드에는 인증서 예외가 들어 있으므로 서명·운영 배포 금지. 배포 후 해시와 다운로드 응답을 확인해 보고한다 |
 | 코드 서명 | Store 는 Microsoft 가 서명하므로 불필요. 직접 배포 시 OV 인증서 필요(`docs/code-signing.md`) |
 | 요금 | 연 220,000원 / 상담원 계정 5개. `Home::index()` 의 `$pricing` 한 곳에서 관리 |
 | 화면 캡처 | GDI 우선, 가능하면 DXGI 자동 전환 |
 | 중계 서버 | Node.js + ws |
+| 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
+| 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
 
 ---
 

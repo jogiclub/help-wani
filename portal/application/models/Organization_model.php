@@ -182,4 +182,77 @@ class Organization_model extends CI_Model {
             'survey'  => $survey,
         );
     }
+
+    // ------------------------------------------------------------------
+    // 상담 위젯
+    // ------------------------------------------------------------------
+
+    /**
+     * 위젯 공개 키로 조직을 찾는다. 승인되고 위젯을 켠 조직만 돌려준다.
+     */
+    public function get_by_widget_key($widget_key)
+    {
+        if ( ! preg_match('/^[a-f0-9]{32}$/', (string) $widget_key))
+        {
+            return NULL;
+        }
+
+        return $this->db->get_where($this->table, array(
+            'widget_key'     => $widget_key,
+            'status'         => 'active',
+            'widget_enabled' => 1,
+        ))->row();
+    }
+
+    /**
+     * 위젯 키를 새로 발급한다. 기존 스니펫은 즉시 무효가 된다.
+     */
+    public function regenerate_widget_key($org_id)
+    {
+        $key = bin2hex(random_bytes(16));
+
+        $this->db->where('id', (int) $org_id)->update($this->table, array('widget_key' => $key));
+
+        return $key;
+    }
+
+    /**
+     * 요청 Origin 이 조직이 허용한 도메인인지 확인한다.
+     * 허용 목록이 비어 있으면 개발 편의를 위해 모두 허용한다.
+     */
+    public function widget_origin_allowed($org, $origin)
+    {
+        $allowed = array_filter(array_map('trim', preg_split('/[\r\n,]+/', (string) $org->widget_domains)));
+
+        if (empty($allowed))
+        {
+            return TRUE;
+        }
+
+        $host = parse_url((string) $origin, PHP_URL_HOST);
+
+        if (empty($host))
+        {
+            return FALSE;
+        }
+
+        foreach ($allowed as $rule)
+        {
+            $rule = strtolower(preg_replace('#^https?://#', '', $rule));
+            $rule = rtrim($rule, '/');
+
+            if ($rule === '')
+            {
+                continue;
+            }
+
+            // "example.com" 은 하위 도메인까지 허용한다.
+            if (strcasecmp($host, $rule) === 0 || substr($host, -(strlen($rule) + 1)) === '.'.$rule)
+            {
+                return TRUE;
+            }
+        }
+
+        return FALSE;
+    }
 }

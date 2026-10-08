@@ -35,6 +35,14 @@ public sealed class RelayClient : IAsyncDisposable
         _socket = new ClientWebSocket();
         _socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(30);
 
+#if TEST_BUILD
+        // 시험 서버(자체 서명 인증서) 전용 예외. 이 호스트 외에는 정상 검증한다. 배포 빌드에는 포함되지 않는다.
+        if (string.Equals(_uri.Host, "118.36.197.219", StringComparison.Ordinal))
+        {
+            _socket.Options.RemoteCertificateValidationCallback = (_, _, _, _) => true;
+        }
+#endif
+
         await _socket.ConnectAsync(_uri, ct);
         AppLogger.Info("중계 서버 연결됨");
     }

@@ -215,6 +215,7 @@ def check_headers():
         ('portal/application/core', ('.php',), ()),
         ('portal/assets/js', ('.js',), ('vendor',)),
         ('relay/src', ('.js',), ()),
+        ('realtime/src', ('.js',), ()),
         ('launcher/RemoteHelp.App', ('.cs',), ('bin', 'obj')),
     )
 
@@ -237,6 +238,71 @@ def check_headers():
         ok('파일 상단 주석 확인')
 
 
+# ------------------------------------------------------------- 3.9 상담 위젯
+def check_widget():
+    """위젯은 고객사 사이트 안에서 도는 코드라 포털 자산을 쓰면 안 된다."""
+    widget_js = os.path.join(ROOT, 'portal/assets/js/widget.js')
+    routes = read('portal/application/config/routes.php')
+    problems = []
+
+    if os.path.isfile(widget_js):
+        raw = open(widget_js, encoding='utf-8').read()
+
+        # 규칙을 설명하는 주석에 금지어가 나오므로 주석을 걷어내고 본다.
+        body = re.sub(r'//[^\n]*', '', re.sub(r'/\*.*?\*/', '', raw, flags=re.S))
+
+        forbidden = (
+            ('app.css', '포털 Tailwind CSS'),
+            ('common.js', '포털 공통 스크립트'),
+            ('i18n.js', '포털 번역 스크립트'),
+            ('RH_I18N', '포털 번역 전역 변수'),
+            ('jQuery', 'jQuery'),
+        )
+
+        for needle, label in forbidden:
+            if needle in body:
+                problems.append(f'widget.js 가 {label}({needle}) 에 기대고 있습니다')
+
+        if re.search(r'(?<![\w$])\$\(', body):
+            problems.append('widget.js 에서 jQuery 형태의 $() 를 쓰고 있습니다')
+
+        if 'attachShadow' not in raw:
+            problems.append('widget.js 가 Shadow DOM(attachShadow) 을 쓰지 않습니다 — 고객사 CSS 와 충돌합니다')
+
+    # 위젯 API 를 열었으면 CSRF 제외 목록에 넣어야 외부 도메인에서 호출된다.
+    if 'api/widget' in routes:
+        config = read('portal/application/config/config.php')
+        line = re.search(r"\$config\['csrf_exclude_uris'\]\s*=\s*array\((.*?)\);", config, re.S)
+
+        if not line or 'api/widget' not in line.group(1):
+            problems.append("csrf_exclude_uris 에 'api/widget/.*' 가 없습니다 — 외부 도메인 호출이 막힙니다")
+
+    if problems:
+        fail('상담 위젯 규칙 위반 (CLAUDE.md 3.9)', '\n    '.join(problems))
+    elif os.path.isfile(widget_js):
+        ok('상담 위젯 규칙 확인 (독립 실행, Shadow DOM, CSRF 제외)')
+    else:
+        ok('상담 위젯 미구현 — 검사 건너뜀')
+
+
+# ------------------------------------------------- 3.7 API 주소는 절대 경로로
+def check_api_urls():
+    """JS 가 API 주소를 상대 경로로 적으면 화면 깊이에 따라 404 가 난다."""
+    pattern = re.compile(r"""api(?:Get|Post)\(\s*['"](?!https?://|/)""")
+    found = []
+
+    for rel, full in walk('portal/assets/js', ('.js',), ('vendor',)):
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if pattern.search(line):
+                found.append(f'{rel}:{number}: {line.strip()[:70]}')
+
+    if found:
+        fail('JS 에서 API 주소를 상대 경로로 적었습니다 (CLAUDE.md 3.7)',
+             '\n    '.join(found[:10]) + '\n    뷰에서 base_url() 로 만든 주소를 넘기세요')
+    else:
+        ok('JS API 주소가 모두 절대 경로입니다')
+
+
 # ------------------------------------------------------------------ 3.8 라우팅
 def check_routes():
     lines = read('portal/application/config/routes.php').splitlines()
@@ -255,6 +321,60 @@ def check_routes():
             return
 
     ok('라우팅 순서 확인')
+
+
+# ------------------------------------------------------------------ 3.10 용어
+def check_terms():
+    """원격(sessions)과 상담(conversations)을 가리키는 말이 섞였는지 본다."""
+    banned = {
+        '상담 대기열': '원격 대기열',
+        '상담 이력': '원격 이력',
+        '상담 건수': '원격지원 건수',
+        '평균 상담 시간': '평균 원격 시간',
+        '상담 메모': '원격 메모',
+        '원격 대화': '상담 대화',
+        '원격 위젯': '상담 위젯',
+    }
+
+    found = []
+
+    for rel_dir, suffixes in (('portal/application/views', ('.php',)),
+                              ('portal/application/controllers', ('.php',)),
+                              ('portal/assets/js', ('.js',))):
+        for rel, full in walk(rel_dir, suffixes, ('vendor',)):
+            for number, line in enumerate(open(full, encoding='utf-8'), 1):
+                for wrong, right in banned.items():
+                    if wrong in line:
+                        found.append(f'{rel}:{number} "{wrong}" -> "{right}"')
+
+    if found:
+        fail('원격과 상담 용어가 섞였습니다 (CLAUDE.md 3.10)', '\n    '.join(found[:10]))
+    else:
+        ok('원격/상담 용어 구분 확인')
+
+
+# ------------------------------------- 3.11 컨트롤러와 라이브러리 이름 충돌
+def check_class_collision():
+    """CI3 는 컨트롤러와 같은 이름의 라이브러리를 읽지 못한다(503 으로 끝난다)."""
+    def class_names(rel_dir):
+        names = {}
+        for rel, full in walk(rel_dir, ('.php',)):
+            for match in re.finditer(r'^\s*class\s+([A-Za-z_][A-Za-z0-9_]*)', 
+                                     open(full, encoding='utf-8').read(), re.M):
+                names[match.group(1).lower()] = rel
+        return names
+
+    controllers = class_names('portal/application/controllers')
+    libraries = class_names('portal/application/libraries')
+
+    clashes = [f'{name}: {controllers[name]} / {libraries[name]}'
+               for name in sorted(set(controllers) & set(libraries))]
+
+    if clashes:
+        fail('컨트롤러와 라이브러리의 클래스 이름이 겹칩니다 (CLAUDE.md 3.11)',
+             '\n    '.join(clashes) + '\n    한쪽 이름을 바꾸세요 (예: Realtime -> Realtime_auth)')
+    else:
+        ok('컨트롤러/라이브러리 이름 충돌 없음')
 
 
 # -------------------------------------------------------------------- 비밀값
@@ -372,7 +492,11 @@ def main():
     check_utc()
     check_grid()
     check_headers()
+    check_api_urls()
     check_routes()
+    check_widget()
+    check_terms()
+    check_class_collision()
     check_secrets()
     check_no_vnc()
 

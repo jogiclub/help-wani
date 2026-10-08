@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/viewer.php
- * 역할: 상담원 원격 화면(자체 캔버스 뷰어)과 상담 메모
+ * 역할: 상담원 원격 화면(자체 캔버스 뷰어)과 원격 메모
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
@@ -68,7 +68,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     </div>
 
     <div class="card">
-      <div class="card-header">상담 메모</div>
+      <div class="card-header">원격 메모</div>
       <div class="card-body">
         <div id="noteList" class="mb-3 space-y-2">
           <?php foreach ($notes as $note): ?>
@@ -78,7 +78,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
           </div>
           <?php endforeach; ?>
         </div>
-        <textarea class="form-input mb-2" id="noteContent" rows="3" placeholder="상담 내용을 기록하세요"></textarea>
+        <textarea class="form-input mb-2" id="noteContent" rows="3" placeholder="원격지원 내용을 기록하세요"></textarea>
         <button class="btn btn-sm btn-primary w-full" id="btnNote">메모 저장</button>
       </div>
     </div>

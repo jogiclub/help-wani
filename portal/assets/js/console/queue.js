@@ -104,7 +104,7 @@
             ],
             rowData: [],
             getRowId: function (params) { return String(params.data.id); },
-            overlayNoRowsTemplate: '<span class="text-slate-400">진행 중인 상담이 없습니다.</span>'
+            overlayNoRowsTemplate: '<span class="text-slate-400">진행 중인 원격지원이 없습니다.</span>'
         });
 
         $('#btnCreate').on('click', function () {

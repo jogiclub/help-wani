@@ -1,13 +1,13 @@
 <?php
 /**
  * 파일 위치: application/views/console/queue.php
- * 역할: 상담원 대기열 화면 (코드 발급, 세션 상태 3초 갱신, AG Grid)
+ * 역할: 원격지원 대기열 화면 (코드 발급, 세션 상태 3초 갱신, AG Grid)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <div class="mb-4 flex items-center justify-between">
-  <h1 class="text-xl font-bold text-slate-800">상담 대기열</h1>
-  <button class="btn btn-primary" id="btnCreate">새 세션</button>
+  <h1 class="text-xl font-bold text-slate-800">원격 대기열</h1>
+  <button class="btn btn-primary" id="btnCreate">원격지원 코드 발급</button>
 </div>
 
 <div class="card mb-6 hidden" id="codeCard">

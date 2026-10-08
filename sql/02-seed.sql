@@ -15,6 +15,14 @@ INSERT INTO organizations (org_code, name, biz_no, phone, status, approved_at, p
 VALUES ('demo', '데모 고객센터', '000-00-00000', '02-000-0000', 'active', NOW(), 'basic')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
+-- 데모 고객사와 운영 조직의 상담 위젯을 켜 둔다.
+-- 허용 도메인을 비우면 개발 중 어디서나 붙는다.
+-- system 조직은 소개 페이지 오른쪽 아래 버블을 응대한다(LANDING_WIDGET_ORG).
+UPDATE organizations
+   SET widget_enabled = 1,
+       widget_key = COALESCE(widget_key, LOWER(HEX(RANDOM_BYTES(16))))
+ WHERE org_code IN ('demo', 'system');
+
 -- 플랫폼 운영자 (비밀번호: Test1234!admin)
 INSERT INTO agents (org_id, email, password_hash, name, phone, role, is_super, is_verified, is_active)
 SELECT o.id, 'operator@demo.local',

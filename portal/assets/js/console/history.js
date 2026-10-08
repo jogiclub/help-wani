@@ -1,6 +1,6 @@
 /**
  * 파일 위치: assets/js/console/history.js
- * 역할: 상담 이력 그리드
+ * 역할: 원격지원 이력 그리드
  */
 (function ($) {
     'use strict';

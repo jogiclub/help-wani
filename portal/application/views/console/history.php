@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/history.php
- * 역할: 상담 이력 검색 및 조회 (AG Grid)
+ * 역할: 원격지원 이력 검색 및 조회 (AG Grid)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -27,7 +27,7 @@ foreach ($sessions as $s)
     );
 }
 ?>
-<h1 class="mb-4 text-xl font-bold text-slate-800">상담 이력</h1>
+<h1 class="mb-4 text-xl font-bold text-slate-800">원격 이력</h1>
 
 <form class="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5"
       method="get" action="<?= base_url('console/history') ?>">

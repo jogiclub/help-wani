@@ -29,7 +29,27 @@ require_once __DIR__.'/env.php';
 | a PHP script and you can easily do that on your own.
 |
 */
-$config['base_url'] = env('APP_BASE_URL', 'http://localhost:8080/');
+// APP_BASE_URL 을 비워 두면 요청이 들어온 주소를 그대로 쓴다.
+// 개발 중 localhost 와 내부망 IP(192.168.x.x) 로 번갈아 접속할 때 필요하다.
+// CI3 기본 자동 감지는 SERVER_ADDR 을 쓰는데 도커 안에서는 컨테이너 IP 라서 쓸 수 없다.
+// 운영에서는 Host 헤더를 믿지 않도록 .env 에 실제 주소를 반드시 적는다.
+$config['base_url'] = env('APP_BASE_URL', '');
+
+if ($config['base_url'] === '')
+{
+    $rh_host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost';
+
+    // 헤더 값을 그대로 쓰지 않고 호스트[:포트] 형식만 허용한다.
+    if ( ! preg_match('/^[A-Za-z0-9.\-]+(:[0-9]{1,5})?$/', $rh_host))
+    {
+        $rh_host = 'localhost';
+    }
+
+    $rh_https = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
+        OR (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
+    $config['base_url'] = ($rh_https ? 'https://' : 'http://').$rh_host.'/';
+}
 /*
 |--------------------------------------------------------------------------
 | Index File
@@ -463,7 +483,7 @@ $config['csrf_token_name'] = 'csrf_test_name';
 $config['csrf_cookie_name'] = 'csrf_cookie_name';
 $config['csrf_expire'] = 7200;
 $config['csrf_regenerate'] = FALSE;
-$config['csrf_exclude_uris'] = array('api/launcher/.*', 'api/relay/.*');
+$config['csrf_exclude_uris'] = array('api/launcher/.*', 'api/relay/.*', 'api/widget/.*');
 /*
 |--------------------------------------------------------------------------
 | Output Compression

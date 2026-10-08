@@ -118,7 +118,7 @@ public sealed class TileEncoder
                 stride);
         }
 
-        var source = BitmapSource.Create(w, h, 96, 96, PixelFormats.Bgr32, null, _tileBuffer, h * stride, stride);
+        var source = BitmapSource.Create(w, h, 96, 96, PixelFormats.Bgr32, null, _tileBuffer, stride);
         source.Freeze();
 
         var encoder = new JpegBitmapEncoder { QualityLevel = Math.Clamp(quality, 10, 95) };
