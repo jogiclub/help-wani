@@ -10,8 +10,12 @@
 
     var grid = null;
 
-    /** 행 높이를 부제목에 맞춰 키웠으므로 한 줄짜리 칸은 세로 가운데에 둔다 */
-    var CENTER = 'flex items-center';
+    /**
+     * 행 높이를 부제목에 맞춰 키웠으므로 한 줄짜리 칸은 세로 가운데에 둔다.
+     * Tailwind 유틸리티는 레이어 안에 있어 AG Grid 기본 스타일을 이기지 못하므로 인라인 스타일로 준다.
+     * flex 로 맞추면 말줄임(…)이 사라지므로 줄 높이로 맞춘다(행 52px - 테두리).
+     */
+    var CENTER = { lineHeight: '50px' };
 
     /** 가져오기가 끝났으면 모달을 닫을 때 새 목록을 불러온다 */
     var importDone = false;
@@ -68,22 +72,22 @@
     function createGrid() {
         grid = RHGrid.create('guideGrid', {
             columnDefs: [
-                { headerName: '분류', field: 'category_name', width: 120, flex: 0, cellClass: CENTER,
+                { headerName: '분류', field: 'category_name', width: 120, flex: 0, cellStyle: CENTER,
                   valueFormatter: function (p) { return p.value || '분류 없음'; } },
                 { headerName: '제목', field: 'title', minWidth: 220, cellRenderer: titleRenderer },
-                { headerName: '키워드', field: 'keywords', minWidth: 140, cellClass: CENTER,
+                { headerName: '키워드', field: 'keywords', minWidth: 140, cellStyle: CENTER,
                   valueFormatter: function (p) { return p.value || '-'; } },
                 {
-                    headerName: '상태', field: 'status', width: 90, flex: 0, cellClass: CENTER,
+                    headerName: '상태', field: 'status', width: 90, flex: 0, cellStyle: CENTER,
                     cellRenderer: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
                     valueFormatter: function (p) { return STATUS_LABEL[p.value] || p.value; }
                 },
-                { headerName: '조회', field: 'view_count', width: 80, flex: 0, cellClass: CENTER,
+                { headerName: '조회', field: 'view_count', width: 80, flex: 0, cellStyle: CENTER,
                   filter: 'agNumberColumnFilter' },
-                { headerName: '수정', field: 'updated_at', width: 120, flex: 0, cellClass: CENTER,
+                { headerName: '수정', field: 'updated_at', width: 120, flex: 0, cellStyle: CENTER,
                   valueFormatter: RHGrid.shortDateTime },
                 {
-                    headerName: '관리', width: 230, flex: 0, sortable: false, filter: false, pinned: 'right',
+                    headerName: '관리', width: 230, minWidth: 230, flex: 0, sortable: false, filter: false, pinned: 'right',
                     cellRenderer: RHGrid.buttonsRenderer([
                         {
                             label: '보기', className: 'btn-secondary',
@@ -270,6 +274,19 @@
         $('#btnImport').on('click', function () {
             $('#importResult').addClass('hidden').empty();
             openModal('importModal');
+        });
+
+        $('#btnSaveTheme').on('click', function () {
+            var $btn = $(this).prop('disabled', true);
+            var theme = $('input[name="guideTheme"]:checked').val();
+
+            apiPost(GUIDE_URLS.themeSave, { theme: theme }, function (data, message) {
+                showToast(message, 'success');
+                // '사용 중' 표시를 고른 테마로 옮긴다.
+                $('[data-theme-current]').remove();
+                $('input[name="guideTheme"][value="' + data.theme + '"]').closest('label').find('.font-semibold')
+                    .append(' <span class="badge badge-green ml-1" data-theme-current>사용 중</span>');
+            }).always(function () { $btn.prop('disabled', false); });
         });
 
         $('#btnReindex').on('click', function () {

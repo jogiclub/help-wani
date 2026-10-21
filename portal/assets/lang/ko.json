@@ -226,5 +226,17 @@
   "customer.guide_link": "도움말 보기",
   "customer.guide_hint": "원격지원 전에 자주 묻는 질문을 먼저 확인해 보세요.",
   "widget.guide_suggest": "이 가이드가 도움이 될 수 있어요",
-  "widget.guide_open": "가이드 보기"
+  "widget.guide_open": "가이드 보기",
+  "guide.brand": "가이드",
+  "guide.home": "홈",
+  "guide.toc": "목차",
+  "guide.hero": "무엇을 도와드릴까요?",
+  "guide.faq_title": "자주 묻는 질문",
+  "guide.count": "가이드 {n}개",
+  "guide.more": "{n}개 더 보기",
+  "guide.related": "이 분류의 다른 가이드",
+  "guide.prev": "이전",
+  "guide.next": "다음",
+  "guide.reset": "검색 지우기",
+  "guide.permalink": "이 답변만 보기"
 }

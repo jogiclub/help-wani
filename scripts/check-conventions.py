@@ -554,7 +554,17 @@ def check_guide():
     if block and 'publish_new_messages' not in block.group(0):
         problems.append('Console::api_chat_send_guide 가 저장한 카드를 발행하지 않습니다 (publish_new_messages)')
 
-    # 4) 올린 이미지는 git 에 넣지 않는다.
+    # 4) 테마 목록(Guide_model::themes)의 키마다 뷰 파일이 있어야 한다. 없으면 그 테마를 고른 조직의 공개 화면이 깨진다.
+    model = read('portal/application/models/Guide_model.php')
+    block = re.search(r'function themes\(\).*?return array\((.*?)\);', model, re.S)
+    if block:
+        for key in re.findall(r"'([a-z]+)'\s*=>\s*array\('name'", block.group(1)):
+            if not os.path.isfile(os.path.join(ROOT, f'portal/application/views/guide/themes/{key}.php')):
+                problems.append(f'테마 "{key}" 의 뷰 views/guide/themes/{key}.php 가 없습니다')
+    else:
+        problems.append('Guide_model::themes() 를 찾지 못했습니다')
+
+    # 5) 올린 이미지는 git 에 넣지 않는다.
     if os.path.isdir(os.path.join(ROOT, 'portal/assets/uploads/guides')) and \
             'portal/assets/uploads/guides/*' not in read('.gitignore'):
         problems.append('.gitignore 에 portal/assets/uploads/guides/* 가 없습니다')
@@ -562,7 +572,7 @@ def check_guide():
     if problems:
         fail('가이드 규칙 위반 (CLAUDE.md 3.15)', '\n    '.join(problems[:10]))
     else:
-        ok('가이드 규칙 확인 (nocookie 임베드, 출력 이스케이프, 카드 발행, 업로드 제외)')
+        ok('가이드 규칙 확인 (nocookie 임베드, 출력 이스케이프, 카드 발행, 테마 뷰, 업로드 제외)')
 
 
 def check_live():

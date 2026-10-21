@@ -251,12 +251,22 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
   `html_escape()` 로, 글 블록은 `guide_text_html()` 로 내보냅니다.
 - 유튜브는 영상 id(11자)만 저장하고 **`youtube-nocookie.com/embed/{id}`** 로만 그립니다. 누르기 전에는 유튜브에
   요청하지 않고, iframe 에 `referrerpolicy="strict-origin-when-cross-origin"` 을 둡니다(유튜브가 Referer 를 요구).
-- 이미지는 `assets/uploads/guides/{org_id}/` 에 둡니다. 이 조직 폴더에 실제로 있는 파일만 블록에 받으며,
-  웹 서버(www-data)가 쓸 수 있어야 하고 git 에 넣지 않습니다.
+- 이미지는 `assets/uploads/guides/{org_id}/` 에 둡니다. 블록에는 이 조직 폴더에 실제로 있는 파일이나
+  **외부 https 주소**(다른 사이트 가이드를 guide.json 으로 옮겨 올 때)만 받고, http·`data:`·`javascript:` 는 막습니다.
+  화면 주소는 `guide_image_url()` 로 만들며 외부 이미지에는 Referer 를 보내지 않습니다(`referrerpolicy="no-referrer"`).
+  업로드 폴더는 웹 서버(www-data)가 쓸 수 있어야 하고 git 에 넣지 않습니다.
+- 주소(slug)는 영문 소문자, 숫자, 하이픈, 밑줄 60자까지이며 숫자만으로는 만들 수 없습니다(번호 접속과 겹침).
 - 가이드 카드는 `messages.meta`(`{type:'guide', article_id, title, subtitle, url}`)에 담고, 본문에도 제목과 주소를 넣습니다.
   **카드를 저장하면 발행도 합니다(3.11).** 주소는 `Guide_model::public_url()`(= `customer_url`) 로 만듭니다(3.13).
 - 위젯 자동 추천은 조직 설정 `guide_autosuggest`(기본 꺼짐)일 때만, 같은 글 1번, 대화당 3번까지입니다.
 - 매칭 가중치, 기준 점수, 조사/불용어는 `config/guide_match.php` 한 곳에서 고칩니다.
+- 공개 화면은 조직이 고른 **테마**(`organizations.guide_theme`)로 그립니다. 테마 목록은 `Guide_model::themes()` 한 곳,
+  뷰는 `views/guide/themes/{키}.php`, 모양은 `assets/css/guide-themes.css`(Tailwind 빌드 밖의 일반 CSS)입니다.
+  테마를 더하면 목록과 뷰 파일을 함께 만듭니다(검사가 뷰 누락을 잡습니다). 화면 데이터는 `Guide_model::page_data()` 하나로 만들고,
+  본문 블록은 모든 테마가 `views/guide/_article.php` 를 씁니다. `?theme=` 미리보기는 그 조직 관리자 세션에서만 받습니다.
+- 가이드 관리를 처음 열 때 글이 없으면 샘플 10개(`config/guide_samples.php`, 이미지 `assets/img/guide-samples/`)를
+  **임시 상태로** 만듭니다. 조직마다 한 번이며(`organizations.guide_seeded_at`), 다 지워도 다시 생기지 않습니다.
+  샘플 동영상을 바꿀 때는 유튜브 oEmbed 로 존재와 퍼가기 허용을 확인합니다.
 
 ---
 

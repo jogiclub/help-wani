@@ -4,13 +4,11 @@
  * 역할: 고객이 보는 공개 가이드 (목록, 검색, 상세) — /{조직코드}/guide
  *
  * 고객 화면이므로 조직이 정한 언어를 쓴다(CLAUDE.md 3.2). 공개(published) 글만 보인다.
+ * 화면 모양은 조직이 고른 테마(organizations.guide_theme)를 따른다. views/guide/page.php 가 테마 뷰를 고른다.
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Guide extends MY_Controller {
-
-    /** 검색 결과 최대 건수 */
-    const SEARCH_LIMIT = 20;
 
     public function __construct()
     {
@@ -25,48 +23,8 @@ class Guide extends MY_Controller {
     {
         $org = $this->require_org($org_code);
         $q = trim(mb_substr((string) $this->input->get('q'), 0, 100));
-        $results = NULL;
 
-        if ($q !== '')
-        {
-            $this->load->library('guide_matcher');
-            $results = $this->guide_matcher->match($org->id, $q, 'search', self::SEARCH_LIMIT);
-
-            // 낱말이 하나도 안 맞으면 제목에 그대로 들어 있는지 한 번 더 본다(1글자 질문 등).
-            if (empty($results))
-            {
-                $results = $this->title_contains($org->id, $q);
-            }
-        }
-
-        $groups = array();
-
-        if ($results === NULL)
-        {
-            foreach ($this->guide_model->list_articles($org->id, TRUE) as $article)
-            {
-                $key = $article->category_id ? (int) $article->category_id : 0;
-
-                if ( ! isset($groups[$key]))
-                {
-                    $groups[$key] = array(
-                        'name'     => $article->category_name ?: lang_text('guide.uncategorized'),
-                        'articles' => array(),
-                    );
-                }
-
-                $groups[$key]['articles'][] = $article;
-            }
-        }
-
-        $this->render('guide/index', array(
-            'page_title' => lang_text('guide.page_title', array('org' => $org->name)),
-            'org'        => $org,
-            'q'          => $q,
-            'results'    => $results,
-            'groups'     => $groups,
-            'widget_key' => $this->widget_key($org),
-        ), 'layouts/customer');
+        $this->render_page($org, NULL, $q, lang_text('guide.page_title', array('org' => $org->name)));
     }
 
     /**
@@ -93,16 +51,41 @@ class Guide extends MY_Controller {
             $this->session->set_userdata('guide_seen', array_slice($seen, -200));
         }
 
-        $this->render('guide/article', array(
-            'page_title' => $article->title,
-            'org'        => $org,
-            'article'    => $article,
-            'preview'    => FALSE,
-            'widget_key' => $this->widget_key($org),
-        ), 'layouts/customer');
+        $this->render_page($org, $article, '', $article->title);
     }
 
     // ------------------------------------------------------------------
+
+    protected function render_page($org, $article, $q, $title)
+    {
+        $data = $this->guide_model->page_data($org, $article, $q, $this->preview_theme($org));
+
+        $data['page_title'] = $title;
+        $data['preview']    = FALSE;
+        // 조직이 상담 위젯을 켜 두었으면 가이드를 읽다가 바로 상담을 열 수 있게 한다.
+        $data['widget_key'] = ((int) $org->widget_enabled === 1) ? (string) $org->widget_key : '';
+
+        $this->render('guide/page', $data, 'layouts/guide');
+    }
+
+    /**
+     * ?theme= 로 다른 테마를 미리 본다. 그 조직 관리자로 로그인한 경우에만 받는다(가이드 관리 > 테마 미리보기).
+     */
+    protected function preview_theme($org)
+    {
+        $theme = (string) $this->input->get('theme');
+        $themes = Guide_model::themes();
+
+        if ($theme === '' || ! isset($themes[$theme]))
+        {
+            return NULL;
+        }
+
+        $is_admin = $this->session->userdata('agent_role') === 'admin'
+            && (int) $this->session->userdata('org_id') === (int) $org->id;
+
+        return $is_admin ? $theme : NULL;
+    }
 
     protected function require_org($org_code)
     {
@@ -117,33 +100,5 @@ class Guide extends MY_Controller {
         $this->use_org_locale($org);
 
         return $org;
-    }
-
-    /**
-     * 조직이 상담 위젯을 켜 두었으면 가이드를 읽다가 바로 상담을 열 수 있게 한다.
-     */
-    protected function widget_key($org)
-    {
-        return ((int) $org->widget_enabled === 1) ? (string) $org->widget_key : '';
-    }
-
-    protected function title_contains($org_id, $q)
-    {
-        $rows = $this->db->select('id, slug, title, subtitle')
-                         ->where('org_id', (int) $org_id)
-                         ->where('status', 'published')
-                         ->group_start()->like('title', $q)->or_like('subtitle', $q)->group_end()
-                         ->limit(self::SEARCH_LIMIT)
-                         ->get('guide_articles')
-                         ->result();
-        $out = array();
-
-        foreach ($rows as $row)
-        {
-            $out[] = array('id' => (int) $row->id, 'slug' => $row->slug, 'title' => $row->title,
-                           'subtitle' => $row->subtitle, 'score' => 0, 'hits' => 0);
-        }
-
-        return $out;
     }
 }

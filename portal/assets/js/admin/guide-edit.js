@@ -58,7 +58,9 @@
         var $hint = $('<span class="image-drop-hint">').text('이미지를 여기로 끌어다 놓거나 눌러서 선택하세요');
 
         if (block.src) {
-            $img.attr('src', GUIDE_URLS.assetBase + block.src);
+            // 외부 https 이미지(guide.json 으로 옮겨 온 것)는 주소 그대로 보여준다.
+            $img.attr('src', /^https:\/\//i.test(block.src) ? block.src : GUIDE_URLS.assetBase + block.src)
+                .attr('referrerpolicy', 'no-referrer');
         } else {
             $img.addClass('hidden');
         }

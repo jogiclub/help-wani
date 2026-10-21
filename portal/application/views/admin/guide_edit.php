@@ -91,7 +91,7 @@ $initial = array(
           <div class="text-xs break-all text-slate-400"><?= html_escape($guide_base) ?></div>
           <input class="form-input font-mono text-sm" id="guideSlug" maxlength="60" value="<?= $a ? html_escape($a->slug) : '' ?>"
                  placeholder="printer-connect">
-          <div class="form-help">영문 소문자, 숫자, 하이픈(-). 비워 두면 번호로 접속합니다.
+          <div class="form-help">영문 소문자, 숫자, 하이픈(-), 밑줄(_). 비워 두면 번호로 접속합니다.
             guide.json 을 병합으로 올릴 때 같은 주소의 글을 덮어씁니다.</div>
           <?php if ($public_url): ?>
           <a class="mt-1 block truncate text-xs text-brand-600 hover:underline" id="guidePublicLink"

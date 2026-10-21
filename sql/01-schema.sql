@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS organizations (
   widget_position      ENUM('right','left') NOT NULL DEFAULT 'right' COMMENT '버블 위치',
   widget_offline_email VARCHAR(190) DEFAULT NULL COMMENT '오프라인 알림 받을 주소',
   guide_autosuggest    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '위젯에서 가이드 자동 추천',
+  guide_seeded_at      DATETIME     DEFAULT NULL COMMENT '가이드 샘플을 만든(또는 건너뛴) 시각, UTC',
+  guide_theme          VARCHAR(20)  NOT NULL DEFAULT 'card' COMMENT '공개 가이드 테마',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),

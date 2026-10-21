@@ -226,5 +226,17 @@
   "customer.guide_link": "ヘルプを見る",
   "customer.guide_hint": "リモートサポートの前に、よくある質問をご確認ください。",
   "widget.guide_suggest": "このガイドが役に立つかもしれません",
-  "widget.guide_open": "ガイドを見る"
+  "widget.guide_open": "ガイドを見る",
+  "guide.brand": "ガイド",
+  "guide.home": "ホーム",
+  "guide.toc": "目次",
+  "guide.hero": "どのようなご用件ですか？",
+  "guide.faq_title": "よくある質問",
+  "guide.count": "ガイド {n}件",
+  "guide.more": "さらに {n}件",
+  "guide.related": "このカテゴリのガイド",
+  "guide.prev": "前へ",
+  "guide.next": "次へ",
+  "guide.reset": "検索をクリア",
+  "guide.permalink": "この回答だけを見る"
 }

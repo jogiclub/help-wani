@@ -308,9 +308,9 @@ class Guide_model extends CI_Model {
 
         $slug = strtolower(trim((string) $this->value($input, 'slug')));
 
-        if ($slug !== '' && ( ! preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) || strlen($slug) > 60 || ctype_digit($slug)))
+        if ($slug !== '' && ( ! preg_match('/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/', $slug) || strlen($slug) > 60 || ctype_digit($slug)))
         {
-            return '주소는 영문 소문자, 숫자, 하이픈(-)으로 60자까지 쓸 수 있고 숫자만으로는 만들 수 없습니다.';
+            return '주소는 영문 소문자, 숫자, 하이픈(-), 밑줄(_)로 60자까지 쓸 수 있고 숫자만으로는 만들 수 없습니다.';
         }
 
         $status = (string) $this->value($input, 'status');
@@ -401,10 +401,10 @@ class Guide_model extends CI_Model {
                     return NULL;
                 }
 
-                // 이 조직이 올린 파일만 받는다. 외부 주소와 다른 조직 경로는 고객 화면에 끌어오지 않는다.
-                if ( ! $this->is_own_image($org_id, $src))
+                // 이 조직이 올린 파일이나 외부 https 주소만 받는다. 다른 조직 경로, http, data:, javascript: 는 막는다.
+                if ( ! $this->is_own_image($org_id, $src) && ! self::is_external_image($src))
                 {
-                    return '이 조직에 올린 이미지가 아니어서 뺐습니다('.mb_substr($src, 0, 80).').';
+                    return '이 조직에 올린 이미지나 https 주소가 아니어서 뺐습니다('.mb_substr($src, 0, 80).').';
                 }
 
                 return array('type' => 'image', 'src' => $src, 'caption' => $caption);
@@ -527,6 +527,24 @@ class Guide_model extends CI_Model {
         $pattern = '#^'.preg_quote($this->image_dir($org_id), '#').'[A-Za-z0-9_-]+\.(png|jpg|webp)$#';
 
         return (bool) preg_match($pattern, (string) $src) && is_file(FCPATH.$src);
+    }
+
+    /**
+     * 외부 이미지 주소로 받을 수 있는지 본다. https 만 받는다(https 화면에 http 이미지는 브라우저가 막는다).
+     * 다른 사이트의 가이드를 guide.json 으로 옮겨 올 때 쓴다. 파일은 그 사이트에 있으므로 지우거나 정리하지 않는다.
+     */
+    public static function is_external_image($src)
+    {
+        $src = (string) $src;
+
+        if (strlen($src) > 1000 || ! preg_match('#^https://[^\s"\'<>]+$#i', $src))
+        {
+            return FALSE;
+        }
+
+        $host = parse_url($src, PHP_URL_HOST);
+
+        return is_string($host) && $host !== '' && filter_var($src, FILTER_VALIDATE_URL) !== FALSE;
     }
 
     protected function image_paths($blocks)
@@ -715,6 +733,293 @@ class Guide_model extends CI_Model {
         }
 
         return $count;
+    }
+
+    // ------------------------------------------------------------------
+    // 공개 화면 (테마, 목차)
+    // ------------------------------------------------------------------
+
+    /**
+     * 공개 가이드 테마. 키는 organizations.guide_theme 에 저장되는 값이자 views/guide/themes/{키}.php 이름이다.
+     * 순서가 관리 화면의 번호(1~5)다.
+     */
+    public static function themes()
+    {
+        return array(
+            'card'   => array('name' => '기본 카드형',     'desc' => '가운데 한 줄로 분류와 가이드를 보여줍니다. 가이드가 적을 때 알맞습니다.'),
+            'docs'   => array('name' => '문서형 (왼쪽 목차)', 'desc' => '왼쪽에 번호 목차를 두고 오른쪽에 본문을 읽습니다. 사용 설명서처럼 글이 많을 때 알맞습니다.'),
+            'portal' => array('name' => '헬프센터형',       'desc' => '큰 검색창과 분류 카드로 시작합니다. 고객이 먼저 검색하도록 이끌 때 알맞습니다.'),
+            'faq'    => array('name' => 'FAQ 아코디언형',   'desc' => '질문을 누르면 그 자리에서 답이 펼쳐집니다. 짧은 자주 묻는 질문에 알맞습니다.'),
+            'dark'   => array('name' => '다크 미니멀형',    'desc' => '어두운 배경에 큰 글씨로 읽습니다. 기술 서비스나 야간 사용이 많을 때 알맞습니다.'),
+        );
+    }
+
+    /**
+     * 조직 테마. 허용 목록 밖이면 기본(card).
+     */
+    public static function theme_of($org)
+    {
+        $themes = self::themes();
+        $theme  = isset($org->guide_theme) ? (string) $org->guide_theme : 'card';
+
+        return isset($themes[$theme]) ? $theme : 'card';
+    }
+
+    public function set_theme($org_id, $theme)
+    {
+        $themes = self::themes();
+
+        if ( ! isset($themes[$theme]))
+        {
+            return 0;
+        }
+
+        $this->db->where('id', (int) $org_id)->update('organizations', array('guide_theme' => $theme));
+
+        return 1;
+    }
+
+    /**
+     * 공개 목차. 분류별 묶음과, 이전/다음 글을 찾기 위한 한 줄 목록을 함께 돌려준다.
+     *
+     * @return array {groups: [{id, name, articles: [..]}], flat: [..]}
+     */
+    public function public_nav($org_id)
+    {
+        $groups = array();
+        $flat = array();
+
+        foreach ($this->list_articles($org_id, TRUE) as $article)
+        {
+            $key = $article->category_id ? (int) $article->category_id : 0;
+
+            if ( ! isset($groups[$key]))
+            {
+                $groups[$key] = array(
+                    'id'       => $key,
+                    'name'     => $article->category_name ?: lang_text('guide.uncategorized'),
+                    'articles' => array(),
+                );
+            }
+
+            $groups[$key]['articles'][] = $article;
+            $flat[] = $article;
+        }
+
+        return array('groups' => array_values($groups), 'flat' => $flat);
+    }
+
+    /**
+     * 공개 화면(목록/검색/상세) 공통 데이터. 공개 화면과 관리자 미리보기가 같은 값을 쓴다.
+     * 테마 뷰(views/guide/themes/*.php)는 이 값만 보고 그린다.
+     *
+     * @param object|null $article 상세면 글, 목록이면 NULL
+     * @param string      $q       검색어(목록에서만)
+     */
+    public function page_data($org, $article = NULL, $q = '', $theme = NULL)
+    {
+        $nav = $this->public_nav($org->id);
+        $results = NULL;
+
+        if ($article === NULL && $q !== '')
+        {
+            $this->load->library('guide_matcher');
+            $results = $this->guide_matcher->match($org->id, $q, 'search', 20);
+
+            // 낱말이 하나도 안 맞으면 제목/부제목에 그대로 들어 있는지 한 번 더 본다(1글자 질문 등).
+            if (empty($results))
+            {
+                $results = $this->title_contains($org->id, $q);
+            }
+        }
+
+        // 상세: 분류 이름과 목차상 이전/다음 글
+        $prev = $next = NULL;
+        $category = '';
+
+        if ($article !== NULL)
+        {
+            foreach ($nav['flat'] as $index => $item)
+            {
+                if ((int) $item->id === (int) $article->id)
+                {
+                    $prev = $index > 0 ? $nav['flat'][$index - 1] : NULL;
+                    $next = isset($nav['flat'][$index + 1]) ? $nav['flat'][$index + 1] : NULL;
+                    $category = $item->category_name ?: '';
+                }
+            }
+
+            if ($category === '' && $article->category_id)
+            {
+                $row = $this->get_category($org->id, $article->category_id);
+                $category = $row ? $row->name : '';
+            }
+        }
+
+        $theme = $theme ?: self::theme_of($org);
+
+        // FAQ 테마는 목록에서 답을 그 자리에서 펼치므로 본문까지 읽는다. 다른 테마는 목록에 본문이 필요 없다.
+        $bodies = array();
+
+        if ($theme === 'faq' && $article === NULL && $results === NULL)
+        {
+            $rows = $this->db->select('id, blocks, updated_at')
+                             ->where('org_id', (int) $org->id)
+                             ->where('status', 'published')
+                             ->get('guide_articles')
+                             ->result();
+
+            foreach ($rows as $row)
+            {
+                $bodies[(int) $row->id] = $this->decode($row);
+            }
+        }
+
+        // 테마 강조색은 상담 위젯 색을 따른다. 허용 형식이 아니면 기본 파랑.
+        $accent = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $org->widget_color) ? $org->widget_color : '#2563eb';
+
+        return array(
+            'org'       => $org,
+            'theme'     => $theme,
+            'bodies'    => $bodies,
+            'accent'    => $accent,
+            'base'      => base_url($org->org_code.'/guide'),
+            'groups'    => $nav['groups'],
+            'total'     => count($nav['flat']),
+            'q'         => $q,
+            'results'   => $results,
+            'article'   => $article,
+            'category'  => $category,
+            'prev'      => $prev,
+            'next'      => $next,
+        );
+    }
+
+    protected function title_contains($org_id, $q)
+    {
+        $rows = $this->db->select('id, slug, title, subtitle')
+                         ->where('org_id', (int) $org_id)
+                         ->where('status', 'published')
+                         ->group_start()->like('title', $q)->or_like('subtitle', $q)->group_end()
+                         ->limit(20)
+                         ->get('guide_articles')
+                         ->result();
+        $out = array();
+
+        foreach ($rows as $row)
+        {
+            $out[] = array('id' => (int) $row->id, 'slug' => $row->slug, 'title' => $row->title,
+                           'subtitle' => $row->subtitle, 'score' => 0, 'hits' => 0);
+        }
+
+        return $out;
+    }
+
+    // ------------------------------------------------------------------
+    // 샘플
+    // ------------------------------------------------------------------
+
+    /**
+     * 가이드 관리를 처음 열 때 글이 없으면 샘플(config/guide_samples.php)을 만든다.
+     * 조직마다 한 번만 한다. 표시(guide_seeded_at)를 먼저 찍어 동시에 두 번 열어도 한 번만 만들고,
+     * 관리자가 샘플을 모두 지운 뒤 다시 열어도 되살리지 않는다. 이미 글이 있는 조직은 표시만 찍는다.
+     * 샘플은 모두 임시(draft) 상태라 고객 화면과 상담 추천에 바로 나오지 않는다.
+     *
+     * @return int 만든 글 수
+     */
+    public function seed_samples($org, $agent_id = NULL)
+    {
+        $this->db->where('id', (int) $org->id)
+                 ->where('guide_seeded_at IS NULL', NULL, FALSE)
+                 ->update('organizations', array('guide_seeded_at' => date('Y-m-d H:i:s')));
+
+        if ($this->db->affected_rows() === 0 || $this->count_articles($org->id) > 0)
+        {
+            return 0;
+        }
+
+        $this->config->load('guide_samples', TRUE);
+        $samples = $this->config->item('guide_samples');
+
+        $replace = array(
+            '{org}'          => $org->name,
+            '{phone}'        => $org->phone ?: '-',
+            '{customer_url}' => customer_url($org->org_code),
+        );
+
+        $category_ids = array();
+
+        foreach ($samples['categories'] as $category)
+        {
+            $category_ids[$category['key']] = $this->save_category($org->id, 0, $category['name'], $category['sort_order']);
+        }
+
+        $this->replace_synonyms($org->id, $samples['synonyms']);
+        $created = 0;
+
+        foreach ($samples['articles'] as $article)
+        {
+            $blocks = array();
+
+            foreach ($article['blocks'] as $block)
+            {
+                if ($block['type'] === 'text')
+                {
+                    $block['text'] = strtr($block['text'], $replace);
+                }
+                elseif ($block['type'] === 'image')
+                {
+                    $block['src'] = $this->copy_sample_image($org->id, $block['sample']);
+                    unset($block['sample']);
+
+                    if ($block['src'] === NULL)
+                    {
+                        continue;
+                    }
+                }
+
+                $blocks[] = $block;
+            }
+
+            $article['blocks'] = $blocks;
+            $article['status'] = 'draft';
+            $article['category_id'] = isset($category_ids[$article['category']]) ? $category_ids[$article['category']] : 0;
+
+            $clean = $this->clean_article($org->id, $article);
+
+            // 같은 주소가 있으면 주소 없이 만든다(번호로 접속).
+            if (is_array($clean) && $this->slug_taken($org->id, $clean['slug']))
+            {
+                $clean['slug'] = NULL;
+            }
+
+            if (is_array($clean))
+            {
+                $this->save_article($org->id, 0, $clean, $agent_id);
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * 샘플 이미지(assets/img/guide-samples/)를 조직 이미지 폴더로 복사한다. 실패하면 NULL.
+     * 조직 폴더에 있어야 글 블록에 들어갈 수 있다(is_own_image).
+     */
+    protected function copy_sample_image($org_id, $name)
+    {
+        if ( ! preg_match('/^[a-z0-9-]+\.(png|jpg|webp)$/', (string) $name, $m))
+        {
+            return NULL;
+        }
+
+        $from = FCPATH.'assets/img/guide-samples/'.$name;
+        $dir  = $this->image_dir($org_id);
+        is_dir(FCPATH.$dir) OR @mkdir(FCPATH.$dir, 0775, TRUE);
+        $src  = $dir.bin2hex(random_bytes(10)).'.'.$m[1];
+
+        return (is_file($from) && @copy($from, FCPATH.$src)) ? $src : NULL;
     }
 
     // ------------------------------------------------------------------

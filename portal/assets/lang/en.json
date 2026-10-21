@@ -226,5 +226,17 @@
   "customer.guide_link": "Browse help guides",
   "customer.guide_hint": "Check common questions before starting remote support.",
   "widget.guide_suggest": "This guide may help",
-  "widget.guide_open": "Open guide"
+  "widget.guide_open": "Open guide",
+  "guide.brand": "Guide",
+  "guide.home": "Home",
+  "guide.toc": "Contents",
+  "guide.hero": "How can we help?",
+  "guide.faq_title": "Frequently asked questions",
+  "guide.count": "{n} guides",
+  "guide.more": "Show {n} more",
+  "guide.related": "More in this category",
+  "guide.prev": "Previous",
+  "guide.next": "Next",
+  "guide.reset": "Clear search",
+  "guide.permalink": "Open this answer"
 }

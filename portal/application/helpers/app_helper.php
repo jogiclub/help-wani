@@ -145,6 +145,18 @@ if ( ! function_exists('check_uploaded_image'))
     }
 }
 
+if ( ! function_exists('guide_image_url'))
+{
+    /**
+     * 가이드 이미지 블록의 화면 주소. 외부 https 주소는 그대로, 이 조직에 올린 파일은 포털 주소로 만든다.
+     * 출력할 때는 html_escape() 를 함께 쓴다.
+     */
+    function guide_image_url($src)
+    {
+        return preg_match('#^https://#i', (string) $src) ? (string) $src : base_url($src);
+    }
+}
+
 if ( ! function_exists('guide_text_html'))
 {
     /**

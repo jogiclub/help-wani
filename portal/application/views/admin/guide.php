@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/admin/guide.php
- * 역할: 가이드 관리 목록(AG Grid), 매칭 시험, 분류/동의어 관리, guide.json 내려받기/올리기
+ * 역할: 가이드 관리 목록(AG Grid), 공개 페이지 테마, 매칭 시험, 분류/동의어 관리, guide.json 내려받기/올리기
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -22,12 +22,43 @@ foreach ($categories as $c)
   <a class="btn btn-sm btn-primary" href="<?= base_url('admin/guide/new') ?>">새 가이드</a>
 </div>
 
+<?php if ( ! empty($seeded)): ?>
+<div class="alert alert-info mb-4">
+  처음 오셨네요. 어떻게 쓰는지 볼 수 있도록 <b>샘플 가이드 <?= (int) $seeded ?>개</b>를 만들었습니다.
+  모두 <b>임시</b> 상태라 고객에게는 아직 보이지 않습니다. 내용을 우리 조직에 맞게 고친 뒤 공개하거나, 필요 없으면 삭제하세요.
+  샘플은 다시 만들어지지 않습니다.
+</div>
+<?php endif; ?>
+
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
   <div class="card overflow-hidden lg:col-span-2">
     <div id="guideGrid" style="height: calc(100vh - 240px); min-height: 380px;"></div>
   </div>
 
   <div class="space-y-4">
+    <div class="card">
+      <div class="card-header flex items-center justify-between">
+        <span>공개 페이지 테마</span>
+        <button type="button" class="btn btn-sm btn-primary" id="btnSaveTheme">적용</button>
+      </div>
+      <div class="card-body space-y-2" id="themeList">
+        <?php $no = 0; foreach ($themes as $key => $t): $no++; ?>
+        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50">
+          <input type="radio" name="guideTheme" value="<?= html_escape($key) ?>" class="mt-1" <?= $key === $theme ? 'checked' : '' ?>>
+          <span class="theme-thumb theme-thumb-<?= html_escape($key) ?>" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-sm font-semibold text-slate-800"><?= $no ?>. <?= html_escape($t['name']) ?>
+              <?php if ($key === $theme): ?><span class="badge badge-green ml-1" data-theme-current>사용 중</span><?php endif; ?></span>
+            <span class="mt-0.5 block text-xs text-slate-500"><?= html_escape($t['desc']) ?></span>
+            <a class="mt-1 inline-block text-xs text-brand-600 hover:underline" target="_blank" rel="noopener"
+               href="<?= html_escape($preview_base.'?theme='.$key) ?>">미리보기</a>
+          </span>
+        </label>
+        <?php endforeach; ?>
+        <div class="form-help">미리보기는 이 조직 관리자로 로그인한 브라우저에서만 보입니다. 강조색은 상담 위젯 색을 따릅니다.</div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">매칭 시험</div>
       <div class="card-body space-y-3">
@@ -121,7 +152,8 @@ foreach ($categories as $c)
       <div class="image-drop" id="importDrop">
         <span class="image-drop-hint">guide.json 을 여기로 끌어다 놓거나 눌러서 선택하세요 (2MB 이하)</span>
       </div>
-      <div class="form-help">이미지는 이 조직에 올린 파일만 이어집니다. 다른 조직에서 내려받은 파일의 이미지 블록은 빠집니다.</div>
+      <div class="form-help">이미지는 이 조직에 올린 파일과 외부 https 주소가 이어집니다. 외부 이미지는 그 사이트에 있는 파일을 그대로 보여주므로
+        그 사이트에서 지우면 함께 사라집니다. 다른 조직 폴더의 이미지와 http 주소는 빠집니다.</div>
       <div id="importResult" class="hidden max-h-48 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"></div>
     </div>
   </div>
@@ -139,7 +171,8 @@ var GUIDE_URLS = {
     categoryDelete: '<?= base_url('admin/guide/api/category_delete') ?>',
     synonymsSave:   '<?= base_url('admin/guide/api/synonyms_save') ?>',
     reindex:        '<?= base_url('admin/guide/api/reindex') ?>',
-    matchTest:      '<?= base_url('admin/guide/api/match_test') ?>'
+    matchTest:      '<?= base_url('admin/guide/api/match_test') ?>',
+    themeSave:      '<?= base_url('admin/guide/api/theme_save') ?>'
 };
 </script>
 <script src="<?= base_url('assets/js/admin/guide.js') ?>"></script>

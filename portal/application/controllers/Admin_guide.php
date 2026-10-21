@@ -27,6 +27,15 @@ class Admin_guide extends Admin_Controller {
     public function index()
     {
         $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+        // 처음 열었고 글이 없으면 샘플을 만든다(조직마다 한 번, 모두 임시 상태).
+        $seeded = $this->guide_model->seed_samples($org, $this->agent->id);
+
+        if ($seeded > 0)
+        {
+            $this->log_model->audit($org->id, $this->agent->id, 'guide_seed', 'articles='.$seeded, client_ip());
+        }
+
         $rows = array();
 
         foreach ($this->guide_model->list_articles($org->id) as $a)
@@ -53,6 +62,7 @@ class Admin_guide extends Admin_Controller {
 
         $this->render('admin/guide', array(
             'page_title'   => '가이드 관리',
+            'seeded'       => $seeded,
             'use_grid'     => TRUE,
             'use_dropzone' => TRUE,
             'org'          => $org,
@@ -60,6 +70,10 @@ class Admin_guide extends Admin_Controller {
             'categories'   => $this->guide_model->list_categories($org->id),
             'synonyms'     => implode("\n", $synonyms),
             'guide_url'    => customer_url($org->org_code.'/guide'),
+            'themes'       => Guide_model::themes(),
+            'theme'        => Guide_model::theme_of($org),
+            // 미리보기는 지금 연 주소로 연다(관리자 로그인 세션이 있어야 ?theme= 를 받는다).
+            'preview_base' => base_url($org->org_code.'/guide'),
         ));
     }
 
@@ -110,12 +124,11 @@ class Admin_guide extends Admin_Controller {
 
         $this->use_org_locale($org);
 
-        $this->render('guide/article', array(
-            'page_title' => $article->title,
-            'org'        => $org,
-            'article'    => $article,
-            'preview'    => TRUE,
-        ), 'layouts/customer');
+        $data = $this->guide_model->page_data($org, $article);
+        $data['page_title'] = $article->title;
+        $data['preview']    = TRUE;
+
+        $this->render('guide/page', $data, 'layouts/guide');
     }
 
     /**
@@ -337,6 +350,26 @@ class Admin_guide extends Admin_Controller {
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'guide_synonyms_save', 'groups='.$saved, client_ip());
 
         api_response(TRUE, '동의어 '.$saved.'묶음을 저장했습니다.', array('count' => $saved));
+    }
+
+    /**
+     * POST /admin/guide/api/theme_save
+     * 공개 가이드 화면 테마. 허용 목록(Guide_model::themes) 밖의 값은 받지 않는다.
+     */
+    public function api_theme_save()
+    {
+        $theme = (string) $this->input->post('theme', TRUE);
+
+        if ( ! $this->guide_model->set_theme($this->agent->org_id, $theme))
+        {
+            api_response(FALSE, '고를 수 없는 테마입니다.', array(), 400);
+            return;
+        }
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'guide_theme', 'theme='.$theme, client_ip());
+
+        $themes = Guide_model::themes();
+        api_response(TRUE, '공개 페이지 테마를 "'.$themes[$theme]['name'].'" 으로 바꿨습니다.', array('theme' => $theme));
     }
 
     /**
