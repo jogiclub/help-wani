@@ -132,14 +132,16 @@ public sealed class PortalApiClient : IDisposable
         }
 
         ApiResponse<T>? body = null;
+        var raw = await res.Content.ReadAsStringAsync(ct);
 
         try
         {
-            body = await res.Content.ReadFromJsonAsync<ApiResponse<T>>(cancellationToken: ct);
+            body = JsonSerializer.Deserialize<ApiResponse<T>>(raw, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         }
         catch (JsonException)
         {
-            // 아래 공통 오류 처리로 넘어간다.
+            // data 형식이 달라도(예: 빈 값이 [] 로 온 경우) message 는 읽어서 보여 준다.
+            throw new PortalApiException(ExtractMessage(raw) ?? "서버 응답을 해석하지 못했습니다.");
         }
 
         if (body == null)
@@ -155,6 +157,24 @@ public sealed class PortalApiClient : IDisposable
         }
 
         return body.Data;
+    }
+
+    private static string? ExtractMessage(string raw)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(raw);
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                   && doc.RootElement.TryGetProperty("message", out var m)
+                   && m.ValueKind == JsonValueKind.String
+                   && !string.IsNullOrEmpty(m.GetString())
+                ? m.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     public void Dispose() => _http.Dispose();

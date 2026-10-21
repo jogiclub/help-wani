@@ -17,7 +17,7 @@ public static class AppInfo
     /// </summary>
 #if TEST_BUILD
     public static string PortalBaseUrl =>
-        Environment.GetEnvironmentVariable("REMOTEHELP_PORTAL") ?? "http://118.36.197.219:8099/";
+        Environment.GetEnvironmentVariable("REMOTEHELP_PORTAL") ?? "https://help.wani.im/";
 #else
     public static string PortalBaseUrl =>
         Environment.GetEnvironmentVariable("REMOTEHELP_PORTAL") ?? "https://portal.example.com/";

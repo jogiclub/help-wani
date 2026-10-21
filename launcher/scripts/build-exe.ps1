@@ -17,7 +17,7 @@
 
     -TestBuild : 시험 서버용 빌드. TEST_BUILD 상수를 켜서 시험 포털 주소 고정과
                  시험 중계 서버 인증서 예외(AppInfo.cs, RelayClient.cs)를 포함한다.
-                 시험 서버(http://118.36.197.219:8099/demo/download) 전용이며
+                 시험 서버(https://help.wani.im/demo/download) 전용이며
                  서명과 함께 쓸 수 없고, 운영 고객에게 배포하면 안 된다.
 
     산출물은 항상 -OutDir(기본 portal\assets\downloads)에 RemoteHelp.exe 로 복사한다.
@@ -121,7 +121,7 @@ if ($Viewer) {
 
 if ($TestBuild) {
     Write-Step "다음 할 일 (시험 빌드)"
-    Write-Host " - 시험 서버에 배포됨: http://118.36.197.219:8099/demo/download"
+    Write-Host " - 시험 서버에 배포됨: https://help.wani.im/demo/download"
     Write-Host " - 내려받은 RemoteHelp_demo.exe 를 실행해 확인. 운영 고객에게는 배포하지 마세요."
     return
 }

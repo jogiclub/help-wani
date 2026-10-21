@@ -13,7 +13,7 @@ public static class AppInfo
     /// 개발 중에는 REMOTEHELP_PORTAL 환경변수로 바꿀 수 있다.
     /// </summary>
 #if TEST_BUILD
-    public const string DefaultPortal = "http://118.36.197.219:8099/";
+    public const string DefaultPortal = "https://help.wani.im/";
 
     /// <summary>시험 서버의 자체 서명 인증서를 허용할 호스트. 시험 빌드에만 존재한다.</summary>
     public const string TestTrustedHost = "118.36.197.219";
