@@ -5,29 +5,55 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 $is_super = (bool) $this->session->userdata('is_super');
+
+// 상단 메뉴. 조직 관리 하위 화면(상담원 관리, 조직 정보)도 관리자에게는 여기 바로 둔다.
+// 상담 위젯 설정은 상담 대화 화면의 설정 드로어에 있다.
+// 조직 관리(/admin 통계) 자체는 메뉴에 두지 않고 왼쪽 위 서비스 이름을 누르면 열린다.
+// [주소, 이름, 현재 화면 여부]. '|' 는 구분선.
+$uri  = trim(uri_string(), '/');
+$here = function ($path, $exact = FALSE) use ($uri) {
+    return $exact ? $uri === $path : ($uri === $path || strpos($uri, $path.'/') === 0);
+};
+$is_admin = $this->session->userdata('agent_role') === 'admin';
+// 상담원은 /admin 에 들어갈 수 없으므로 원격지원으로 보낸다.
+$home_url = $is_admin ? 'admin' : 'console';
+$menu = array(
+    // console/session/{id} (원격 화면)은 원격지원에서 들어가므로 원격지원에 불을 켠다.
+    array('console', '원격지원', $uri === 'console' || strpos($uri, 'console/session') === 0),
+    array('console/chat', '상담 대화', $here('console/chat')),
+);
+if ($is_admin)
+{
+    $menu[] = '|';
+    $menu[] = array('admin/agents', '상담원 관리', $here('admin/agents'));
+    $menu[] = array('admin/organization', '조직 정보', $here('admin/organization'));
+    $menu[] = array('admin/guide', '가이드 관리', $here('admin/guide'));
+}
 ?>
 <!doctype html>
 <html lang="<?= html_escape(isset($i18n) ? $i18n["locale"] : "ko") ?>">
 <head>
-<?php $this->load->view('layouts/_head', array('use_grid' => isset($use_grid) ? $use_grid : FALSE)); ?>
+<?php $this->load->view('layouts/_head', array(
+    'use_grid'     => isset($use_grid) ? $use_grid : FALSE,
+    'use_dropzone' => isset($use_dropzone) ? $use_dropzone : FALSE,
+)); ?>
 </head>
 <body class="min-h-screen">
 
 <header class="bg-slate-900 text-white">
   <div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-    <a class="text-lg font-bold" href="<?= base_url('console') ?>"><?= html_escape($app_name) ?></a>
+    <a class="text-lg font-bold" href="<?= base_url($home_url) ?>"
+       <?= $is_admin ? 'title="조직 관리"' : '' ?>><?= html_escape($app_name) ?></a>
 
-    <nav class="hidden gap-1 sm:flex">
-      <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('console') ?>">원격 대기열</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('console/chat') ?>">상담 대화</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('console/history') ?>">원격 이력</a>
-      <?php if ($this->session->userdata('agent_role') === 'admin'): ?>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white"
-         href="<?= base_url('admin') ?>">조직 관리</a>
-      <?php endif; ?>
+    <nav class="hidden flex-wrap gap-1 sm:flex">
+      <?php foreach ($menu as $item): ?>
+        <?php if ($item === '|'): ?>
+          <span class="mx-1 my-1.5 w-px bg-slate-700" aria-hidden="true"></span>
+        <?php else: ?>
+          <a class="rounded px-3 py-1.5 text-sm <?= $item[2] ? 'bg-slate-800 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' ?>"
+             href="<?= base_url($item[0]) ?>"<?= $item[2] ? ' aria-current="page"' : '' ?>><?= $item[1] ?></a>
+        <?php endif; ?>
+      <?php endforeach; ?>
     </nav>
 
     <div class="ml-auto flex items-center gap-3">

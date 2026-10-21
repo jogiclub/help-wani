@@ -27,25 +27,12 @@ class Session_model extends CI_Model {
         return $this->db->get_where($this->table, array('id' => (int) $id))->row();
     }
 
-    /**
-     * 대기열 목록 (오늘 생성된 세션 + 진행 중인 세션)
-     */
-    public function list_queue($org_id, $limit = 50)
-    {
-        return $this->db->query("
-            SELECT s.*, a.name AS agent_name
-            FROM sessions s
-            JOIN agents a ON a.id = s.agent_id
-            WHERE s.org_id = ?
-              AND (s.status IN ('issued','verified','waiting','connected')
-                   OR s.created_at >= DATE_SUB(NOW(), INTERVAL 12 HOUR))
-            ORDER BY s.id DESC
-            LIMIT ?
-        ", array((int) $org_id, (int) $limit))->result();
-    }
+    /** 아직 끝나지 않은 원격 세션 상태 */
+    const ACTIVE_STATUSES = array('issued', 'verified', 'waiting', 'connected');
 
     /**
-     * 상담 이력 검색
+     * 원격지원 목록 검색 (원격지원 화면이 3초마다 부른다)
+     * status 가 'active' 이면 진행 중인 세션만, date_from/date_to 는 UTC 'Y-m-d H:i:s' 로 받는다.
      */
     public function search_history($org_id, $filters = array(), $limit = 50, $offset = 0)
     {
@@ -67,17 +54,24 @@ class Session_model extends CI_Model {
 
         if ( ! empty($filters['status']))
         {
-            $this->db->where('s.status', $filters['status']);
+            if ($filters['status'] === 'active')
+            {
+                $this->db->where_in('s.status', self::ACTIVE_STATUSES);
+            }
+            else
+            {
+                $this->db->where('s.status', $filters['status']);
+            }
         }
 
         if ( ! empty($filters['date_from']))
         {
-            $this->db->where('s.created_at >=', $filters['date_from'].' 00:00:00');
+            $this->db->where('s.created_at >=', $filters['date_from']);
         }
 
         if ( ! empty($filters['date_to']))
         {
-            $this->db->where('s.created_at <=', $filters['date_to'].' 23:59:59');
+            $this->db->where('s.created_at <=', $filters['date_to']);
         }
 
         return $this->db->order_by('s.id', 'DESC')

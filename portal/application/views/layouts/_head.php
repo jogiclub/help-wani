@@ -7,6 +7,7 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 $use_grid = isset($use_grid) ? $use_grid : FALSE;
+$use_dropzone = isset($use_dropzone) ? $use_dropzone : FALSE;
 $i18n = isset($i18n) ? $i18n : array('locale' => 'ko', 'intl' => 'ko-KR', 'timezone' => 'Asia/Seoul', 'messages' => array());
 $icon_names = isset($icon_names) ? $icon_names : array();
 ?>
@@ -43,3 +44,9 @@ $icon_names = isset($icon_names) ? $icon_names : array();
 <script src="<?= base_url('assets/js/grid.js') ?>"></script>
 <?php endif; ?>
 <script src="<?= base_url('assets/js/common.js') ?>"></script>
+<?php if ($use_dropzone): ?>
+<!-- Dropzone.js 6.3.5 (MIT). dist/dropzone-min.js 가 window.Dropzone 을 만드는 브라우저용 빌드다.
+     기본 CSS 는 쓰지 않고 tailwind.src.css 의 .image-drop 으로 그린다. 이미지 선택은 모두 image-drop.js 를 거친다. -->
+<script src="https://cdn.jsdelivr.net/npm/dropzone@6.3.5/dist/dropzone-min.js"></script>
+<script src="<?= base_url('assets/js/image-drop.js') ?>"></script>
+<?php endif; ?>

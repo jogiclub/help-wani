@@ -53,6 +53,36 @@
     .card-body   { @apply p-5; }
     .card-footer { @apply px-5 py-3 border-t border-slate-200 text-sm text-slate-500; }
 
+    /* 드로어 (common.js 의 openDrawer / closeDrawer). 확인 모달(z-50)이 위에 뜨도록 z-40 에 둔다. */
+    .drawer-root {
+        @apply invisible fixed inset-0 z-40;
+        transition: visibility 0s linear .2s;
+    }
+    .drawer-root.is-open { @apply visible; transition-delay: 0s; }
+    .drawer-backdrop {
+        @apply absolute inset-0 bg-slate-900/40 opacity-0 transition-opacity duration-200;
+    }
+    .drawer-root.is-open .drawer-backdrop { @apply opacity-100; }
+    .drawer-panel {
+        @apply absolute inset-y-0 right-0 flex w-full max-w-lg translate-x-full flex-col bg-white shadow-xl
+               outline-none transition-transform duration-200;
+    }
+    .drawer-root.is-open .drawer-panel { @apply translate-x-0; }
+    .drawer-header { @apply flex items-center gap-3 border-b border-slate-200 px-5 py-4; }
+    .drawer-title  { @apply text-base font-semibold text-slate-800; }
+    .drawer-body   { @apply flex-1 space-y-5 overflow-y-auto px-5 py-5; }
+    .drawer-footer { @apply flex justify-end gap-2 border-t border-slate-200 px-5 py-3; }
+
+    /* 이미지 선택 영역 (Dropzone.js, assets/js/image-drop.js). dz-* 클래스는 Dropzone 이 붙인다. */
+    .image-drop {
+        @apply flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg
+               border-2 border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-center
+               transition-colors hover:border-brand-500 hover:bg-brand-50;
+    }
+    .image-drop.dz-drag-hover { @apply border-brand-500 bg-brand-50; }
+    .image-drop.is-uploading  { @apply pointer-events-none opacity-60; }
+    .image-drop-hint          { @apply text-xs text-slate-500; }
+
     /* 폼 */
     .form-label { @apply block text-sm font-medium text-slate-700 mb-1; }
     .form-input {

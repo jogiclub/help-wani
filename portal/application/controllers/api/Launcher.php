@@ -61,7 +61,7 @@ class Launcher extends MY_Controller {
             'org_name'        => $org ? $org->name : '',
             'org_logo_url'    => ($org && $org->logo_path) ? base_url($org->logo_path) : '',
             'launcher_secret' => $verified['launcher_secret'],
-            'survey_url'      => $org ? base_url($org->org_code.'/survey/'.$session->id) : '',
+            'survey_url'      => $org ? customer_url($org->org_code.'/survey/'.$session->id) : '',
             'heartbeat_sec'   => 30,
         ));
     }

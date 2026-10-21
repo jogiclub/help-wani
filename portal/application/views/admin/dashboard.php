@@ -9,14 +9,8 @@ $survey  = $stats['survey'];
 $max_cnt = 1;
 foreach ($stats['daily'] as $d) { $max_cnt = max($max_cnt, (int) $d->cnt); }
 ?>
-<div class="mb-4 flex items-center justify-between">
-  <h1 class="text-xl font-bold text-slate-800">조직 관리</h1>
-  <div class="flex gap-2">
-    <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/agents') ?>">상담원 관리</a>
-    <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/organization') ?>">조직 정보</a>
-    <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/widget') ?>">상담 위젯</a>
-  </div>
-</div>
+<!-- 상담원 관리 / 조직 정보 / 상담 위젯 메뉴는 상단 헤더(layouts/main.php)에 있다. -->
+<h1 class="mb-4 text-xl font-bold text-slate-800">조직 관리</h1>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
   <div class="card"><div class="card-body">

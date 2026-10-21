@@ -13,9 +13,19 @@ class Console extends Agent_Controller {
 
     public function index()
     {
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
         $this->render('console/queue', array(
-            'page_title' => '원격 대기열',
-            'use_grid'   => TRUE,
+            'page_title'   => '원격지원',
+            'use_grid'     => TRUE,
+            'customer_url' => customer_url($org->org_code),
+            // 화면에 다시 채울 검색 조건 원문(목록 조회는 api_session_list 가 허용 목록으로 거른다)
+            'filters'      => array(
+                'keyword'   => (string) $this->input->get('keyword', TRUE),
+                'status'    => (string) $this->input->get('status', TRUE),
+                'date_from' => (string) $this->input->get('date_from', TRUE),
+                'date_to'   => (string) $this->input->get('date_to', TRUE),
+            ),
         ));
     }
 
@@ -37,21 +47,14 @@ class Console extends Agent_Controller {
         ));
     }
 
+    /**
+     * GET /console/history
+     * 원격 이력은 원격지원 화면(/console)에 합쳤다. 예전 주소로 오면 검색 조건을 그대로 넘긴다.
+     */
     public function history()
     {
-        $filters = array(
-            'keyword'   => $this->input->get('keyword', TRUE),
-            'status'    => $this->input->get('status', TRUE),
-            'date_from' => $this->input->get('date_from', TRUE),
-            'date_to'   => $this->input->get('date_to', TRUE),
-        );
-
-        $this->render('console/history', array(
-            'page_title' => '원격 이력',
-            'use_grid'   => TRUE,
-            'filters'    => $filters,
-            'sessions'   => $this->session_model->search_history($this->agent->org_id, $filters, 100),
-        ));
+        $query = (string) $this->input->server('QUERY_STRING');
+        redirect('console'.($query !== '' ? '?'.$query : ''));
     }
 
     // ------------------------------------------------------------------
@@ -82,7 +85,7 @@ class Console extends Agent_Controller {
             'code'         => $created['code'],
             'expires_at'   => $created['expires_at'],
             'expires_in'   => RH_CODE_TTL,
-            'customer_url' => base_url($org->org_code),
+            'customer_url' => customer_url($org->org_code),
         ));
     }
 
@@ -93,7 +96,7 @@ class Console extends Agent_Controller {
     {
         $this->session_model->expire_stale();
 
-        $rows = $this->session_model->list_queue($this->agent->org_id);
+        $rows = $this->session_model->search_history($this->agent->org_id, $this->list_filters(), 100);
         $now  = time();
         $out  = array();
 
@@ -108,6 +111,10 @@ class Console extends Agent_Controller {
                 'pc_name'       => $row->customer_pc_name,
                 'customer_ip'   => $row->customer_ip,
                 'remain_sec'    => max(0, strtotime($row->expires_at) - $now),
+                'duration'      => ($row->started_at && $row->ended_at)
+                    ? max(0, strtotime($row->ended_at) - strtotime($row->started_at))
+                    : 0,
+                'survey_score'  => $row->survey_score ? (int) $row->survey_score : NULL,
                 'created_at'    => $row->created_at,
                 'started_at'    => $row->started_at,
                 'ended_at'      => $row->ended_at,
@@ -116,6 +123,42 @@ class Console extends Agent_Controller {
         }
 
         api_response(TRUE, '', array('sessions' => $out, 'server_time' => date('Y-m-d H:i:s')));
+    }
+
+    /**
+     * 원격지원 목록 검색 조건. 상태는 허용 목록으로 거르고,
+     * 날짜는 조직 시간대의 하루를 UTC 범위로 바꾼다(저장 기준이 UTC, CLAUDE.md 3.4).
+     */
+    protected function list_filters()
+    {
+        $statuses = array('active', 'issued', 'verified', 'waiting', 'connected', 'ended', 'expired', 'canceled');
+        $status   = (string) $this->input->get('status', TRUE);
+
+        return array(
+            'keyword'   => mb_substr(trim((string) $this->input->get('keyword', TRUE)), 0, 50),
+            'status'    => in_array($status, $statuses, TRUE) ? $status : '',
+            'date_from' => $this->local_date_to_utc($this->input->get('date_from', TRUE), '00:00:00'),
+            'date_to'   => $this->local_date_to_utc($this->input->get('date_to', TRUE), '23:59:59'),
+        );
+    }
+
+    protected function local_date_to_utc($date, $time)
+    {
+        if ( ! is_string($date) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date))
+        {
+            return '';
+        }
+
+        try
+        {
+            $local = new DateTime($date.' '.$time, new DateTimeZone($this->current_timezone));
+        }
+        catch (Exception $e)
+        {
+            return '';
+        }
+
+        return $local->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s');
     }
 
     /**
@@ -253,9 +296,30 @@ class Console extends Agent_Controller {
         $this->load->model('chat_model');
         $this->load->library('realtime');
 
+        // 위젯 설정 드로어는 조직 관리자에게만 보인다(저장 API 는 Admin 이 권한을 다시 확인한다).
+        $is_admin = $this->agent->role === 'admin';
+        $org = NULL;
+
+        if ($is_admin)
+        {
+            $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+            // 설정을 처음 열 때 키가 없으면 바로 발급한다.
+            if (empty($org->widget_key))
+            {
+                $this->organization_model->regenerate_widget_key($org->id);
+                $org = $this->organization_model->get_by_id($org->id);
+            }
+        }
+
         $this->render('console/chat', array(
             'page_title'    => '상담 대화',
             'use_grid'      => TRUE,
+            'is_admin'      => $is_admin,
+            'org'           => $org,
+            'snippet'       => $org ? $this->organization_model->widget_snippet($org) : '',
+            // ?settings=widget 이면 설정 드로어를 연 채로 시작한다(예전 /admin/widget 주소).
+            'open_settings' => $is_admin && $this->input->get('settings') === 'widget',
             'conversations' => $this->chat_model->list_for_org($this->agent->org_id, array('status' => 'open')),
             // 실시간 구독 정보. 비어 있으면 화면이 폴링으로만 동작한다.
             'realtime'      => $this->realtime->client_config(array(
@@ -322,17 +386,7 @@ class Console extends Agent_Controller {
         }
 
         $messages = $this->chat_model->list_messages($conversation->id, $after_id);
-        $out = array();
-
-        foreach ($messages as $message)
-        {
-            $out[] = array(
-                'id'         => (int) $message->id,
-                'sender'     => $message->sender_type,
-                'body'       => $message->body,
-                'created_at' => $message->created_at,
-            );
-        }
+        $out = array_map(array($this->chat_model, 'present'), $messages);
 
         api_response(TRUE, '', array(
             'conversation' => array(
@@ -418,7 +472,7 @@ class Console extends Agent_Controller {
         }
 
         $org = $this->organization_model->get_by_id($this->agent->org_id);
-        $customer_url = base_url($org->org_code);
+        $customer_url = customer_url($org->org_code);
 
         // 안내 문구는 방문자가 읽으므로 조직이 정한 언어로 만든다. (CLAUDE.md 3.2)
         $notice = lang_text('widget.remote_notice', array(
@@ -444,6 +498,115 @@ class Console extends Agent_Controller {
         ));
     }
 
+    // ------------------------------------------------------------------
+    // 상담 중 가이드 추천 (docs/guide-plan.md 6-1)
+    // ------------------------------------------------------------------
+
+    /**
+     * GET /console/api/guide/suggest/{conversation_id}
+     * 방문자의 최근 메시지 3개로 공개 가이드를 찾는다. AI 를 부르지 않는다(Guide_matcher).
+     */
+    public function api_guide_suggest($conversation_id)
+    {
+        $conversation = $this->require_own_conversation($conversation_id);
+        $this->load->library('guide_matcher');
+        $this->load->model('guide_model');
+
+        $sent = array();
+
+        foreach ($this->chat_model->guide_cards($conversation->id) as $card)
+        {
+            $sent[$card['article_id']] = TRUE;
+        }
+
+        $text = $this->chat_model->recent_visitor_text($conversation->id, 3);
+        $items = $this->guide_matcher->match($this->agent->org_id, $text, 'console', 3);
+
+        api_response(TRUE, '', array('items' => $this->present_guides($items, $sent)));
+    }
+
+    /**
+     * GET /console/api/guide/search?q=&conversation_id=
+     */
+    public function api_guide_search()
+    {
+        $this->load->library('guide_matcher');
+        $this->load->model(array('guide_model', 'chat_model'));
+
+        $q = mb_substr((string) $this->input->get('q'), 0, 200);
+        $items = $this->guide_matcher->match($this->agent->org_id, $q, 'search', 10);
+        $sent = array();
+        $conversation = $this->chat_model->get_conversation($this->input->get('conversation_id'));
+
+        if ($conversation && (int) $conversation->org_id === (int) $this->agent->org_id)
+        {
+            foreach ($this->chat_model->guide_cards($conversation->id) as $card)
+            {
+                $sent[$card['article_id']] = TRUE;
+            }
+        }
+
+        api_response(TRUE, '', array('items' => $this->present_guides($items, $sent)));
+    }
+
+    /**
+     * POST /console/api/chat/send_guide (conversation_id, article_id)
+     * 가이드 카드를 상담원 메시지로 저장하고 발행한다. 본문에도 제목과 주소를 넣어 카드를 못 그리는 화면에서도 읽힌다.
+     */
+    public function api_chat_send_guide()
+    {
+        $conversation = $this->require_own_conversation($this->input->post('conversation_id'));
+        $this->load->model('guide_model');
+
+        if ($conversation->status !== 'open')
+        {
+            api_response(FALSE, '이미 종료된 대화입니다.', array(), 409);
+            return;
+        }
+
+        $article = $this->guide_model->get_article($this->agent->org_id, $this->input->post('article_id'));
+
+        if (empty($article) || $article->status !== 'published')
+        {
+            api_response(FALSE, '공개된 가이드만 보낼 수 있습니다.', array(), 404);
+            return;
+        }
+
+        $org  = $this->organization_model->get_by_id($this->agent->org_id);
+        $card = $this->guide_model->card($org, $article);
+
+        $this->chat_model->assign($conversation->id, $this->agent->id);
+        $message_id = $this->chat_model->add_message($conversation->id, 'agent',
+            $card['title']."\n".$card['url'], $this->agent->id, $card);
+        $this->chat_model->mark_read($conversation->id);
+        $this->chat_model->touch_agent($this->agent->id);
+
+        // 저장한 뒤 반드시 발행한다(CLAUDE.md 3.11). 빠지면 방문자 화면이 폴링 간격만큼 늦는다.
+        $this->publish_new_messages($conversation, $message_id);
+
+        api_response(TRUE, '가이드를 보냈습니다.');
+    }
+
+    protected function present_guides($items, $sent)
+    {
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+        $out = array();
+
+        foreach ($items as $item)
+        {
+            $out[] = array(
+                'id'       => $item['id'],
+                'title'    => $item['title'],
+                'subtitle' => $item['subtitle'],
+                'score'    => $item['score'],
+                'url'      => $this->guide_model->public_url($org, $item),
+                'sent'     => isset($sent[$item['id']]),
+            );
+        }
+
+        return $out;
+    }
+
     /**
      * 방금 저장한 메시지를 구독자(방문자 위젯, 다른 상담원)에게 전달한다.
      * 실패해도 화면은 폴링으로 따라잡으므로 응답을 막지 않는다.
@@ -454,12 +617,8 @@ class Console extends Agent_Controller {
 
         foreach ($this->chat_model->list_messages($conversation->id, $from_message_id - 1) as $message)
         {
-            $this->realtime->publish_message($conversation->org_id, $conversation->id, array(
-                'id'         => (int) $message->id,
-                'sender'     => $message->sender_type,
-                'body'       => $message->body,
-                'created_at' => $message->created_at,
-            ));
+            $this->realtime->publish_message($conversation->org_id, $conversation->id,
+                $this->chat_model->present($message));
         }
     }
 
@@ -475,6 +634,7 @@ class Console extends Agent_Controller {
         if (empty($conversation) || (int) $conversation->org_id !== (int) $this->agent->org_id)
         {
             api_response(FALSE, '대화를 찾을 수 없습니다.', array(), 404);
+            $this->output->_display();
             exit;
         }
 

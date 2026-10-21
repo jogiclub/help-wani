@@ -190,7 +190,7 @@ $route['console/api/chat/close']             = 'console/api_chat_close';
 
 ### 5-3. 조직 관리
 
-`portal/application/views/admin/widget.php` — 위젯 켜기/끄기, 스니펫 복사, 색상·위치,
+`portal/application/views/console/_widget_settings.php`(상담 대화 > 설정 드로어) — 위젯 켜기/끄기, 스니펫 복사, 색상·위치,
 허용 도메인, 오프라인 알림 주소, 키 재발급. 라우트는 기존 `$route['admin/api/(:any)']` 규칙에
 그대로 걸립니다(`api_widget_save`, `api_widget_regenerate`).
 

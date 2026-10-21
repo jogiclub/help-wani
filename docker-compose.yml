@@ -37,6 +37,8 @@ services:
       APP_NAME: ${APP_NAME:-RemoteHelp}
       # 비워 두면 포털이 접속한 주소를 그대로 쓴다(내부망 IP 로도 접속 가능).
       APP_BASE_URL: ${APP_BASE_URL:-}
+      # 고객에게 보내는 접속 주소의 기준(예: https://help.wani.im/). 비우면 접속한 주소.
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
       APP_ENV: development
       DB_HOST: db
       DB_PORT: "3306"

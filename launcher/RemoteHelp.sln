@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteHelp.App", "RemoteHel
 EndProject
 Project("{C7167F0D-BC9F-4E6E-AFE1-012C56B48DB5}") = "RemoteHelp.Package", "RemoteHelp.Package\RemoteHelp.Package.wapproj", "{A1B2C3D4-0002-4000-9000-000000000002}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteHelp.Viewer", "RemoteHelp.Viewer\RemoteHelp.Viewer.csproj", "{A1B2C3D4-0003-4000-9000-000000000003}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -22,6 +24,10 @@ Global
 		{A1B2C3D4-0002-4000-9000-000000000002}.Release|x64.ActiveCfg = Release|x64
 		{A1B2C3D4-0002-4000-9000-000000000002}.Release|x64.Build.0 = Release|x64
 		{A1B2C3D4-0002-4000-9000-000000000002}.Release|x64.Deploy.0 = Release|x64
+		{A1B2C3D4-0003-4000-9000-000000000003}.Debug|x64.ActiveCfg = Debug|x64
+		{A1B2C3D4-0003-4000-9000-000000000003}.Debug|x64.Build.0 = Debug|x64
+		{A1B2C3D4-0003-4000-9000-000000000003}.Release|x64.ActiveCfg = Release|x64
+		{A1B2C3D4-0003-4000-9000-000000000003}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

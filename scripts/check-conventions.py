@@ -305,6 +305,7 @@ def check_api_urls():
 
 # ------------------------------------------------------------------ 3.8 라우팅
 def check_routes():
+    """조직 코드를 받는 $route['(:any)'] 는 맨 아래여야 한다. 그 아래 규칙은 영영 닿지 않는다."""
     lines = read('portal/application/config/routes.php').splitlines()
     any_rule_at = None
 
@@ -312,13 +313,17 @@ def check_routes():
         if not line.strip().startswith('$route['):
             continue
 
-        if "(:any)']" in line and 'survey' not in line and 'download' not in line \
-                and 'lang/' not in line and 'admin/api' not in line and 'operator/api' not in line:
+        # '(:any)/guide/(:any)' 처럼 (:any) 로 끝나는 다른 규칙과 헷갈리지 않도록 키 전체를 비교한다.
+        if re.match(r"\s*\$route\['\(:any\)'\]\s*=", line):
             any_rule_at = index
         elif any_rule_at is not None:
             fail('조직 코드 규칙 $route[\'(:any)\'] 아래에 다른 라우트가 있습니다',
                  f'{index + 1}행: {line.strip()} — (:any) 규칙은 맨 아래여야 합니다')
             return
+
+    if any_rule_at is None:
+        fail("조직 코드 규칙 $route['(:any)'] 가 없습니다", '고객 접속 페이지(/{조직코드})가 열리지 않습니다')
+        return
 
     ok('라우팅 순서 확인')
 
@@ -476,6 +481,90 @@ def check_tunnel_proxy():
 
 
 # ------------------------------------------------------------------ 실행 점검
+# ------------------------------------- 3.13 고객에게 보내는 주소
+def check_customer_url():
+    """고객 접속 주소와 만족도 조사 주소를 base_url() 로 만들면 상담원이 연 주소(localhost, 내부 IP)가 나간다."""
+    pattern = re.compile(r"base_url\(\s*\$org->org_code\s*(\)|\.\s*'/survey)")
+    found = []
+
+    for rel_dir in ('portal/application/views', 'portal/application/controllers'):
+        for rel, full in walk(rel_dir, ('.php',), ('vendor',)):
+            for number, line in enumerate(open(full, encoding='utf-8'), 1):
+                if pattern.search(line):
+                    found.append(f'{rel}:{number}')
+
+    if found:
+        fail('고객에게 보내는 주소를 base_url() 로 만들었습니다 (CLAUDE.md 3.13)',
+             'customer_url($org->org_code) 를 쓰세요\n    ' + '\n    '.join(found[:10]))
+    else:
+        ok('고객 접속 주소가 customer_url() 을 거칩니다')
+
+
+# ------------------------------------- 3.14 이미지 선택은 Dropzone
+def check_image_drop():
+    """이미지 선택은 RHImageDrop(Dropzone.js) 만 쓴다. 파일 입력을 직접 두거나 라이브러리 없이 부르면 안 된다."""
+    file_input = re.compile(r"""<input[^>]*type\s*=\s*["']?file|type\s*[:=]\s*["']file["']""", re.I)
+    found = []
+
+    for rel_dir, suffixes in (('portal/application/views', ('.php',)), ('portal/assets/js', ('.js',))):
+        for rel, full in walk(rel_dir, suffixes, ('vendor',)):
+            for number, line in enumerate(open(full, encoding='utf-8'), 1):
+                if file_input.search(line):
+                    found.append(f'{rel}:{number} 파일 입력을 직접 씀')
+
+    # RHImageDrop 을 쓰는 화면의 컨트롤러는 use_dropzone 을 넘겨야 라이브러리가 실린다.
+    controllers = ''.join(open(full, encoding='utf-8').read()
+                          for _, full in walk('portal/application/controllers', ('.php',), ()))
+    for rel, full in walk('portal/application/views', ('.php',), ()):
+        if 'RHImageDrop.create' in open(full, encoding='utf-8').read():
+            view = rel.split('views/', 1)[-1][:-4]
+            if not re.search(r"render\('" + re.escape(view) + r"'[^;]*'use_dropzone'\s*=>\s*TRUE", controllers, re.S):
+                found.append(f'{rel} RHImageDrop 을 쓰지만 컨트롤러가 use_dropzone 을 넘기지 않음')
+
+    if found:
+        fail('이미지 선택이 Dropzone 규칙을 벗어났습니다 (CLAUDE.md 3.14)',
+             'RHImageDrop.create() 를 쓰고 컨트롤러에서 use_dropzone => TRUE\n    ' + '\n    '.join(found[:10]))
+    else:
+        ok('이미지 선택이 모두 Dropzone(RHImageDrop) 을 거칩니다')
+
+
+# ------------------------------------- 3.15 가이드
+def check_guide():
+    """가이드는 고객 화면에 관리자가 쓴 글을 그대로 내보내므로 조용히 깨지면 위험한 것들을 본다."""
+    problems = []
+
+    # 1) 유튜브는 개인정보 보호 강화 모드 주소로만 만든다.
+    for rel_dir, suffixes in (('portal/application/views', ('.php',)), ('portal/assets/js', ('.js',))):
+        for rel, full in walk(rel_dir, suffixes, ('vendor',)):
+            for number, line in enumerate(open(full, encoding='utf-8'), 1):
+                if re.search(r'(?<!-nocookie)\.com/embed/', line) and 'youtube' in line and 'youtube-nocookie.com/embed/' not in line:
+                    problems.append(f'{rel}:{number} 유튜브 임베드는 youtube-nocookie.com/embed/ 로만 만듭니다')
+
+    # 2) 공개 가이드 뷰는 값을 이스케이프 없이 내보내지 않는다.
+    allowed = ('html_escape(', 'guide_text_html(', 'base_url(', '(int)', 'json_encode(')
+    for rel, full in walk('portal/application/views/guide', ('.php',)):
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            for expr in re.findall(r'<\?=\s*(.*?)\s*\?>', line):
+                if not expr.startswith(allowed):
+                    problems.append(f'{rel}:{number} 이스케이프 없이 출력: <?= {expr[:40]} ?>')
+
+    # 3) 가이드 카드 메시지를 저장하면 발행도 한다(3.11).
+    console = read('portal/application/controllers/Console.php')
+    block = re.search(r'function api_chat_send_guide\(\).*?\n    \}', console, re.S)
+    if block and 'publish_new_messages' not in block.group(0):
+        problems.append('Console::api_chat_send_guide 가 저장한 카드를 발행하지 않습니다 (publish_new_messages)')
+
+    # 4) 올린 이미지는 git 에 넣지 않는다.
+    if os.path.isdir(os.path.join(ROOT, 'portal/assets/uploads/guides')) and \
+            'portal/assets/uploads/guides/*' not in read('.gitignore'):
+        problems.append('.gitignore 에 portal/assets/uploads/guides/* 가 없습니다')
+
+    if problems:
+        fail('가이드 규칙 위반 (CLAUDE.md 3.15)', '\n    '.join(problems[:10]))
+    else:
+        ok('가이드 규칙 확인 (nocookie 임베드, 출력 이스케이프, 카드 발행, 업로드 제외)')
+
+
 def check_live():
     base = os.environ.get('PORTAL_BASE', 'http://localhost:8099')
     pages = ['/', '/login', '/signup', '/demo']
@@ -526,6 +615,9 @@ def main():
     check_secrets()
     check_no_vnc()
     check_tunnel_proxy()
+    check_customer_url()
+    check_image_drop()
+    check_guide()
 
     if '--live' in sys.argv:
         check_live()

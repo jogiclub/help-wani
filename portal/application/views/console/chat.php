@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/chat.php
- * 역할: 상담 위젯 대화 목록(AG Grid)과 응답 패널
+ * 역할: 상담 위젯 대화 목록(AG Grid)과 응답 패널, 관리자용 위젯 설정 드로어
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
@@ -13,6 +13,10 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <input type="checkbox" id="chatShowClosed" class="rounded border-slate-300">
     종료된 대화 포함
   </label>
+  <?php if ($is_admin): ?>
+  <button type="button" class="btn btn-sm btn-secondary" id="btnChatSettings"
+          aria-controls="widgetSettingsDrawer">설정</button>
+  <?php endif; ?>
 </div>
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
@@ -41,6 +45,15 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       </div>
 
       <div id="chatMessages" class="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"></div>
+
+      <!-- 추천 가이드: 방문자의 최근 메시지로 키워드 매칭(AI 없음). 검색어를 넣으면 직접 찾는다. -->
+      <div class="border-t border-slate-200 px-4 py-2">
+        <div class="flex items-center gap-2">
+          <span class="shrink-0 text-xs font-semibold text-slate-500" id="chatGuideTitle">추천 가이드</span>
+          <input id="chatGuideSearch" class="form-input ml-auto w-44 py-1 text-xs" placeholder="가이드 검색" maxlength="100">
+        </div>
+        <ul id="chatGuideList" class="mt-1 max-h-28 space-y-1 overflow-y-auto"></ul>
+      </div>
 
       <form id="chatForm" class="flex gap-2 border-t border-slate-200 px-4 py-3">
         <textarea id="chatInput" rows="2" class="form-input flex-1 resize-none"
@@ -75,7 +88,12 @@ var CHAT_URLS = {
     send:     '<?= base_url('console/api/chat/send') ?>',
     close:    '<?= base_url('console/api/chat/close') ?>',
     remote:   '<?= base_url('console/api/chat/remote') ?>',
+    sendGuide:    '<?= base_url('console/api/chat/send_guide') ?>',
+    guideSuggest: '<?= base_url('console/api/guide/suggest/') ?>',
+    guideSearch:  '<?= base_url('console/api/guide/search') ?>',
+    guideAdmin:   '<?= $is_admin ? base_url('admin/guide') : '' ?>',
     viewer:   '<?= base_url('console/session/') ?>'
 };
 </script>
 <script src="<?= base_url('assets/js/console/chat.js') ?>"></script>
+<?php if ($is_admin) { $this->load->view('console/_widget_settings'); } ?>

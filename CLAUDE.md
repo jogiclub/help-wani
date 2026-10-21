@@ -115,10 +115,10 @@ PHP    date.timezone = UTC
 
 | 레이아웃 | 대상 | 메뉴 |
 |---|---|---|
-| `layouts/main.php` | 조직 소속 사용자 | 대기열 / 상담 이력 / 조직 관리 |
+| `layouts/main.php` | 조직 소속 사용자 | 원격지원(대기열+이력 통합) / 상담 대화 / (관리자) 상담원 관리 · 조직 정보 · 가이드 관리. 조직 관리 통계(`/admin`)는 왼쪽 위 서비스 이름, 상담 위젯 설정은 상담 대화의 설정 드로어 |
 | `layouts/operator.php` | 플랫폼 운영자 | 조직 가입 관리 / 감사 로그 |
 | `layouts/public.php` | 방문자 | 소개 페이지 |
-| `layouts/customer.php` | 고객 | 접속 안내, 만족도 조사 |
+| `layouts/customer.php` | 고객 | 접속 안내, 만족도 조사, 공개 가이드(`/{조직코드}/guide`) |
 
 | 권한 | 범위 | 판별 |
 |---|---|---|
@@ -126,13 +126,18 @@ PHP    date.timezone = UTC
 | 조직 관리자 | 자기 조직 설정 | `agents.role = 'admin'` |
 | 플랫폼 운영자 | 전체 조직 승인 | `agents.is_super = 1` |
 
-운영자 전용 화면은 `Operator_Controller` 를 상속합니다.
+운영자 전용 화면은 `Operator_Controller`, 조직 관리자 전용 화면은 `Admin_Controller` 를 상속합니다.
+권한 거부처럼 응답을 보내고 바로 끝낼 때는 `api_response()` 뒤에 `$this->output->_display(); exit;` 로 씁니다.
+`exit` 만 하면 CI 가 출력을 내보내지 않아 본문이 빈 채로 나갑니다.
 
 ### 3.7 API 와 UI 공통 규약
 
 - 모든 API 응답은 `{ "result": true|false, "message": "", "data": {} }` 형식입니다. `api_response()` 를 씁니다.
 - 알림은 `showToast(message, type)`, 확인은 `showConfirmModal(title, message, onConfirm, onCancel)`,
   모달은 `openModal(id)` / `closeModal(id)` 를 씁니다. 외부 UI 프레임워크를 쓰지 않습니다.
+- 설정처럼 화면 옆에서 여는 패널은 드로어 `openDrawer(id)` / `closeDrawer(id)` 를 씁니다.
+  마크업은 `.drawer-root > .drawer-backdrop + .drawer-panel(.drawer-header / .drawer-body / .drawer-footer)`,
+  닫기 요소에 `data-drawer-close="id"`. 예: `views/console/_widget_settings.php`(상담 대화 > 설정)
 - **JS 에서 API 주소를 상대 경로로 적지 않습니다.** 뷰에서 `base_url()` 로 만든 절대 주소를
   `XXX_URLS` 전역에 담아 넘깁니다. 상대 경로는 보는 화면의 깊이에 따라 `/console/console/...` 로 어긋납니다.
 - 관리 행위는 `audit_logs`, 세션 이벤트는 `session_logs` 에 남깁니다.
@@ -163,7 +168,7 @@ PHP    date.timezone = UTC
 
 | 용어 | 가리키는 것 | 테이블 | 화면 이름 |
 |---|---|---|---|
-| **원격지원**(줄여서 원격) | 고객 PC 화면을 보고 조작하는 것 | `sessions` | 원격 대기열 / 원격 이력 / 원격 메모 |
+| **원격지원**(줄여서 원격) | 고객 PC 화면을 보고 조작하는 것 | `sessions` | 원격지원(진행 중+이력) / 원격 메모 |
 | **상담** | 위젯을 통한 글 대화 | `conversations` | 상담 대화 / 상담 위젯 |
 | **상담원** | 사람. 원격과 상담을 모두 맡는다 | `agents` | 상담원 관리 / 상담원 콘솔 |
 
@@ -207,6 +212,51 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
 - `X-Forwarded-For` 는 쓰지 않습니다. Cloudflare 가 고객이 보낸 값 뒤에 덧붙이므로 맨 앞 값을 꾸밀 수 있습니다.
 - 브라우저용 웹소켓 주소는 고정하지 않고 접속한 주소로 만듭니다. https 화면은 다른 포트로 붙을 수 없으므로
   포털 경유 경로(`/relay-viewer`, `/realtime-ws`)를 씁니다(`relay_viewer_ws_url()`, `Realtime::ws_url()`).
+
+### 3.13 고객에게 보내는 주소 — `customer_url()` 로 만든다
+
+상담원은 localhost 나 내부 IP 로 콘솔을 열기도 하므로, 고객에게 전달하는 주소를 `base_url()` 로 만들면
+그 주소가 그대로 고객에게 나갑니다.
+
+- 고객 접속 주소(`/{조직코드}`)와 만족도 조사 주소는 **`customer_url($org->org_code)`** 로 만듭니다.
+  고객사 사이트에 붙이는 위젯 스니펫의 `widget.js` 주소도 같습니다(`Organization_model::widget_snippet()`).
+- 기준은 `.env` 의 `PUBLIC_BASE_URL`(시험 서버 `https://help.wani.im/`), 비어 있으면 접속한 주소입니다.
+- 고객 접속 페이지 상단에는 조직 로고(`logo_path`), 소개(`intro`, 500자), 대표 전화가 보입니다.
+  조직 관리자가 헤더의 `조직 정보` 에서 고칩니다. 로고는 PNG/JPG/WEBP 1MB 이하, SVG 는 받지 않습니다.
+- 로고 폴더 `portal/assets/uploads/logos/` 는 웹 서버(www-data)가 쓸 수 있어야 합니다. 올린 파일은 git 에 넣지 않습니다.
+
+### 3.14 이미지 선택 — Dropzone.js 로만
+
+포털에서 이미지를 고르는 곳은 모두 **Dropzone.js**(끌어다 놓기 + 클릭 선택)를 씁니다.
+
+- 공통 모듈 `portal/assets/js/image-drop.js` 의 `RHImageDrop.create(selector, { url, paramName, onSuccess })` 를 씁니다.
+  CSRF 토큰, 허용 형식(PNG/JPG/WEBP), 크기 제한, 한국어 오류 문구, `{ result, message, data }` 처리가 들어 있습니다.
+- 컨트롤러에서 **`'use_dropzone' => TRUE`** 를 넘겨야 라이브러리를 불러옵니다(`use_grid` 와 같은 방식).
+- 이미지가 아닌 파일(guide.json)도 같은 모듈로 받습니다. `accept`, `maxMb`, `params`, `invalidTypeText`, `tooBigText` 옵션을 씁니다.
+- 서버 검사는 `check_uploaded_image($file, $max_bytes)`(app_helper) 하나를 씁니다(로고, 가이드 이미지 공통).
+- `<input type="file">` 을 직접 쓰지 않습니다. 서버 검사(내용 기준 형식 판별, SVG 거부)는 그대로 둡니다.
+- 버전은 `dropzone@6.3.5` 의 `dist/dropzone-min.js`(window.Dropzone). `dist/dropzone.js` 와 cdnjs 판은 CommonJS 라
+  `<script>` 로 넣으면 동작하지 않습니다. 기본 CSS 대신 `tailwind.src.css` 의 `.image-drop` 으로 그립니다.
+
+### 3.15 가이드 — 원본은 DB, guide.json 은 주고받는 형식
+
+조직 관리자가 `가이드 관리`(`/admin/guide`)에서 만들고 고객은 `/{조직코드}/guide` 에서 봅니다.
+상담 중에는 **AI 없이 키워드 매칭**(`Guide_matcher`, 색인 `guide_terms`)으로 추천합니다. 설계는 `docs/guide-plan.md`.
+
+- **원본은 DB 입니다.** guide.json 은 내려받기/올리기(백업, 이관, 일괄 편집) 형식이며 서버에 파일로 두지 않습니다.
+  화면 저장과 파일 가져오기는 같은 검사(`Guide_model::clean_article`)를 거칩니다. 검사를 따로 만들지 않습니다.
+- **글을 바꾸는 곳은 `Guide_model::save_article()` / `set_status()` 를 거칩니다.** 색인을 함께 다시 만듭니다.
+  DB 를 직접 고치면 추천에 반영되지 않습니다(관리 화면의 [색인 다시 만들기] 로 복구).
+- 본문은 블록(`text` / `image` / `video`)이며 **HTML 을 받지 않습니다.** 공개 뷰(`views/guide/`)는 모든 값을
+  `html_escape()` 로, 글 블록은 `guide_text_html()` 로 내보냅니다.
+- 유튜브는 영상 id(11자)만 저장하고 **`youtube-nocookie.com/embed/{id}`** 로만 그립니다. 누르기 전에는 유튜브에
+  요청하지 않고, iframe 에 `referrerpolicy="strict-origin-when-cross-origin"` 을 둡니다(유튜브가 Referer 를 요구).
+- 이미지는 `assets/uploads/guides/{org_id}/` 에 둡니다. 이 조직 폴더에 실제로 있는 파일만 블록에 받으며,
+  웹 서버(www-data)가 쓸 수 있어야 하고 git 에 넣지 않습니다.
+- 가이드 카드는 `messages.meta`(`{type:'guide', article_id, title, subtitle, url}`)에 담고, 본문에도 제목과 주소를 넣습니다.
+  **카드를 저장하면 발행도 합니다(3.11).** 주소는 `Guide_model::public_url()`(= `customer_url`) 로 만듭니다(3.13).
+- 위젯 자동 추천은 조직 설정 `guide_autosuggest`(기본 꺼짐)일 때만, 같은 글 1번, 대화당 3번까지입니다.
+- 매칭 가중치, 기준 점수, 조사/불용어는 `config/guide_match.php` 한 곳에서 고칩니다.
 
 ---
 
@@ -271,6 +321,7 @@ docker compose up -d --build
 | 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
+| 가이드 | **DB 저장 + guide.json 내려받기/올리기.** 편집은 조직 관리자만, 상담원은 콘솔에서 검색·보내기. 추천은 키워드 매칭(AI 토큰 없음). 조직당 한 언어 (`docs/guide-plan.md`) |
 
 ---
 

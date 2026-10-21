@@ -23,6 +23,21 @@
         return;
     }
 
+    /**
+     * 버블 아이콘. 포털의 다른 아이콘과 같은 Material Symbols Outlined(Apache-2.0) 의 공식 SVG 경로를 그대로 옮겼다.
+     * 출처: npm @material-symbols/svg-400@0.47.5 outlined/chat.svg, outlined/close.svg
+     * 위젯은 고객사 페이지 안에서 돌아 아이콘 폰트를 불러올 수 없으므로 SVG 로 넣는다(CLAUDE.md 3.9).
+     */
+    var ICONS = {
+        chat:  'M240-399h313v-60H240v60Zm0-130h480v-60H240v60Zm0-130h480v-60H240v60ZM80-80v-740q0-24 18-42t42-18h680q24 0 42 18t18 42v520q0 24-18 42t-42 18H240L80-80Zm134-220h606v-520H140v600l74-80Zm-74 0v-520 520Z',
+        close: 'm249-207-42-42 231-231-231-231 42-42 231 231 231-231 42 42-231 231 231 231-42 42-231-231-231 231Z'
+    };
+
+    function icon(name) {
+        return '<svg viewBox="0 -960 960 960" width="28" height="28" fill="currentColor" aria-hidden="true">'
+            + '<path d="' + ICONS[name] + '"/></svg>';
+    }
+
     var STORAGE_KEY = 'rh_widget_visitor_' + widgetKey;
     /** 실시간 연결이 없을 때의 폴링 간격 */
     var POLL_INTERVAL_MS = 3000;
@@ -103,7 +118,9 @@
             ':host{all:initial}',
             '*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif}',
             '.bubble{position:fixed;bottom:20px;' + side + ':20px;width:56px;height:56px;border:0;border-radius:28px;',
-            'background:' + color + ';color:#fff;font-size:24px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:2147483000}',
+            'background:' + color + ';color:#fff;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:2147483000;',
+            'display:flex;align-items:center;justify-content:center;padding:0}',
+            '.bubble svg{display:block}',
             '.bubble:hover{opacity:.92}',
             '.panel{position:fixed;bottom:88px;' + side + ':20px;width:340px;max-height:70vh;display:none;',
             'flex-direction:column;background:#fff;border-radius:12px;overflow:hidden;',
@@ -124,6 +141,11 @@
             '.msg.agent .text{background:#fff;color:#0f172a;border:1px solid #e2e8f0}',
             '.msg.system{align-items:center}',
             '.msg.system .text{background:#fef9c3;color:#713f12;border:1px solid #fde68a;max-width:100%;text-align:center}',
+            '.guide{display:block;max-width:85%;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;color:#0f172a;text-align:left}',
+            '.guide .label{display:block;font-size:11px;color:#64748b;margin-bottom:4px}',
+            '.guide .title{display:block;font-weight:600}',
+            '.guide .sub{display:block;font-size:12px;color:#64748b;margin-top:2px}',
+            '.guide a{display:inline-block;margin-top:8px;padding:5px 10px;border-radius:7px;background:' + color + ';color:#fff;font-size:12px;text-decoration:none}',
             '.profile{display:flex;gap:6px;padding:10px 12px 0}',
             '.profile input{flex:1;min-width:0;padding:7px 9px;border:1px solid #e2e8f0;border-radius:7px;font-size:12px}',
             '.hint{font-size:11px;color:#94a3b8;padding:6px 12px 0}',
@@ -147,7 +169,7 @@
 
         var wrap = document.createElement('div');
         wrap.innerHTML = [
-            '<button class="bubble" type="button" part="bubble">&#128172;</button>',
+            '<button class="bubble" type="button" part="bubble">' + icon('chat') + '</button>',
             '<section class="panel">',
             '  <div class="head">',
             '    <h3></h3><p></p><span class="status"></span>',
@@ -242,9 +264,12 @@
             var row = document.createElement('div');
             row.className = 'msg ' + message.sender;
 
-            var text = document.createElement('span');
-            text.className = 'text';
-            text.textContent = message.body;
+            var text = guideCard(message) || document.createElement('span');
+
+            if (!text.className) {
+                text.className = 'text';
+                text.textContent = message.body;
+            }
 
             var time = document.createElement('span');
             time.className = 'time';
@@ -256,6 +281,49 @@
         });
 
         dom.list.scrollTop = dom.list.scrollHeight;
+    }
+
+    /**
+     * 가이드 카드. 서버가 meta 에 담아 보낸 제목과 주소로 그린다(상담원이 보냈거나 자동 추천).
+     * 주소는 http(s) 만 링크로 만들고 새 탭으로 연다. 카드가 아니면 null.
+     */
+    function guideCard(message) {
+        var meta = message.meta;
+
+        if (!meta || meta.type !== 'guide' || !/^https?:\/\//.test(meta.url || '')) {
+            return null;
+        }
+
+        var card = document.createElement('span');
+        card.className = 'guide';
+
+        if (message.sender === 'system') {
+            var label = document.createElement('span');
+            label.className = 'label';
+            label.textContent = state.texts.guide_suggest || '';
+            card.appendChild(label);
+        }
+
+        var title = document.createElement('span');
+        title.className = 'title';
+        title.textContent = meta.title || '';
+        card.appendChild(title);
+
+        if (meta.subtitle) {
+            var sub = document.createElement('span');
+            sub.className = 'sub';
+            sub.textContent = meta.subtitle;
+            card.appendChild(sub);
+        }
+
+        var link = document.createElement('a');
+        link.href = meta.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = state.texts.guide_open || meta.url;
+        card.appendChild(link);
+
+        return card;
     }
 
     function showEmpty() {
@@ -278,6 +346,8 @@
     function toggle() {
         state.open = !state.open;
         dom.panel.classList.toggle('open', state.open);
+        // 열려 있으면 닫기 아이콘으로 바꿔 버블을 다시 누르면 닫힌다는 것을 보여준다.
+        dom.bubble.innerHTML = icon(state.open ? 'close' : 'chat');
 
         if (state.open) {
             dom.input.focus();

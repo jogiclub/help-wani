@@ -142,8 +142,10 @@ class Chat_model extends CI_Model {
 
     /**
      * 메시지를 넣고 대화의 마지막 시각을 갱신한다.
+     *
+     * @param array|null $meta 카드 정보. 가이드 카드는 {type:'guide', article_id, title, subtitle, url}
      */
-    public function add_message($conversation_id, $sender_type, $body, $agent_id = NULL)
+    public function add_message($conversation_id, $sender_type, $body, $agent_id = NULL, $meta = NULL)
     {
         if ( ! in_array($sender_type, array('visitor', 'agent', 'system'), TRUE))
         {
@@ -155,6 +157,7 @@ class Chat_model extends CI_Model {
             'sender_type'     => $sender_type,
             'agent_id'        => $agent_id === NULL ? NULL : (int) $agent_id,
             'body'            => mb_substr((string) $body, 0, 4000),
+            'meta'            => $meta === NULL ? NULL : json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ));
 
         $message_id = (int) $this->db->insert_id();
@@ -182,6 +185,64 @@ class Chat_model extends CI_Model {
                         ->limit((int) $limit)
                         ->get('messages')
                         ->result();
+    }
+
+    /**
+     * 화면으로 보낼 메시지 모양. 시각은 UTC 그대로 보내고 화면이 변환한다(CLAUDE.md 3.4).
+     * 콘솔, 위젯, 실시간 발행이 모두 이 모양을 쓴다.
+     */
+    public function present($message)
+    {
+        $meta = empty($message->meta) ? NULL : json_decode($message->meta, TRUE);
+
+        return array(
+            'id'         => (int) $message->id,
+            'sender'     => $message->sender_type,
+            'body'       => $message->body,
+            'meta'       => is_array($meta) ? $meta : NULL,
+            'created_at' => $message->created_at,
+        );
+    }
+
+    /**
+     * 이 대화에서 이미 보낸 가이드 카드. 같은 글을 거듭 추천하지 않기 위해 쓴다.
+     *
+     * @return array [{article_id, sender}]
+     */
+    public function guide_cards($conversation_id)
+    {
+        $rows = $this->db->query("
+            SELECT sender_type, CAST(JSON_UNQUOTE(JSON_EXTRACT(meta, '$.article_id')) AS UNSIGNED) AS article_id
+            FROM messages
+            WHERE conversation_id = ?
+              AND meta IS NOT NULL
+              AND JSON_UNQUOTE(JSON_EXTRACT(meta, '$.type')) = 'guide'
+        ", array((int) $conversation_id))->result();
+
+        $out = array();
+
+        foreach ($rows as $row)
+        {
+            $out[] = array('article_id' => (int) $row->article_id, 'sender' => $row->sender_type);
+        }
+
+        return $out;
+    }
+
+    /**
+     * 최근 방문자 메시지 본문. 상담원 콘솔 추천에 쓴다(마지막 한 줄만 보면 "네 그거요" 같은 말에 결과가 없다).
+     */
+    public function recent_visitor_text($conversation_id, $count = 3)
+    {
+        $rows = $this->db->select('body')
+                         ->where('conversation_id', (int) $conversation_id)
+                         ->where('sender_type', 'visitor')
+                         ->order_by('id', 'DESC')
+                         ->limit((int) $count)
+                         ->get('messages')
+                         ->result();
+
+        return implode("\n", array_reverse(array_map(function ($row) { return $row->body; }, $rows)));
     }
 
     /**

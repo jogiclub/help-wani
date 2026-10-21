@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/customer/landing.php
- * 역할: 고객 접속 안내 페이지 (조직이 설정한 언어로 표시)
+ * 역할: 고객 접속 안내 페이지 (조직 로고/소개/문의처와 접속 절차, 조직이 설정한 언어로 표시)
  *
  * 1차 배포는 Microsoft Store 단독이다. 직접 다운로드는 코드 서명 인증서가 준비되면
  * .env 의 DIRECT_DOWNLOAD_ENABLED 로 켠다(docs/code-signing.md).
@@ -10,17 +10,44 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 $show_download = $download_enabled && $download_info;
 ?>
-<div class="text-center">
-  <?php if ($org->logo_path): ?>
-    <img src="<?= base_url($org->logo_path) ?>" alt="<?= html_escape($org->name) ?>" class="mx-auto max-h-16">
-  <?php endif; ?>
-  <h1 class="mt-3 text-2xl font-bold text-slate-800">
-    <?= html_escape(lang_text('customer.title', array('org' => $org->name))) ?>
-  </h1>
-  <p class="mt-1 text-sm text-slate-500"><?= html_escape(lang_text('customer.subtitle')) ?></p>
+<!-- 조직 소개: 로고, 이름, 소개 문구, 문의처 (조직 정보 화면에서 관리) -->
+<div class="card">
+  <div class="card-body text-center">
+    <?php if ($org->logo_path): ?>
+      <img src="<?= base_url($org->logo_path) ?>" alt="<?= html_escape($org->name) ?>" class="mx-auto max-h-16 max-w-full">
+    <?php else: ?>
+      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-bold text-white">
+        <?= html_escape(mb_substr($org->name, 0, 1)) ?>
+      </div>
+    <?php endif; ?>
+    <h1 class="mt-3 text-2xl font-bold text-slate-800">
+      <?= html_escape(lang_text('customer.title', array('org' => $org->name))) ?>
+    </h1>
+    <?php if ( ! empty($org->intro)): ?>
+      <p class="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-relaxed text-slate-600"><?= html_escape($org->intro) ?></p>
+    <?php endif; ?>
+    <?php if ( ! empty($org->phone)): ?>
+      <p class="mt-3 text-sm text-slate-500">
+        <?= html_escape(lang_text('customer.contact')) ?>
+        <a class="font-semibold text-brand-600 hover:underline" href="tel:<?= html_escape(preg_replace('/[^0-9+]/', '', $org->phone)) ?>"><?= html_escape($org->phone) ?></a>
+      </p>
+    <?php endif; ?>
+  </div>
 </div>
+<p class="mt-4 text-center text-sm text-slate-500"><?= html_escape(lang_text('customer.subtitle')) ?></p>
 
-<div class="alert alert-danger mt-6">
+<?php if ( ! empty($guide_count)): ?>
+<!-- 공개 가이드 (가이드 관리에서 공개한 글이 있을 때만) -->
+<a class="card mt-4 flex items-center gap-3 px-5 py-3 hover:bg-slate-50" href="<?= html_escape(base_url($org->org_code.'/guide')) ?>">
+  <span class="min-w-0 flex-1">
+    <span class="block font-semibold text-slate-800"><?= html_escape(lang_text('customer.guide_link')) ?></span>
+    <span class="block text-sm text-slate-500"><?= html_escape(lang_text('customer.guide_hint')) ?></span>
+  </span>
+  <span class="shrink-0 text-brand-600">→</span>
+</a>
+<?php endif; ?>
+
+<div class="alert alert-danger mt-4">
   <p class="font-bold"><?= html_escape(lang_text('customer.warning.title')) ?></p>
   <p class="mt-1 leading-relaxed"><?= html_escape(lang_text('customer.warning.body')) ?></p>
 </div>

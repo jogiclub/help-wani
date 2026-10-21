@@ -14,7 +14,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       <p class="mt-3 text-sm text-slate-500">
         <?= html_escape(lang_text('customer.download.unavailable.body', array('org' => $org->name))) ?>
       </p>
-      <a class="btn btn-secondary mt-5" href="<?= base_url($org->org_code) ?>">
+      <a class="btn btn-secondary mt-5" href="<?= html_escape(customer_url($org->org_code)) ?>">
         <?= html_escape(lang_text('customer.download.back')) ?>
       </a>
     </div>

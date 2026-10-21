@@ -24,6 +24,7 @@ class Customer extends MY_Controller {
         $this->use_org_locale($org);
 
         $store_id = env('STORE_PRODUCT_ID', '');
+        $this->load->model('guide_model');
 
         $this->load->helper('download');
         require_once APPPATH.'controllers/Download.php';
@@ -38,6 +39,10 @@ class Customer extends MY_Controller {
             'download_enabled'=> (bool) env('DIRECT_DOWNLOAD_ENABLED', FALSE),
             'download_url'    => base_url($org->org_code.'/download'),
             'download_info'   => Download::launcher_info(),
+            // 조직이 상담 위젯을 켜 두었으면 이 페이지에서도 그 조직과 상담을 열 수 있게 한다.
+            'widget_key'      => ((int) $org->widget_enabled === 1) ? (string) $org->widget_key : '',
+            // 공개 가이드가 있으면 원격지원 전에 스스로 찾아볼 수 있게 링크를 둔다.
+            'guide_count'     => $this->guide_model->count_published($org->id),
         ), 'layouts/customer');
     }
 

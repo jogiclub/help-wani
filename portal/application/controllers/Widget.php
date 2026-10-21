@@ -135,6 +135,7 @@ class Widget extends MY_Controller {
         }
 
         $message_id = $this->chat_model->add_message($conversation->id, 'visitor', $body);
+        $this->suggest_guide($org, $conversation, $body);
 
         $messages = $this->present_messages(
             $this->chat_model->list_messages($conversation->id, $message_id - 1)
@@ -225,6 +226,47 @@ class Widget extends MY_Controller {
     }
 
     /**
+     * 조직이 켜 두었으면 방문자 질문에 맞는 가이드를 시스템 카드로 하나 붙인다(docs/guide-plan.md 6-2).
+     * 고객에게 바로 보이므로 기준 점수가 높고, 같은 글은 한 번만, 대화당 3번까지만 보낸다.
+     * 저장만 하고 발행은 send() 가 방금 넣은 메시지들과 함께 한다.
+     */
+    protected function suggest_guide($org, $conversation, $body)
+    {
+        if ((int) $org->guide_autosuggest !== 1)
+        {
+            return;
+        }
+
+        $sent = array();
+        $auto = 0;
+
+        foreach ($this->chat_model->guide_cards($conversation->id) as $card)
+        {
+            $sent[] = $card['article_id'];
+            $auto += $card['sender'] === 'system' ? 1 : 0;
+        }
+
+        if ($auto >= 3)
+        {
+            return;
+        }
+
+        $this->load->library('guide_matcher');
+        $this->load->model('guide_model');
+
+        $items = $this->guide_matcher->match($org->id, $body, 'widget', 1, $sent);
+
+        if (empty($items))
+        {
+            return;
+        }
+
+        $card = $this->guide_model->card($org, $items[0]);
+        $this->chat_model->add_message($conversation->id, 'system',
+            lang_text('widget.guide_suggest')."\n".$card['title']."\n".$card['url'], NULL, $card);
+    }
+
+    /**
      * 상담원이 모두 자리에 없으면 조직에 메일로 알린다.
      * 같은 대화에서 두 번 보내지 않으며, 메일이 실패해도 메시지 저장은 유지한다.
      */
@@ -280,7 +322,7 @@ class Widget extends MY_Controller {
     {
         $keys = array('title', 'subtitle', 'open', 'close', 'placeholder', 'send', 'name',
                       'email', 'profile_hint', 'online', 'offline', 'agent', 'system',
-                      'error', 'flood', 'empty');
+                      'error', 'flood', 'empty', 'guide_suggest', 'guide_open');
 
         $out = array();
 
@@ -297,19 +339,7 @@ class Widget extends MY_Controller {
      */
     protected function present_messages($messages)
     {
-        $out = array();
-
-        foreach ($messages as $message)
-        {
-            $out[] = array(
-                'id'         => (int) $message->id,
-                'sender'     => $message->sender_type,
-                'body'       => $message->body,
-                'created_at' => $message->created_at,
-            );
-        }
-
-        return $out;
+        return array_map(array($this->chat_model, 'present'), $messages);
     }
 
     protected function current_intl()

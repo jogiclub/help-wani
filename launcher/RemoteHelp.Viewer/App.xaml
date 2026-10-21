@@ -1,0 +1,9 @@
+<!--
+  파일 위치: launcher/RemoteHelp.Viewer/App.xaml
+  역할: 상담원 뷰어 애플리케이션 정의. 시작 창을 지정한다.
+-->
+<Application x:Class="RemoteHelp.Viewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             StartupUri="MainWindow.xaml">
+</Application>

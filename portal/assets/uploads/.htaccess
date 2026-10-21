@@ -1,0 +1,9 @@
+# 파일 위치: portal/assets/uploads/.htaccess
+# 역할: 업로드 폴더에서 스크립트가 실행되지 않게 막고 이미지 파일만 내려준다
+<FilesMatch "\.(?i:php[0-9]?|phtml|phar|cgi|pl|py|sh|html?|svg)$">
+    Require all denied
+</FilesMatch>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+Header set X-Content-Type-Options "nosniff"

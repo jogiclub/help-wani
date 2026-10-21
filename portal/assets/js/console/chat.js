@@ -1,6 +1,6 @@
 /**
  * 파일 위치: assets/js/console/chat.js
- * 역할: 상담 위젯 대화 목록과 응답 패널 (폴링)
+ * 역할: 상담 위젯 대화 목록과 응답 패널 (폴링), 추천 가이드 보내기
  */
 (function ($) {
     'use strict';
@@ -27,6 +27,7 @@
     var retry = 0;
     var listTimer = null;
     var messageTimer = null;
+    var guideTimer = null;
 
     // ------------------------------------------------------------------
     // 목록
@@ -125,7 +126,12 @@
         var time = document.createElement('div');
 
         bubble.className = 'inline-block max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm';
-        bubble.textContent = message.body;
+
+        if (message.meta && message.meta.type === 'guide') {
+            fillGuideCard(bubble, message);
+        } else {
+            bubble.textContent = message.body;
+        }
 
         time.className = 'mt-1 text-[11px] text-slate-400';
         time.textContent = RHI18n.formatDate(message.created_at, 'datetime');
@@ -147,12 +153,36 @@
         return row;
     }
 
+    /**
+     * 가이드 카드 메시지. 상담원이 보냈으면 '보낸 가이드', 위젯이 자동으로 붙였으면 '자동 추천됨'.
+     */
+    function fillGuideCard(bubble, message) {
+        var meta = message.meta;
+        var label = document.createElement('div');
+        label.className = 'text-[11px] opacity-75';
+        label.textContent = message.sender === 'system' ? '자동 추천됨' : '보낸 가이드';
+
+        var title = document.createElement('a');
+        title.className = 'block font-semibold underline';
+        title.textContent = meta.title || meta.url;
+        title.target = '_blank';
+        title.rel = 'noopener';
+
+        if (/^https?:\/\//.test(meta.url || '')) {
+            title.href = meta.url;
+        }
+
+        bubble.appendChild(label);
+        bubble.appendChild(title);
+    }
+
     function appendMessages(messages) {
         if (!messages.length) {
             return;
         }
 
         var box = document.getElementById('chatMessages');
+        var fromVisitor = false;
 
         messages.forEach(function (message) {
             if (message.id <= lastId) {
@@ -161,9 +191,94 @@
 
             lastId = message.id;
             box.appendChild(messageNode(message));
+            fromVisitor = fromVisitor || message.sender === 'visitor';
         });
 
         box.scrollTop = box.scrollHeight;
+
+        // 방문자가 새로 말하면 추천 가이드를 다시 찾는다.
+        if (fromVisitor) {
+            scheduleGuides();
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // 추천 가이드
+    // ------------------------------------------------------------------
+
+    function scheduleGuides() {
+        window.clearTimeout(guideTimer);
+        guideTimer = window.setTimeout(loadGuides, 300);
+    }
+
+    function loadGuides() {
+        if (!current) {
+            return;
+        }
+
+        var id = current.id;
+        var q = $.trim($('#chatGuideSearch').val());
+        var url = q
+            ? CHAT_URLS.guideSearch + '?' + $.param({ q: q, conversation_id: id })
+            : CHAT_URLS.guideSuggest + id;
+
+        $('#chatGuideTitle').text(q ? '가이드 검색' : '추천 가이드');
+
+        apiGet(url, function (data) {
+            if (!current || current.id !== id) {
+                return;
+            }
+
+            renderGuides(data.items, q);
+        });
+    }
+
+    function renderGuides(items, q) {
+        var $list = $('#chatGuideList').empty();
+
+        if (!items.length) {
+            var $empty = $('<li class="text-xs text-slate-400">')
+                .text(q ? '맞는 가이드가 없습니다.' : '방문자 메시지에 맞는 가이드가 없습니다.');
+
+            if (CHAT_URLS.guideAdmin) {
+                $empty.append(' ').append($('<a class="text-brand-600 hover:underline">')
+                    .attr('href', CHAT_URLS.guideAdmin).attr('target', '_blank').text('가이드 관리'));
+            }
+
+            $list.append($empty);
+            return;
+        }
+
+        var closed = current.status !== 'open';
+
+        items.forEach(function (item) {
+            var $li = $('<li class="flex items-center gap-2 text-sm">');
+            var $link = $('<a class="min-w-0 flex-1 truncate text-slate-700 hover:underline" target="_blank" rel="noopener">')
+                .attr('href', item.url).attr('title', item.subtitle || item.title).text(item.title);
+            var $btn = $('<button type="button" class="btn btn-sm shrink-0">')
+                .addClass(item.sent ? 'btn-ghost' : 'btn-secondary')
+                .text(item.sent ? '다시 보내기' : '보내기')
+                .prop('disabled', closed)
+                .on('click', function () { sendGuide(item, $btn); });
+
+            $li.append($link, $('<span class="shrink-0 text-[11px] text-slate-400">').text(item.score ? item.score + '점' : ''), $btn);
+            $list.append($li);
+        });
+    }
+
+    function sendGuide(item, $btn) {
+        if (!current) {
+            return;
+        }
+
+        $btn.prop('disabled', true);
+
+        apiPost(CHAT_URLS.sendGuide, { conversation_id: current.id, article_id: item.id }, function (data, message) {
+            showToast(message, 'success');
+            pollMessages();
+            refreshList();
+            loadGuides();
+        }).always(function () { $btn.prop('disabled', false); });
     }
 
     function select(row) {
@@ -173,7 +288,10 @@
         $('#chatEmpty').addClass('hidden');
         $('#chatPanel').removeClass('hidden').addClass('flex');
         renderHeader();
+        $('#chatGuideSearch').val('');
+        $('#chatGuideList').empty();
         pollMessages();
+        loadGuides();
     }
 
     function pollMessages() {
@@ -360,6 +478,8 @@
         });
 
         $('#chatShowClosed').on('change', refreshList);
+
+        $('#chatGuideSearch').on('input', scheduleGuides);
 
         connectRealtime();
         restartTimers();

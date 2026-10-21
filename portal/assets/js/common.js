@@ -80,6 +80,30 @@
     }
 
     /**
+     * 드로어 열기 / 닫기 (오른쪽에서 밀려 나오는 설정 패널)
+     * 마크업은 .drawer-root > .drawer-backdrop + .drawer-panel. 예: views/console/_widget_settings.php
+     */
+    function openDrawer(id) {
+        var $drawer = $('#' + id);
+        $drawer.addClass('is-open').attr('aria-hidden', 'false');
+        $('body').addClass('overflow-hidden');
+        // 패널이 다 밀려 나온 뒤 첫 입력 요소에 초점을 둔다.
+        window.setTimeout(function () {
+            $drawer.find('.drawer-panel').trigger('focus');
+        }, 200);
+        $drawer.trigger('drawer:open');
+    }
+
+    function closeDrawer(id) {
+        var $drawer = $('#' + id);
+        $drawer.removeClass('is-open').attr('aria-hidden', 'true');
+        if (!$('.drawer-root.is-open').length) {
+            $('body').removeClass('overflow-hidden');
+        }
+        $drawer.trigger('drawer:close');
+    }
+
+    /**
      * 확인 모달
      */
     function showConfirmModal(title, message, onConfirm, onCancel) {
@@ -180,12 +204,22 @@
             }
         });
 
+        // data-drawer-close 속성이 있는 요소(닫기 버튼, 배경)로 드로어를 닫는다.
+        $(document).on('click', '[data-drawer-close]', function () {
+            closeDrawer($(this).attr('data-drawer-close'));
+        });
+
+        // ESC 는 맨 위의 것부터 닫는다. 드로어 위에 뜬 확인 모달이 있으면 모달만 닫는다.
         $(document).on('keydown', function (e) {
-            if (e.key === 'Escape') {
-                $('.modal-root').not('.hidden').each(function () {
-                    closeModal($(this).attr('id'));
-                });
+            if (e.key !== 'Escape') { return; }
+
+            var $modals = $('.modal-root').not('.hidden');
+            if ($modals.length) {
+                $modals.each(function () { closeModal($(this).attr('id')); });
+                return;
             }
+
+            $('.drawer-root.is-open').each(function () { closeDrawer($(this).attr('id')); });
         });
     });
 
@@ -193,6 +227,8 @@
     window.showConfirmModal = showConfirmModal;
     window.openModal = openModal;
     window.closeModal = closeModal;
+    window.openDrawer = openDrawer;
+    window.closeDrawer = closeDrawer;
     window.apiPost = apiPost;
     window.apiGet = apiGet;
     window.csrfData = csrfData;

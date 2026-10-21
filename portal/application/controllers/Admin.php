@@ -1,26 +1,11 @@
 <?php
 /**
  * 파일 위치: application/controllers/Admin.php
- * 역할: 조직 관리(상담원 관리, 조직 정보, 통계)
+ * 역할: 조직 관리(상담원 관리, 조직 정보, 통계, 상담 위젯 설정 API)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
-class Admin extends Agent_Controller {
-
-    public function __construct()
-    {
-        parent::__construct();
-
-        if ($this->agent->role !== 'admin')
-        {
-            if ($this->input->is_ajax_request())
-            {
-                api_response(FALSE, '관리자만 접근할 수 있습니다.', array(), 403);
-                exit;
-            }
-            show_error('관리자만 접근할 수 있습니다.', 403);
-        }
-    }
+class Admin extends Admin_Controller {
 
     public function index()
     {
@@ -45,8 +30,9 @@ class Admin extends Agent_Controller {
     public function organization()
     {
         $this->render('admin/organization', array(
-            'page_title' => '조직 정보',
-            'org'        => $this->organization_model->get_by_id($this->agent->org_id),
+            'page_title'   => '조직 정보',
+            'use_dropzone' => TRUE,
+            'org'          => $this->organization_model->get_by_id($this->agent->org_id),
             'locales'    => supported_locales(),
             'timezones'  => supported_timezones(),
         ));
@@ -54,31 +40,11 @@ class Admin extends Agent_Controller {
 
     /**
      * GET /admin/widget
+     * 상담 위젯 설정은 상담 대화 화면의 설정 드로어로 옮겼다. 예전 주소로 오면 드로어를 연 채로 보낸다.
      */
     public function widget()
     {
-        $org = $this->organization_model->get_by_id($this->agent->org_id);
-
-        // 화면을 처음 열 때 키가 없으면 바로 발급한다.
-        if (empty($org->widget_key))
-        {
-            $this->organization_model->regenerate_widget_key($org->id);
-            $org = $this->organization_model->get_by_id($org->id);
-        }
-
-        $this->render('admin/widget', array(
-            'page_title' => '상담 위젯',
-            'org'        => $org,
-            'snippet'    => $this->widget_snippet($org),
-        ));
-    }
-
-    /**
-     * 고객사 사이트에 붙여 넣는 스니펫 한 줄
-     */
-    protected function widget_snippet($org)
-    {
-        return '<script src="'.base_url('widget.js').'" data-key="'.$org->widget_key.'" defer></script>';
+        redirect('console/chat?settings=widget');
     }
 
     /**
@@ -187,8 +153,10 @@ class Admin extends Agent_Controller {
      */
     public function api_org_save()
     {
-        $name  = $this->input->post('name', TRUE);
+        $name  = trim((string) $this->input->post('name', TRUE));
         $phone = $this->input->post('phone', TRUE);
+        // 소개 문구는 화면에서 html_escape 하므로 원문을 받고 길이만 자른다(줄바꿈 유지).
+        $intro = mb_substr(trim((string) $this->input->post('intro')), 0, 500);
 
         if ($name === '')
         {
@@ -209,6 +177,7 @@ class Admin extends Agent_Controller {
         $this->organization_model->update($this->agent->org_id, array(
             'name'     => $name,
             'phone'    => $phone,
+            'intro'    => $intro === '' ? NULL : $intro,
             'locale'   => $locale,
             'timezone' => $timezone,
         ));
@@ -260,6 +229,7 @@ class Admin extends Agent_Controller {
             'widget_position'      => $position,
             'widget_domains'       => empty($domains) ? NULL : mb_substr(implode("\n", $domains), 0, 500),
             'widget_offline_email' => $email,
+            'guide_autosuggest'    => $this->input->post('guide_autosuggest') ? 1 : 0,
         ));
 
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'widget_update',
@@ -281,7 +251,73 @@ class Admin extends Agent_Controller {
 
         api_response(TRUE, '새 키를 발급했습니다. 기존 스니펫은 더 이상 동작하지 않습니다.', array(
             'widget_key' => $key,
-            'snippet'    => $this->widget_snippet($org),
+            'snippet'    => $this->organization_model->widget_snippet($org),
         ));
+    }
+
+    /**
+     * POST /admin/api/logo_upload  (multipart, 필드명 logo)
+     * 고객 접속 페이지와 런처에 보이는 조직 로고를 바꾼다.
+     * SVG 는 스크립트를 담을 수 있으므로 받지 않는다. 형식은 확장자가 아니라 파일 내용으로 판별한다.
+     */
+    public function api_logo_upload()
+    {
+        $file = isset($_FILES['logo']) ? $_FILES['logo'] : NULL;
+        $ext  = check_uploaded_image($file, RH_LOGO_MAX_BYTES);
+
+        if (is_array($ext))
+        {
+            api_response(FALSE, $ext['error'], array(), 400);
+            return;
+        }
+
+        $org  = $this->organization_model->get_by_id($this->agent->org_id);
+        $dir  = FCPATH.'assets/uploads/logos/';
+        is_dir($dir) OR @mkdir($dir, 0775, TRUE);
+        // 이름을 매번 바꿔 브라우저와 런처가 예전 로고를 캐시에서 보여주지 않게 한다.
+        $name = $org->org_code.'-'.bin2hex(random_bytes(6)).'.'.$ext;
+
+        if ( ! @move_uploaded_file($file['tmp_name'], $dir.$name))
+        {
+            api_response(FALSE, '로고를 저장하지 못했습니다. 업로드 폴더 권한을 확인해 주세요.', array(), 500);
+            return;
+        }
+
+        $this->remove_logo_file($org->logo_path);
+        $logo_path = 'assets/uploads/logos/'.$name;
+        $this->organization_model->update($org->id, array('logo_path' => $logo_path));
+        $this->log_model->audit($org->id, $this->agent->id, 'org_logo_update', $logo_path, client_ip());
+
+        api_response(TRUE, '로고를 저장했습니다.', array('logo_url' => base_url($logo_path)));
+    }
+
+    /**
+     * POST /admin/api/logo_delete
+     */
+    public function api_logo_delete()
+    {
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+        $this->remove_logo_file($org->logo_path);
+        $this->organization_model->update($org->id, array('logo_path' => NULL));
+        $this->log_model->audit($org->id, $this->agent->id, 'org_logo_delete', NULL, client_ip());
+
+        api_response(TRUE, '로고를 삭제했습니다.', array());
+    }
+
+    /**
+     * 예전 로고 파일을 지운다. 로고 폴더 밖의 경로는 건드리지 않는다.
+     */
+    protected function remove_logo_file($logo_path)
+    {
+        if (empty($logo_path) || ! preg_match('#^assets/uploads/logos/[A-Za-z0-9_\-]+\.(png|jpg|webp)$#', $logo_path))
+        {
+            return;
+        }
+
+        if (is_file(FCPATH.$logo_path))
+        {
+            @unlink(FCPATH.$logo_path);
+        }
     }
 }

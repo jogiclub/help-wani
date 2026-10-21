@@ -86,6 +86,8 @@ class Agent_Controller extends MY_Controller {
             if ($this->input->is_ajax_request())
             {
                 api_response(FALSE, '로그인이 필요합니다.', array('redirect' => base_url('login')), 401);
+                // exit 하면 CI 가 출력 버퍼를 내보내지 않아 본문이 빈 채로 나간다.
+                $this->output->_display();
                 exit;
             }
             redirect('login');
@@ -110,6 +112,8 @@ class Agent_Controller extends MY_Controller {
         if (empty($session) || (int) $session->org_id !== (int) $this->agent->org_id)
         {
             api_response(FALSE, '세션을 찾을 수 없습니다.', array(), 404);
+            // exit 하면 CI 가 출력 버퍼를 내보내지 않아 본문이 빈 채로 나간다.
+            $this->output->_display();
             exit;
         }
 
@@ -136,10 +140,35 @@ class Operator_Controller extends Agent_Controller {
             if ($this->input->is_ajax_request())
             {
                 api_response(FALSE, '플랫폼 운영자만 접근할 수 있습니다.', array(), 403);
+                // exit 하면 CI 가 출력 버퍼를 내보내지 않아 본문이 빈 채로 나간다.
+                $this->output->_display();
                 exit;
             }
 
             show_error('플랫폼 운영자만 접근할 수 있습니다.', 403);
+        }
+    }
+}
+
+/**
+ * 조직 관리자(role=admin)만 접근 가능한 컨트롤러 (조직 관리, 가이드 관리)
+ */
+class Admin_Controller extends Agent_Controller {
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        if ($this->agent->role !== 'admin')
+        {
+            if ($this->input->is_ajax_request())
+            {
+                api_response(FALSE, '관리자만 접근할 수 있습니다.', array(), 403);
+                // exit 하면 CI 가 출력 버퍼를 내보내지 않아 본문이 빈 채로 나간다.
+                $this->output->_display();
+                exit;
+            }
+            show_error('관리자만 접근할 수 있습니다.', 403);
         }
     }
 }

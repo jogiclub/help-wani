@@ -9,6 +9,11 @@
       .\build-exe.ps1 -SignPfx 인증서.pfx -SignPassword 비밀번호
       .\build-exe.ps1 -OutDir ..\..\portal\assets\downloads
       .\build-exe.ps1 -TestBuild
+      .\build-exe.ps1 -Viewer -TestBuild
+
+    -Viewer    : 고객 런처 대신 상담원 뷰어(RemoteHelpViewer.exe, WebView2)를 빌드한다.
+                 상담원 전용이므로 포털 고객 다운로드 폴더로는 복사하지 않고
+                 launcher\publish-viewer 에만 출력한다. 서명은 -SignPfx 로 동일하게 가능.
 
     -TestBuild : 시험 서버용 빌드. TEST_BUILD 상수를 켜서 시험 포털 주소 고정과
                  시험 중계 서버 인증서 예외(AppInfo.cs, RelayClient.cs)를 포함한다.
@@ -25,7 +30,8 @@ param(
     [string]$SignPfx,
     [string]$SignPassword,
     [string]$TimestampUrl = "http://timestamp.digicert.com",
-    [switch]$TestBuild
+    [switch]$TestBuild,
+    [switch]$Viewer
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,21 +41,24 @@ if ($TestBuild -and $SignPfx) {
 }
 
 if (-not $OutDir) {
-    $OutDir = "$PSScriptRoot\..\..\portal\assets\downloads"
+    $OutDir = if ($Viewer) { "$PSScriptRoot\..\publish-viewer" } else { "$PSScriptRoot\..\..\portal\assets\downloads" }
 }
+
+$projectDir = if ($Viewer) { "RemoteHelp.Viewer" } else { "RemoteHelp.App" }
+$exeName = if ($Viewer) { "RemoteHelpViewer.exe" } else { "RemoteHelp.exe" }
 
 function Write-Step($message) {
     Write-Host ""
     Write-Host "== $message" -ForegroundColor Cyan
 }
 
-$project = Resolve-Path "$PSScriptRoot\..\RemoteHelp.App\RemoteHelp.App.csproj"
-$publishDir = "$PSScriptRoot\..\RemoteHelp.App\bin\$Configuration\publish"
+$project = Resolve-Path "$PSScriptRoot\..\$projectDir\$projectDir.csproj"
+$publishDir = "$PSScriptRoot\..\$projectDir\bin\$Configuration\publish"
 $defineArgs = @()
 
 if ($TestBuild) {
     # 배포 빌드와 산출물이 섞이지 않도록 별도 폴더를 쓴다.
-    $publishDir = "$PSScriptRoot\..\RemoteHelp.App\bin\$Configuration\publish-test"
+    $publishDir = "$PSScriptRoot\..\$projectDir\bin\$Configuration\publish-test"
     $defineArgs = @("-p:DefineConstants=TEST_BUILD")
     Write-Host "시험 빌드입니다. 인증서 예외와 시험 서버 주소가 포함되므로 고객에게 배포하지 마세요." -ForegroundColor Yellow
 }
@@ -70,7 +79,7 @@ dotnet publish $project `
 
 if ($LASTEXITCODE -ne 0) { throw "빌드에 실패했습니다." }
 
-$exe = Join-Path $publishDir "RemoteHelp.exe"
+$exe = Join-Path $publishDir $exeName
 if (-not (Test-Path $exe)) { throw "산출물을 찾을 수 없습니다: $exe" }
 
 $sizeMb = [math]::Round((Get-Item $exe).Length / 1MB, 1)
@@ -96,12 +105,19 @@ if ($SignPfx) {
 
 Write-Step "3. 출력 폴더로 복사"
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
-$target = Join-Path $OutDir "RemoteHelp.exe"
+$target = Join-Path $OutDir $exeName
 Copy-Item $exe $target -Force
 
 $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLower()
 Write-Host "복사 완료: $target"
 Write-Host "SHA-256 : $hash"
+
+if ($Viewer) {
+    Write-Step "다음 할 일 (상담원 뷰어)"
+    Write-Host " - 상담원 PC 에 $exeName 을 전달 (고객 다운로드 폴더에는 올리지 않음)"
+    Write-Host " - 상담원 PC 에 Microsoft Edge WebView2 Runtime 필요 (Windows 11 과 최신 Windows 10 에는 기본 설치)"
+    return
+}
 
 if ($TestBuild) {
     Write-Step "다음 할 일 (시험 빌드)"

@@ -220,6 +220,7 @@ class Operator extends Operator_Controller {
         if (empty($org))
         {
             api_response(FALSE, '조직을 찾을 수 없습니다.', array(), 404);
+            $this->output->_display();
             exit;
         }
 

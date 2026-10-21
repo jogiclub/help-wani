@@ -51,6 +51,9 @@ $route['console/api/chat/messages/(:num)'] = 'console/api_chat_messages/$1';
 $route['console/api/chat/send']            = 'console/api_chat_send';
 $route['console/api/chat/close']           = 'console/api_chat_close';
 $route['console/api/chat/remote']          = 'console/api_chat_remote';
+$route['console/api/chat/send_guide']      = 'console/api_chat_send_guide';
+$route['console/api/guide/suggest/(:num)'] = 'console/api_guide_suggest/$1';
+$route['console/api/guide/search']         = 'console/api_guide_search';
 
 // 플랫폼 운영자 (조직 가입 승인)
 $route['operator']              = 'operator/index';
@@ -63,8 +66,17 @@ $route['admin/agents']          = 'admin/agents';
 $route['admin/organization']    = 'admin/organization';
 $route['admin/widget']          = 'admin/widget';
 $route['admin/api/(:any)']      = 'admin/api_$1';
+// 조직 관리 > 가이드 관리 (docs/guide-plan.md)
+$route['admin/guide']               = 'admin_guide/index';
+$route['admin/guide/new']           = 'admin_guide/edit';
+$route['admin/guide/edit/(:num)']   = 'admin_guide/edit/$1';
+$route['admin/guide/preview/(:num)']= 'admin_guide/preview/$1';
+$route['admin/guide/export']        = 'admin_guide/export';
+$route['admin/guide/api/(:any)']    = 'admin_guide/api_$1';
 
 // 고객 화면 (가장 마지막에 둔다)
 $route['(:any)/download'] = 'download/launcher/$1';
 $route['(:any)/survey/(:num)'] = 'customer/survey/$1/$2';
+$route['(:any)/guide']        = 'guide/index/$1';
+$route['(:any)/guide/(:any)'] = 'guide/article/$1/$2';
 $route['(:any)'] = 'customer/index/$1';

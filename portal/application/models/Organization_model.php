@@ -217,8 +217,18 @@ class Organization_model extends CI_Model {
     }
 
     /**
+     * 고객사 사이트에 붙여 넣는 위젯 스니펫 한 줄
+     * 관리자가 localhost 나 내부 IP 로 열어도 공개 주소가 들어가도록 customer_url() 을 쓴다(CLAUDE.md 3.13).
+     */
+    public function widget_snippet($org)
+    {
+        return '<script src="'.customer_url('widget.js').'" data-key="'.$org->widget_key.'" defer></script>';
+    }
+
+    /**
      * 요청 Origin 이 조직이 허용한 도메인인지 확인한다.
      * 허용 목록이 비어 있으면 개발 편의를 위해 모두 허용한다.
+     * 포털 자기 주소(고객 접속 페이지 /{조직코드} 에 뜨는 위젯)는 허용 목록과 관계없이 통과한다.
      */
     public function widget_origin_allowed($org, $origin)
     {
@@ -234,6 +244,14 @@ class Organization_model extends CI_Model {
         if (empty($host))
         {
             return FALSE;
+        }
+
+        foreach (array(base_url(), customer_url()) as $own)
+        {
+            if (strcasecmp($host, (string) parse_url($own, PHP_URL_HOST)) === 0)
+            {
+                return TRUE;
+            }
         }
 
         foreach ($allowed as $rule)
