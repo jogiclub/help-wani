@@ -19,7 +19,8 @@ if ( ! function_exists('api_response'))
             ->set_output(json_encode(array(
                 'result'  => (bool) $result,
                 'message' => (string) $message,
-                'data'    => $data === NULL ? new stdClass() : $data,
+                // 빈 배열은 [] 로 나가 런처(C#)가 객체로 읽지 못하므로 항상 {} 로 보낸다.
+                'data'    => ($data === NULL || $data === array()) ? new stdClass() : $data,
             ), JSON_UNESCAPED_UNICODE));
     }
 }
