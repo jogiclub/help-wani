@@ -45,8 +45,9 @@ if ($config['base_url'] === '')
         $rh_host = 'localhost';
     }
 
+    // OR 는 = 보다 우선순위가 낮아 두 번째 조건이 무시되므로 || 를 쓴다(Cloudflare Tunnel 은 X-Forwarded-Proto 로 https 를 알린다).
     $rh_https = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) !== 'off')
-        OR (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
 
     $config['base_url'] = ($rh_https ? 'https://' : 'http://').$rh_host.'/';
 }

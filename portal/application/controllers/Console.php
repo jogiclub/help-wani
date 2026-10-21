@@ -33,7 +33,7 @@ class Console extends Agent_Controller {
             'page_title'  => '원격 화면',
             'session'     => $session,
             'notes'       => $this->session_model->list_notes($session->id),
-            'relay_ws_url'=> env('RELAY_VIEWER_WS_URL', 'wss://localhost:8443/viewer'),
+            'relay_ws_url'=> relay_viewer_ws_url(),
         ));
     }
 
@@ -161,7 +161,7 @@ class Console extends Agent_Controller {
         api_response(TRUE, '', array(
             'token'      => $token['token'],
             'expires_in' => $token['expires_in'],
-            'ws_url'     => env('RELAY_VIEWER_WS_URL', 'wss://localhost:8443/viewer'),
+            'ws_url'     => relay_viewer_ws_url(),
         ));
     }
 

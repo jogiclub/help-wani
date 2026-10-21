@@ -191,6 +191,23 @@ realtime-msg --GET /api/realtime/auth--> 포털    (토큰 검증)
 - 컨트롤러 클래스 이름을 라이브러리와 같게 짓지 않습니다. `Realtime` 라이브러리가 있으므로
   검증 API 컨트롤러는 `Realtime_auth` 입니다. 같은 이름이면 CI3 가 라이브러리를 읽지 못합니다.
 
+### 3.12 고객 IP — Cloudflare Tunnel 로만 알 수 있다
+
+Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모두 게이트웨이 IP 로 보임).
+고객 IP 는 `cloudflared` 가 넘기는 `CF-Connecting-IP` 를 Apache `mod_remoteip` 가 복원해서 얻습니다.
+
+```
+고객 --https--> Cloudflare --터널--> cloudflared(10.250.88.5) --> web  (CF-Connecting-IP 복원)
+고객 --http :8099--> web                                                (게이트웨이 IP, 헤더 무시)
+```
+
+- **신뢰 주소는 cloudflared 고정 주소 하나만** 둡니다(`apache-vhost.conf` 의 `RemoteIPInternalProxy`
+  = `docker-compose.yml` 의 `ipv4_address`). 대역으로 넓히면 8099 직접 요청이 tunnel 망 게이트웨이로
+  들어와 IP 를 위조할 수 있습니다.
+- `X-Forwarded-For` 는 쓰지 않습니다. Cloudflare 가 고객이 보낸 값 뒤에 덧붙이므로 맨 앞 값을 꾸밀 수 있습니다.
+- 브라우저용 웹소켓 주소는 고정하지 않고 접속한 주소로 만듭니다. https 화면은 다른 포트로 붙을 수 없으므로
+  포털 경유 경로(`/relay-viewer`, `/realtime-ws`)를 씁니다(`relay_viewer_ws_url()`, `Realtime::ws_url()`).
+
 ---
 
 ## 4. 검증
@@ -234,6 +251,7 @@ docker compose up -d --build
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
 | http://localhost:8091/healthz | 상담 실시간 메시지 서버 상태 |
+| https://help.wani.im/ | 시험 서버 외부 주소(Cloudflare Tunnel `remotehelp-help` -> `http://web:80`, `.env` 에 토큰과 `COMPOSE_PROFILES=tunnel`). http 는 Apache 가 https 로 넘긴다 |
 
 윈도우 런처는 이 환경에서 빌드할 수 없습니다. 코드 작성까지만 하고 실기 검증은 별도로 표시합니다.
 
@@ -249,7 +267,8 @@ docker compose up -d --build
 | 요금 | 연 220,000원 / 상담원 계정 5개. `Home::index()` 의 `$pricing` 한 곳에서 관리 |
 | 화면 캡처 | GDI 우선, 가능하면 DXGI 자동 전환 |
 | 중계 서버 | Node.js + ws |
-| 시험 서버 뷰어 연결 | **relay 가 자체 서명 인증서라 상담원 브라우저는 포털 경유로 붙는다.** `.env` 의 `RELAY_VIEWER_WS_URL=ws://<서버>:8099/relay-viewer`, web(Apache)이 relay 인증서(`relay-ca` 볼륨)로 검증한 wss 로 넘긴다. 런처(`/agent`)는 그대로 8443 직결. 운영은 공인 인증서 + `wss://<도메인>/viewer` |
+| 시험 서버 뷰어 연결 | **relay 가 자체 서명 인증서라 상담원 브라우저는 포털 경유로 붙는다.** `.env` 의 `RELAY_VIEWER_WS_URL=auto` 이면 접속한 주소 기준 `ws(s)://<호스트>/relay-viewer`, web(Apache)이 relay 인증서(`relay-ca` 볼륨)로 검증한 wss 로 넘긴다. 런처(`/agent`)는 그대로 8443 직결. 운영은 공인 인증서 + `wss://<도메인>/viewer` |
+| 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
 

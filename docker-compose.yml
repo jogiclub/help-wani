@@ -1,5 +1,5 @@
 # 파일 위치: docker-compose.yml
-# 역할: RemoteHelp 개발 환경(포털, DB, 중계 서버, 검증용 고객 PC) 구성
+# 역할: RemoteHelp 개발 환경(포털, DB, 중계 서버, 검증용 고객 PC, Cloudflare Tunnel) 구성
 services:
   db:
     image: mysql:8.0
@@ -50,6 +50,7 @@ services:
       REALTIME_SHARED_SECRET: ${REALTIME_SHARED_SECRET:-change-me-realtime-secret}
       REALTIME_TOKEN_SECRET: ${REALTIME_TOKEN_SECRET:-dev-realtime-token-secret}
       RELAY_AGENT_WS_URL: ${RELAY_AGENT_WS_URL:-wss://localhost:8443/agent}
+      # auto: 접속한 포털 주소 기준으로 ws(s)://<호스트>/relay-viewer 를 쓴다(포털 경유).
       RELAY_VIEWER_WS_URL: ${RELAY_VIEWER_WS_URL:-wss://localhost:8443/viewer}
       RELAY_AUTH_SHARED_SECRET: ${RELAY_AUTH_SHARED_SECRET:-change-me-relay-secret}
       STORE_PRODUCT_ID: ${STORE_PRODUCT_ID:-0000000000000000}
@@ -61,6 +62,9 @@ services:
       - relay-ca:/etc/remotehelp/relay-ca:ro
     ports:
       - "8099:80"
+    networks:
+      - default
+      - tunnel
 
   relay:
     build:
@@ -103,6 +107,24 @@ services:
     ports:
       - "8091:8091"
 
+  # Cloudflare Tunnel. https://help.wani.im 요청을 web 으로 넘기고 고객 IP 를 CF-Connecting-IP 로 전달한다.
+  # Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지우므로(모두 게이트웨이 IP 로 보임) 고객 IP 는 이 경로로만 알 수 있다.
+  # 토큰이 있을 때만 켠다: .env 에 CLOUDFLARE_TUNNEL_TOKEN 과 COMPOSE_PROFILES=tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:2026.9.3
+    container_name: remotehelp-cloudflared
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    depends_on:
+      - web
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    # web 의 mod_remoteip 는 이 주소에서 온 요청의 CF-Connecting-IP 만 믿는다(apache-vhost.conf 와 같아야 함).
+    networks:
+      tunnel:
+        ipv4_address: 10.250.88.5
+
   # 검증용 고객 PC 에이전트 모의 컨테이너. 기본 기동하지 않고 profile 로 실행한다.
   #   docker compose --profile test run --rm -e AGENT_TOKEN=... agentsim
   agentsim:
@@ -117,6 +139,15 @@ services:
       AGENT_TOKEN: ${AGENT_TOKEN:-}
       SCREEN_WIDTH: "1280"
       SCREEN_HEIGHT: "800"
+
+networks:
+  # cloudflared 와 web 만 붙는 망. cloudflared 주소를 고정해 web 이 그 주소 하나만 프록시로 믿게 한다.
+  # 주의: Docker Desktop 은 8099 로 직접 들어온 요청을 이 망의 게이트웨이(10.250.88.1)에서 온 것처럼 넘길 수 있다.
+  # 그래서 대역 전체가 아니라 cloudflared 주소 하나만 믿어야 CF-Connecting-IP 위조를 막을 수 있다.
+  tunnel:
+    ipam:
+      config:
+        - subnet: 10.250.88.0/29
 
 volumes:
   db-data:

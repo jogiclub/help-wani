@@ -449,6 +449,32 @@ def check_no_vnc():
         ok('VNC 잔재 없음')
 
 
+# --------------------------------------------------- 터널 프록시 신뢰 주소 일치
+def check_tunnel_proxy():
+    compose = read('docker-compose.yml')
+    vhost = read('docker/web/apache-vhost.conf')
+
+    if 'RemoteIPHeader' not in vhost:
+        ok('터널 프록시 미사용')
+        return
+
+    trusted = re.findall(r'^\s*RemoteIP(?:Internal|Trusted)Proxy\s+(.+)$', vhost, re.M)
+    trusted = [t for line in trusted for t in line.split()]
+    match = re.search(r'cloudflared:.*?ipv4_address:\s*([0-9.]+)', compose, re.S)
+
+    if not match:
+        fail('cloudflared 고정 주소가 없습니다',
+             'docker-compose.yml 의 cloudflared 에 ipv4_address 를 두고 apache-vhost.conf 와 맞춥니다')
+    elif any('/' in t for t in trusted):
+        fail('RemoteIP 신뢰 주소가 대역으로 되어 있습니다',
+             '8099 직접 요청이 tunnel 망 게이트웨이로 들어와 CF-Connecting-IP 를 위조할 수 있습니다. cloudflared 주소 하나만 둡니다')
+    elif trusted != [match.group(1)]:
+        fail('RemoteIP 신뢰 주소와 cloudflared 주소가 다릅니다',
+             f'apache-vhost.conf {trusted} / docker-compose.yml {match.group(1)}')
+    else:
+        ok('터널 프록시 신뢰 주소 일치')
+
+
 # ------------------------------------------------------------------ 실행 점검
 def check_live():
     base = os.environ.get('PORTAL_BASE', 'http://localhost:8099')
@@ -499,6 +525,7 @@ def main():
     check_class_collision()
     check_secrets()
     check_no_vnc()
+    check_tunnel_proxy()
 
     if '--live' in sys.argv:
         check_live()

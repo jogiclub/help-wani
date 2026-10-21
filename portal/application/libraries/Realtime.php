@@ -190,6 +190,7 @@ class Realtime {
     /**
      * 브라우저가 접속할 주소. 비어 있으면 지금 접속한 호스트의 REALTIME_PUBLIC_PORT 를 쓴다.
      * (base_url 과 같은 이유로 고정하지 않는다)
+     * https 로 접속했으면(Cloudflare Tunnel) 다른 포트로 붙을 수 없으므로 포털 경유 /realtime-ws 를 쓴다.
      */
     protected function ws_url()
     {
@@ -202,9 +203,14 @@ class Realtime {
 
         $base = base_url();
         $host = parse_url($base, PHP_URL_HOST);
-        $scheme = parse_url($base, PHP_URL_SCHEME) === 'https' ? 'wss' : 'ws';
+        $port = parse_url($base, PHP_URL_PORT);
 
-        return $scheme.'://'.$host.':'.env('REALTIME_PUBLIC_PORT', '8091').'/ws';
+        if (parse_url($base, PHP_URL_SCHEME) === 'https')
+        {
+            return 'wss://'.$host.($port ? ':'.$port : '').'/realtime-ws';
+        }
+
+        return 'ws://'.$host.':'.env('REALTIME_PUBLIC_PORT', '8091').'/ws';
     }
 
     protected function token_secret()

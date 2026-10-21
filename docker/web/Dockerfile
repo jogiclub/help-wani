@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libzip-dev \
         unzip \
     && docker-php-ext-install mysqli pdo_mysql \
-    && a2enmod rewrite headers proxy proxy_http proxy_wstunnel ssl \
+    && a2enmod rewrite headers proxy proxy_http proxy_wstunnel ssl remoteip \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/web/apache-vhost.conf /etc/apache2/sites-available/000-default.conf

@@ -66,6 +66,30 @@ if ( ! function_exists('random_digits'))
     }
 }
 
+if ( ! function_exists('relay_viewer_ws_url'))
+{
+    /**
+     * 상담원 뷰어가 붙을 relay 웹소켓 주소.
+     * RELAY_VIEWER_WS_URL=auto 이면 접속한 포털 주소 기준 ws(s)://<호스트>/relay-viewer (포털 경유)를 쓴다.
+     * http(8099) 와 https(Cloudflare Tunnel) 어느 쪽으로 들어와도 같은 출처로 붙게 하려는 것이다.
+     */
+    function relay_viewer_ws_url()
+    {
+        $configured = (string) env('RELAY_VIEWER_WS_URL', 'wss://localhost:8443/viewer');
+
+        if ($configured !== 'auto')
+        {
+            return $configured;
+        }
+
+        $base   = base_url();
+        $scheme = parse_url($base, PHP_URL_SCHEME) === 'https' ? 'wss' : 'ws';
+        $port   = parse_url($base, PHP_URL_PORT);
+
+        return $scheme.'://'.parse_url($base, PHP_URL_HOST).($port ? ':'.$port : '').'/relay-viewer';
+    }
+}
+
 if ( ! function_exists('client_ip'))
 {
     function client_ip()
