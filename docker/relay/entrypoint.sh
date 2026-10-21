@@ -19,6 +19,11 @@ if [ ! -f "$RELAY_SSL_CERT" ]; then
         -addext "subjectAltName=DNS:$RELAY_SERVER_NAME,DNS:relay,DNS:localhost,IP:127.0.0.1" 2>/dev/null
 fi
 
+# 포털(web) 컨테이너가 relay 를 검증할 수 있도록 공개 인증서만 따로 둔다(개인 키는 넘기지 않는다).
+mkdir -p /etc/remotehelp/relay-ca
+cp "$RELAY_SSL_CERT" /etc/remotehelp/relay-ca/relay.crt
+chmod 644 /etc/remotehelp/relay-ca/relay.crt
+
 SUBST='${RELAY_SSL_CERT} ${RELAY_SSL_KEY} ${RELAY_SERVER_NAME} ${RELAY_HTTPS_PORT} ${RELAY_UPSTREAM}'
 envsubst "$SUBST" < /etc/remotehelp/templates/remotehelp.conf > /etc/nginx/sites-enabled/remotehelp.conf
 
