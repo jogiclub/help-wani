@@ -1,0 +1,13 @@
+# 파일 위치: backend/requirements.txt
+# 역할: FastAPI 포털 의존성 (버전 고정, 2026-10-22 PyPI 확인. 배포 2주 이상 지난 버전만 사용)
+fastapi==0.142.4
+uvicorn[standard]==0.54.0
+sqlalchemy==2.1.4
+pymysql==1.2.3
+# MySQL 8 의 caching_sha2_password 인증에 필요하다(PyMySQL 이 비 SSL 연결에서 RSA 로 비밀번호를 보냄).
+cryptography==50.0.2
+jinja2==3.1.6
+python-multipart==0.0.32
+bcrypt==5.0.0
+httpx==0.28.1
+itsdangerous==2.2.0

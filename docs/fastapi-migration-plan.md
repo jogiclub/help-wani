@@ -1,0 +1,318 @@
+# 포털 서버 FastAPI 전환 계획
+
+> 파일 위치: docs/fastapi-migration-plan.md
+> 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
+
+- 작성일: 2026-10-22
+- 상태: 진행 중 — 0단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+
+---
+
+## 1. 목표와 원칙
+
+**목표**: `portal/` 의 서버 코드(CodeIgniter 3)를 FastAPI 로 다시 작성한다. 화면(JS/CSS/사전/아이콘)과 DB, 중계 서버(`relay/`),
+상담 실시간 서버(`realtime/`), 런처는 그대로 둔다.
+
+**원칙**
+
+1. **PHP 는 지우지 않고 나란히 띄운다.** 새 컨테이너 `api` 를 따로 올려 같은 DB 를 쓰게 하고, 기능을 다 옮겨 비교가 끝난 뒤에 전환한다.
+   PHP 제거는 마지막 단계(6장 10단계)이며 전환 후 일정 기간 되돌릴 수 있게 남겨 둔다.
+2. **프런트엔드는 고치지 않는 것이 기본이다.** 주소, 요청 형식(`csrf_test_name` 포함), 응답 형식(`{ result, message, data }`),
+   화면 전역 변수(`XXX_URLS`, `i18n`)를 PHP 와 똑같이 맞춘다. JS 를 고쳐야 한다면 PHP 쪽에서도 동작하게 고친다(전환 전까지 둘 다 돌아야 함).
+3. **DB 스키마는 바꾸지 않는다.** 전환 기간에는 PHP 와 FastAPI 가 같은 DB 를 함께 쓰므로 스키마를 바꾸면 한쪽이 깨진다.
+   꼭 필요하면 양쪽 모두 호환되는 추가(컬럼 추가 등)만 하고 `sql/migrations/` 에 넣는다.
+4. **CLAUDE.md 3장의 규칙은 그대로 옮긴다.** 규칙이 "어느 함수 한 곳을 거친다" 로 정의되어 있으므로
+   Python 에서도 같은 이름·같은 책임의 함수 한 곳으로 만든다(예: `Guide_model::save_article()` → `guide_model.save_article()`).
+5. **서명 토큰과 비밀번호는 바이트 단위로 호환**시킨다. 전환 순간 로그인·위젯 토큰·이어 가기 메일 주소가 끊기면 안 된다.
+
+---
+
+## 2. 현재 규모 (2026-10-22 기준)
+
+| 구분 | 파일 | 줄 수(대략) |
+|---|---|---|
+| 컨트롤러 | 14개 (`controllers/`, `controllers/api/`) | 4,200 |
+| 모델 | 9개 | 4,900 |
+| 라이브러리 | 5개 (`Realtime`, `Mailer`, `Guide_matcher`, `Chat_greeting`, `Chat_followup`) | 900 |
+| 헬퍼·코어 | `app_helper`, `i18n_helper`, `MY_Controller` | 600 |
+| 설정 | `guide_match`, `guide_samples`, `holidays`, `macro`, `routes` 등 | - |
+| 뷰 | 53개 PHP 템플릿 | 4,200 |
+| 라우트 | 약 70개 (`config/routes.php`, 마지막 `(:any)` 는 조직 코드) | - |
+
+손대지 않는 것: `portal/assets/` 전체(JS, CSS, 사전, 벤더, 업로드), `relay/`, `realtime/`, `launcher/`, `sql/`.
+
+---
+
+## 3. 목표 구조
+
+```
+[브라우저 / 위젯 / 런처]
+        |
+        |  전환 전: :8099 -> web(PHP)        시험: :8098 -> api(FastAPI)
+        |  전환 후: :8099 -> web(Apache, 프록시 전용) -> api
+        v
+   api (FastAPI + uvicorn)  ---- MySQL(db, 같은 DB)
+        |  POST /publish                ^  GET /api/realtime/auth, /api/relay/auth
+        v                               |
+   realtime-msg / relay  ---------------+
+```
+
+### 3.1 디렉터리
+
+```
+backend/
+  (Dockerfile 은 기존 관례대로 docker/api/Dockerfile 에 둔다)
+  requirements.txt         (버전 고정)
+  app/
+    main.py                앱 생성, 미들웨어, 라우터 등록(조직 코드 라우터는 맨 마지막)
+    config.py              .env 읽기 (PHP config/env.php 대응)
+    db.py                  DB 연결
+    core/
+      session.py           로그인 세션 (CI3 ci_session 대응)
+      csrf.py              csrf_test_name 검사 (csrf_exclude_uris 대응)
+      response.py          api_response()
+      deps.py              current_agent / require_admin / require_operator (Agent/Admin/Operator_Controller 대응)
+      templates.py         Jinja2 환경 + 전역 함수(asset_url, base_url, customer_url, __, lang_text, to_timezone ...)
+      i18n.py              i18n_helper 대응, portal/assets/lang/*.json 을 그대로 읽음
+    helpers/app.py         app_helper 대응 (check_uploaded_image, image_file_ext, fetch_external_image ...)
+    models/                Organization / Agent / Session / Chat / Chat_hours / Guide / Macro / Visitor / Log
+    libraries/             realtime / mailer / guide_matcher / chat_greeting / chat_followup
+    settings/              guide_match / guide_samples / holidays / macro (PHP config 배열 대응)
+    routers/               home / auth / customer / guide / download / widget / console / console_macro /
+                           admin / admin_guide / operator / api_launcher / api_relay / api_realtime_auth / org(맨 마지막)
+    templates/             PHP 뷰를 옮긴 Jinja2 템플릿 (views/ 와 같은 폴더 구조)
+```
+
+> 기존 `server/` 는 중계 서버 설치 스크립트 폴더이므로 쓰지 않는다. 폴더 이름은 확인 필요 사항(8장) 참고.
+
+### 3.2 컨테이너 (`docker-compose.yml` 에 추가)
+
+| 항목 | 값 |
+|---|---|
+| 서비스 이름 | `api` (container_name `remotehelp-api`) |
+| 포트 | `8098:8000` (기존 8099, 8091, 8443, 13306 과 겹치지 않음) |
+| 환경 변수 | `web` 과 같은 값(DB, 비밀값, REALTIME_*, RELAY_*, PUBLIC_BASE_URL, SMTP_* ...)을 `.env` 에서 받는다. 새 비밀값은 만들지 않는다 |
+| 볼륨 | `./backend:/app`(개발 중 자동 재시작), `./portal/assets:/srv/assets`(정적 파일과 업로드를 PHP 와 공유) |
+| 망 | `default`, `tunnel`(전환 단계에서 cloudflared 가 붙을 수 있게) |
+| 의존 | `db` healthy |
+
+정적 파일(`/assets/...`)은 전환 전까지 FastAPI `StaticFiles` 로 함께 내준다. 전환 후에는 Apache 가 직접 내주는 방식으로 바꿀 수 있다(6장 9단계).
+
+---
+
+## 4. 기술 선택
+
+정확한 버전과 옵션은 **구현 시점에 공식 문서·PyPI 로 확인해 고정**하고, 확인 결과를 보고서에 남긴다(CLAUDE.md 1장).
+
+| 용도 | 선택(안) | 이유 |
+|---|---|---|
+| 웹 프레임워크 | FastAPI + uvicorn | 요청 사항 |
+| 템플릿 | Jinja2 | PHP 뷰를 서버 렌더링 그대로 옮길 수 있음. 화면 JS 를 바꾸지 않아도 됨 |
+| DB | SQLAlchemy 2 Core + PyMySQL (동기) | 기존 모델이 SQL 중심이라 ORM 매핑보다 Core 가 옮기기 쉬움. 동기 엔드포인트(`def`)로 두고 FastAPI 스레드풀에 맡긴다 |
+| 세션 | 서명 쿠키 또는 DB 세션(5.2) | |
+| 비밀번호 | `bcrypt` | PHP `password_hash(PASSWORD_DEFAULT)` 의 `$2y$` 해시를 그대로 검증 |
+| 폼/파일 | `python-multipart` | Dropzone 업로드, CSV 가져오기 |
+| HTTP 클라이언트 | `httpx` | realtime 발행, 외부 이미지 받기 |
+| 메일 | 표준 `smtplib` (시간 제한 10초) | `Mailer` 와 같은 동작 |
+| 시간대 | 표준 `zoneinfo` | `to_timezone()`, `Chat_hours_model` 벽시계 판정 |
+| 이미지 판별 | 파일 머리 바이트 직접 검사 | `image_file_ext()` 와 같은 방식. SVG 거부 유지 |
+
+---
+
+## 5. 반드시 호환시켜야 할 것
+
+전환 순간 끊기거나 조용히 어긋나는 항목입니다. 각 항목은 PHP 와 FastAPI 가 **같은 입력에 같은 출력**을 내는지 비교해 확인합니다.
+
+### 5.1 응답·요청 형식
+
+- 모든 API 는 `{ "result": bool, "message": str, "data": {} }`. 빈 `data` 는 `[]` 가 아니라 `{}`(커밋 5b3f83d 결정).
+- HTTP 상태 코드도 맞춘다(401 로그인 필요 + `data.redirect`, 404, 409 `conflict` 등).
+- 요청은 jQuery `$.ajax` 폼 인코딩(`application/x-www-form-urlencoded`)과 multipart 를 받는다. JSON 본문만 받게 만들지 않는다.
+- AJAX 판별은 CI3 처럼 `X-Requested-With: XMLHttpRequest` 로 한다(로그인 만료 시 리다이렉트/401 갈림).
+
+### 5.2 로그인 세션
+
+- 세션 값: `agent_id`, `locale`, `timezone` 등(`Auth::login` 이 넣는 키를 전수 조사해 맞춘다).
+- 만료 7200초, `SameSite=Lax`, `HttpOnly`.
+- **PHP 와 세션을 공유하지 않는다.** CI3 파일 세션(PHP 직렬화)을 Python 에서 읽고 쓰는 것은 복잡하고 위험하다.
+  시험 기간(:8098)에는 FastAPI 가 자기 세션을 따로 쓰고, 전환 때 한 번 다시 로그인하게 한다(상담원만 해당, 고객 화면은 세션을 쓰지 않음).
+- 쿠키 이름은 PHP 와 겹치지 않게 한다(같은 호스트의 다른 포트는 쿠키를 공유하므로 `ci_session` 을 덮어쓰면 PHP 로그인이 풀린다).
+
+### 5.3 CSRF
+
+- 화면은 `<meta name="csrf-name">`, `<meta name="csrf-hash">` 를 읽어 `csrf_test_name` 으로 보낸다(`common.js`). 이름을 그대로 쓴다.
+- 쿠키 이중 제출 방식(CI3 `csrf_cookie_name`)과 같은 방식으로 검사한다. 쿠키 이름은 5.2 와 같은 이유로 PHP 와 다르게 둔다.
+- 제외 경로: `api/launcher/.*`, `api/relay/.*`, `api/widget/.*`. 위젯은 대신 Origin 허용 도메인 + 방문자 토큰 대조(3.9).
+
+### 5.4 서명 토큰과 무작위 값
+
+| 토큰 | PHP 위치 | 맞출 것 |
+|---|---|---|
+| 상담 실시간 구독 토큰 | `Realtime.php` (HMAC-SHA256, base64url, `REALTIME_TOKEN_SECRET`) | 본문 JSON 직렬화 순서·형식까지 같게. realtime-msg 가 포털에 검증을 맡기므로 섞여도 동작해야 함 |
+| 이어 가기 주소 토큰 | `Chat_followup.php` (`CHAT_RESUME_SECRET`, 비면 `hash_hmac('sha256','chat-resume', REALTIME_TOKEN_SECRET)`) | 이미 보낸 메일의 주소(14일)가 전환 후에도 열려야 함 |
+| 런처·뷰어 토큰 | `Session_model.php` (`random_bytes(32)` → hex) | DB 에 저장하는 값이므로 형식(64자 hex)만 맞추면 됨 |
+| 비밀번호 | `password_hash` / `password_verify` | `$2y$` bcrypt 검증 확인. 새로 만드는 해시도 PHP 가 읽을 수 있는 형식 |
+
+PHP `json_encode` 는 기본으로 `/` 를 `\/` 로, 한글을 `\uXXXX` 로 바꾼다. 서명 본문을 만들 때 이 차이가 생기지 않는지 토큰 하나하나 확인한다.
+
+### 5.5 시간
+
+- DB 세션 시간대 `+00:00`, 저장은 UTC(3.4). Python 에서 `datetime.now(timezone.utc)` 만 쓰고 로컬 시간을 쓰지 않는다.
+- 운영 시간·휴일은 조직 시간대 벽시계 값(3.16 예외)이며 `availability()` 한 곳에서만 판정한다.
+
+### 5.6 다국어·아이콘·자산 주소
+
+- `portal/assets/lang/{ko,en,ja}.json` 을 그대로 읽는다. 언어 결정 우선순위(3.2 표)를 같은 순서로 옮긴다.
+- `asset_url('assets/...')` 는 파일 수정 시각을 `?v=` 로 붙인다(Cloudflare 캐시 문제, 3.1). Jinja 전역 함수로 같은 결과를 낸다.
+- `Home::landing_icons()` 아이콘 서브셋 목록과 `icon_names` 전달 방식을 유지한다(3.3).
+
+### 5.7 고객 IP, 주소
+
+- 고객 IP 는 `CF-Connecting-IP` 를 **cloudflared 고정 주소(10.250.88.5)에서 온 요청일 때만** 믿는다(3.12).
+  uvicorn 의 프록시 헤더 옵션은 `X-Forwarded-For` 기반이므로 쓰지 않고, 이 규칙을 직접 구현한다.
+  전환 후 Apache 를 앞에 두면 Apache(`mod_remoteip`)가 복원한 IP 를 FastAPI 로 넘기는 방식을 다시 정한다(6장 9단계).
+- 고객에게 보내는 주소는 `customer_url()`(3.13), `PUBLIC_BASE_URL` 기준.
+- 웹소켓 경로 `/realtime-ws`, `/relay-viewer` 는 전환 전까지 Apache 가 맡는다. FastAPI 는 주소만 만들어 준다(`Realtime::ws_url()`, `relay_viewer_ws_url()`).
+
+### 5.8 라우트 순서
+
+`(:any)` 조직 코드 라우트는 FastAPI 에서도 **맨 마지막에 등록**한다(3.8). `(:any)/guide/features`, `/guide/videos` 는 `(:any)/guide/(:any)` 보다 앞(3.15).
+CI3 의 `(:any)` 는 `/` 를 포함하지 않는 한 구간이므로 FastAPI 경로 매개변수(`{org_code}`)와 같다. `:path` 변환을 쓰지 않는다.
+
+---
+
+## 6. 단계별 작업
+
+각 단계는 **옮기기 → PHP 와 비교 → 화면 확인** 순서로 끝낸다. 단계가 끝날 때마다 완료/미완료/확인 필요 사항을 보고한다.
+
+### 0단계. 컨테이너와 뼈대
+
+- `backend/` 뼈대, `docker/api/Dockerfile`, `docker-compose.yml` 에 `api` 추가, `.env.example` 에 필요한 값 확인(새 비밀값 없음).
+- `GET /healthz`(DB 연결 확인 포함).
+- 정적 파일 `/assets` 마운트.
+- 완료 기준: `docker compose up -d api` 후 `http://localhost:8098/healthz` 정상, 기존 컨테이너 영향 없음.
+- **결과(2026-10-22 완료)**
+  - 기준점 커밋 `cfc8070`(옮기기 전 PHP 변경분 고정).
+  - 파일: `backend/requirements.txt`, `backend/app/{main,config,db,static}.py`, `backend/app/core/response.py`, `docker/api/Dockerfile`.
+  - 버전(PyPI 확인, 배포 2주 이상): python 3.12.14-slim-bookworm, fastapi 0.142.4, uvicorn 0.54.0, sqlalchemy 2.1.4, pymysql 1.2.3,
+    cryptography 50.0.2, jinja2 3.1.6, python-multipart 0.0.32, bcrypt 5.0.0, httpx 0.28.1, itsdangerous 2.2.0. 함께 깔린 starlette 1.9.0, pydantic 2.14.1.
+    fastapi 는 10-08 이후 30여 개 판이 연달아 나와 그 전의 마지막 판을 골랐다.
+  - 환경변수: `docker-compose.yml` 의 `x-portal-env` 를 web 과 api 가 함께 받는다. PHP 가 읽지만 web 에 넘기지 않던
+    `SMTP_*`, `CONTACT_*`, `CHAT_RESUME_SECRET`, `LANDING_WIDGET_ORG`, `DEMO_ORG` 를 빈 값으로 더했다(지금 `.env` 에 모두 비어 있어 동작 변화 없음).
+  - DB 세션: 시간대 `+00:00`, sql_mode 에서 `STRICT_*` 제거(CI3 `stricton = FALSE` 와 같음). PHP 세션 값과 같음을 확인.
+  - uvicorn: `--no-proxy-headers`(기본은 127.0.0.1 의 X-Forwarded-For 를 믿음, `uvicorn --help` 로 확인), `--no-server-header`. 개발은 `--reload`.
+  - 정적 파일: `/assets` 를 `portal/assets` 와 공유. 업로드 폴더의 스크립트·HTML·SVG, `.ini/.log/.sql/.md`, 숨김 파일은 403.
+    컨테이너는 www-data(uid 33)로 돌아 PHP 와 업로드 폴더를 같이 쓴다.
+  - 규칙 검사 `check_fastapi()` 추가, `backend/app` 머리 주석 검사 포함, 훅 감시 대상에 `backend/` 추가.
+
+### 1단계. 공통 기반
+
+- 설정(`config.py`), DB, `api_response()`, 세션, CSRF, 권한 의존성(상담원 / 조직 관리자 / 플랫폼 운영자, 3.6).
+- Jinja2 환경과 전역 함수: `asset_url`, `base_url`, `customer_url`, `__`, `lang_text`, `to_timezone`, `html_escape`(Jinja 자동 이스케이프), `guide_text_html`, `guide_image_url`.
+- 레이아웃 4종(`layouts/main`, `operator`, `public`, `customer`)과 `_head` 를 Jinja 로 옮김. `render()` 가 넘기던 `i18n`(locale, intl, timezone, messages)과 `app_name`, `use_grid`, `use_dropzone`, `icon_names` 처리.
+- `audit_logs`, `session_logs` 기록(`Log_model`).
+- 완료 기준: 빈 화면 하나가 PHP 와 같은 레이아웃·메뉴·언어로 그려짐.
+
+### 2단계. 서버 간 API (화면 없음, 가장 작고 검증 쉬움)
+
+- `api/relay/auth`, `api/realtime/auth`, `api/launcher/{verify,status,heartbeat,version}`.
+- 확인: relay·realtime-msg 의 `PORTAL_ORIGIN` 을 잠시 `http://api:8000` 으로 바꿔 `./scripts/e2e-test.sh` 통과. 끝나면 `http://web` 으로 되돌린다.
+- 런처는 시험 빌드 주소를 바꾸지 않는다(전환 때 같은 도메인이 그대로 api 로 가게 됨).
+
+### 3단계. 소개·로그인·고객 화면
+
+- `Home`(소개, `lang/(:any)`), `Auth`(login/logout/signup), `Customer`(접속 안내, 만족도 조사, 이어 가기 `chat/{토큰}`), `Download`, `Guide`(공개 가이드, 테마 5종, 새 기능·동영상 모음).
+- 공개 가이드 테마 뷰(`views/guide/themes/*`), `_article`, `_video`(iframe 은 한 곳), `_tabs`, `_collection`.
+
+### 4단계. 상담 위젯 API
+
+- `widget.js` 제공, `api/widget/{init,send,poll,contact}`.
+- 같이 옮길 것: `Chat_model`, `Visitor_model`(`clean_contact`, `country_dial_codes`), `Chat_hours_model::availability`, `Chat_greeting`, `Chat_followup`, `Realtime`(발행), `Mailer`, 부재중 자동 응답·인사말 저장 순서(3.16, 3.18).
+- 확인: 시험용 HTML 에 `:8098/widget.js` 를 붙여 PHP 위젯과 같은 흐름(인사말 → 첫 메시지 → 연락처 카드 → 실시간 수신 → 폴링 대체)을 확인.
+
+### 5단계. 상담원 콘솔
+
+- 원격지원: 대기열/이력, 세션 생성·종료·메모·로그, 뷰어 토큰, 뷰어 화면.
+- 상담 대화: 목록, 메시지, 보내기(409 conflict 포함), 닫기, 내 상태, 담당, 보는 중/입력 중(`publish_org` 만, 3.16), 알림, 원격 연결, 가이드 추천·검색·보내기.
+- 매크로: `Console_macro` 전체, `Macro_model`(`owner_key`, `macro_terms`), CSV 가져오기/내보내기(수식 방지 `'`).
+- **상담원 답장 저장은 `publish_new_messages()` 한 곳**(3.18)으로 모은다.
+
+### 6단계. 조직 관리자 화면
+
+- 조직 관리 통계(`/admin`), 상담원 관리, 조직 정보(로고 업로드), 상담 위젯 설정 드로어, 운영 시간·휴일.
+- 가이드 관리(`Admin_guide`): 편집, 미리보기, guide.json 내려받기/올리기, 이미지 업로드, 색인 다시 만들기, 외부 이미지 저장(`fetch_external_image` 의 SSRF 방어 그대로), 샘플 10개 생성.
+- `Guide_matcher` 는 낱말·조사 처리가 미묘하므로 **같은 입력으로 PHP 와 Python 결과를 비교**해 일치시킨다(색인 `guide_terms`, 추천 점수).
+
+### 7단계. 플랫폼 운영자
+
+- 조직 가입 관리, 감사 로그.
+
+### 8단계. 비교 검증
+
+- 주요 API 를 PHP(:8099)와 FastAPI(:8098)에 같은 입력으로 보내 응답(상태 코드, `result`, `message`, `data` 키 구조)을 비교하는 스크립트.
+  테스트 코드는 요청 시에만 작성하는 규칙이 있으므로 이 스크립트를 만들지는 진행 전에 확인받는다(8장).
+- 화면은 PHP 와 FastAPI 를 나란히 열어 메뉴·문구·날짜 표시·그리드·드로어·모달을 직접 비교.
+- `check-conventions.py` 를 Python 코드에도 적용되게 고친다(아래 7장).
+- 비교에 실제 데이터를 썼다면 원래 값으로 되돌리고 보고한다.
+
+### 9단계. 전환
+
+1. 전환 시각을 정하고 상담원에게 다시 로그인이 필요함을 알린다.
+2. 트래픽 경로 변경(둘 중 하나, 8장에서 결정):
+   - (가) `web`(Apache)을 프록시 전용으로 바꿔 모든 요청을 `api:8000` 으로 넘긴다. 웹소켓 경유(`/realtime-ws`, `/relay-viewer`), `mod_remoteip`, http→https 전환을 그대로 쓸 수 있어 바꿀 것이 가장 적다.
+   - (나) cloudflared 대상과 8099 포트를 `api` 로 직접 돌리고, 웹소켓 경유와 IP 복원을 FastAPI/uvicorn 쪽에서 새로 맡는다.
+3. relay·realtime-msg 의 `PORTAL_ORIGIN` 을 `http://api:8000` 으로 바꾼다.
+4. `e2e-test.sh`, `check-conventions.sh --live`, `https://help.wani.im` 외부 접속, 런처 실기 확인(윈도우, 별도 표시).
+5. **되돌리기**: 2·3번 설정만 원래대로 돌리면 PHP 로 복귀한다. 이 기간에 DB 스키마를 바꾸지 않는다.
+
+### 10단계. PHP 제거 (전환 후 문제없음을 확인한 뒤, 따로 승인받아 진행)
+
+- `portal/application`, `portal/system`, `portal/index.php`, `.htaccess`, `docker/web/php.ini` 제거. `portal/assets/` 는 남긴다(폴더 위치 정리는 별도 판단).
+- `docker/web/Dockerfile` 을 PHP 없는 Apache(프록시 전용)로 바꾸거나 (나) 방식이면 `web` 서비스 제거.
+- CLAUDE.md 2장 구조 표, 3장 규칙의 PHP 함수 이름, 4장 검증, 6장 결정 표를 Python 기준으로 고친다.
+
+---
+
+## 7. 규칙 검사(`check-conventions.py`)와 훅
+
+- 현재 검사는 PHP 파일 경로와 함수 이름을 직접 찾는다. 전환 기간에는 **PHP 검사는 그대로 두고 Python 검사를 나란히 추가**한다
+  (예: `has_available_agent()` 직접 호출, `publish_conversation()` 에 담당자 이름, `macros` 직접 수정, `(:any)` 라우트 순서, iframe 한 곳 등).
+- 훅(`scripts/hooks/post-edit-check.py`)의 대상 폴더에 `backend/` 를 추가한다.
+- 검사를 추가할 때마다 일부러 어겨 보고 잡히는지 확인한다(CLAUDE.md 7장).
+- 모든 Python 파일 맨 위에 위치·역할 주석을 단다(docstring 형식).
+
+```python
+"""
+파일 위치: backend/app/models/guide_model.py
+역할: 가이드 글 저장, 검사, 색인, 공개 화면 데이터
+"""
+```
+
+---
+
+## 8. 확인 필요 사항 (2026-10-22 제안대로 결정)
+
+| 번호 | 질문 | 제안 |
+|---|---|---|
+| 1 | 새 코드 폴더 이름 | `backend/` (기존 `server/` 는 설치 스크립트라 피함) |
+| 2 | 화면 렌더링 방식 | **Jinja2 서버 렌더링**으로 PHP 뷰를 그대로 옮김. 화면을 SPA 로 바꾸는 것은 범위가 훨씬 커지므로 이번 전환에서 하지 않음 |
+| 3 | DB 접근 방식 | SQLAlchemy Core(동기). 비동기(aiomysql)는 이점 대비 옮기는 비용이 큼 |
+| 4 | 전환 경로 | (가) Apache 프록시 유지. 웹소켓·IP 복원·https 전환 설정을 그대로 재사용 |
+| 5 | 전환을 한 번에 할지, 경로별로 나눌지 | **한 번에**. 경로별로 나누면 PHP 와 세션·CSRF 를 공유해야 해서 5.2 의 위험이 생김. 단, 2단계(서버 간 API)는 세션이 없으므로 먼저 따로 전환해도 됨 |
+| 6 | 비교 검증 스크립트(8단계) 작성 여부 | 작성 권장(응답 형식 회귀를 사람이 다 볼 수 없음) |
+| 7 | 운영 배포(Store 출시 일정)와의 순서 | 전환은 시험 서버에서 먼저, 운영 배포 전에 끝낼지 결정 필요 |
+| 8 | 진행 중인 PHP 변경분 | 현재 작업 트리에 커밋되지 않은 PHP 변경이 많음. 옮기기 전에 커밋해 기준점을 고정하길 권장. 전환 기간에 PHP 에 기능을 더하면 Python 에도 같이 넣어야 함 |
+
+---
+
+## 9. 위험과 대응
+
+| 위험 | 대응 |
+|---|---|
+| 전환 기간 중 PHP 에 새 기능이 들어가 두 벌을 고쳐야 함 | 전환 기간에는 새 기능을 미루거나 FastAPI 에만 넣고 전환을 앞당김 |
+| `Guide_matcher`, `Macro_model` 추천 점수가 미묘하게 달라짐 | 같은 입력 비교로 일치 확인(6단계) |
+| PHP `json_encode` / 문자열 함수(`mb_*`)와 Python 의 차이로 서명·잘라내기 결과가 달라짐 | 토큰 비교(5.4), 글자 수 제한(소개 500자 등)은 문자 단위로 확인 |
+| 같은 호스트 다른 포트에서 쿠키 충돌 | 쿠키 이름 분리(5.2, 5.3) |
+| 업로드 폴더 권한(www-data) | `api` 컨테이너 실행 사용자와 폴더 소유자를 맞춤 |
+| 날짜가 통째로 밀림 | DB 세션 `+00:00` 고정, Python 에서 순수 UTC 만 사용 |
+| 런처는 이 환경에서 빌드 불가 | 런처 API 는 e2e 와 agentsim 으로 확인하고, 실기 확인은 별도 표시 |

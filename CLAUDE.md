@@ -47,6 +47,7 @@
 | `server/` | 중계 서버 설치 스크립트 |
 | `sql/` | 스키마, 마이그레이션, 시드 |
 | `scripts/` | 검증/빌드 스크립트 |
+| `backend/` | FastAPI 포털(PHP 포털을 옮기는 중, `docs/fastapi-migration-plan.md`) |
 | `docs/` | 프로토콜, 검증 보고서, 제출 문서, 작업요청서 |
 
 **원격제어는 자체 프로토콜입니다. VNC 를 쓰지 않습니다.** 명세는 `docs/protocol.md`.
@@ -365,6 +366,23 @@ state      = 운영 중이 아니면 closed / 운영 중이고 응대 가능 상
   키는 `.env` 의 `CHAT_RESUME_SECRET`, 비면 `REALTIME_TOKEN_SECRET` 에서 용도를 나눠 만듭니다. `visitor_key` 는 메일에 넣지 않습니다.
 - 메일 문구는 고객이 읽으므로 **조직 언어**입니다(`widget.followup.*`, 3.2). 보낸 사람 이름은 조직 이름, 회신 주소는 `widget_offline_email`.
 
+### 3.19 FastAPI 전환 기간 — PHP 와 나란히, 같은 DB·같은 환경변수
+
+포털 서버를 FastAPI(`backend/`, 컨테이너 `api`, 포트 8098)로 옮기는 중입니다. 전환 전까지 외부 경로(cloudflared, relay, realtime-msg)는
+PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migration-plan.md`.
+
+- **두 서버가 같은 DB 를 함께 씁니다. 스키마를 바꾸지 않습니다.** 꼭 필요하면 양쪽이 모두 견디는 추가만 합니다.
+- **환경변수는 `docker-compose.yml` 의 `x-portal-env` 한 곳**에 두고 web 과 api 가 함께 받습니다. 한쪽에만 넣으면
+  서명 토큰(`REALTIME_TOKEN_SECRET`, `CHAT_RESUME_SECRET`)이 어긋납니다(검사가 잡습니다).
+- DB 세션은 PHP 와 같게 시간대 `+00:00`, sql_mode 에서 `STRICT_*` 를 뺍니다(CI3 `stricton = FALSE`). 한쪽만 strict 이면
+  PHP 가 넣는 값을 FastAPI 가 거부합니다(검사가 잡습니다).
+- uvicorn 은 **`--no-proxy-headers`** 로 띄웁니다. 기본값은 127.0.0.1 의 `X-Forwarded-For` 를 믿습니다(3.12, 검사가 잡습니다).
+- 파이썬 의존성은 `backend/requirements.txt` 에 `==` 로 고정합니다(검사가 잡습니다).
+- 옮긴 기능은 **주소, 요청 형식(`csrf_test_name`), 응답(`{ result, message, data }`, 빈 data 는 `{}`), 상태 코드**를 PHP 와 똑같이 맞춥니다.
+  화면 JS 를 고쳐야 하면 PHP 에서도 동작하게 고칩니다.
+- 3장의 "한 곳을 거친다" 규칙은 파이썬에서도 같은 이름의 함수 한 곳으로 옮깁니다(예: `guide_model.save_article()`).
+- 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.
+
 ---
 
 ## 4. 검증
@@ -408,6 +426,7 @@ docker compose up -d --build
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
 | http://localhost:8091/healthz | 상담 실시간 메시지 서버 상태 |
+| http://localhost:8098/healthz | FastAPI 포털 상태(전환 중, DB 연결·시간대·sql_mode 표시) |
 | https://help.wani.im/ | 시험 서버 외부 주소(Cloudflare Tunnel `remotehelp-help` -> `http://web:80`, `.env` 에 토큰과 `COMPOSE_PROFILES=tunnel`). http 는 Apache 가 https 로 넘긴다 |
 
 윈도우 런처는 이 환경에서 빌드할 수 없습니다. 코드 작성까지만 하고 실기 검증은 별도로 표시합니다.
@@ -427,6 +446,7 @@ docker compose up -d --build
 | 시험 서버 뷰어 연결 | **relay 가 자체 서명 인증서라 상담원 브라우저는 포털 경유로 붙는다.** `.env` 의 `RELAY_VIEWER_WS_URL=auto` 이면 접속한 주소 기준 `ws(s)://<호스트>/relay-viewer`, web(Apache)이 relay 인증서(`relay-ca` 볼륨)로 검증한 wss 로 넘긴다. 런처(`/agent`)는 그대로 8443 직결. 운영은 공인 인증서 + `wss://<도메인>/viewer` |
 | 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
+| 포털 서버 | **CodeIgniter 3 에서 FastAPI 로 옮기는 중.** PHP 와 나란히 띄워 비교한 뒤 한 번에 전환하고, 문제가 없으면 PHP 를 지운다. Jinja2 서버 렌더링, SQLAlchemy Core(동기), 전환 후 Apache 는 프록시로 남김 (`docs/fastapi-migration-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
 | 상담 운영 시간 | **1차: 요일별 운영 시간(하루 3구간), 휴일(공휴일 후보는 KR 만), 조직 수동 전환, 상담원 개인 상태, 부재중 자동 응답, 운영 시간 외 위젯(받기/안내만/숨기기). 2차: 답변 속도 안내(직접 지정/실제 기록), 중복 응대 방지(담당 표시·가져오기, 보는 중/입력 중, 새 문의 브라우저 알림 1회), 위젯 전화 버튼, 조직 관리 통계의 상담 숫자.** 모두 조직이 켤 때만 동작(기본 꺼짐) (`docs/chat-operation-plan.md`) |
 | 위젯 인사말·연락처·팔로업 | **인사말 1개(조직 언어) + 변수 + 바로가기 버튼 3개. 연락처 카드(이름/이메일/휴대폰 선택, 필수 모드). 고객이 떠났으면 상담원 답장을 이메일로 알림(기본 켜짐, SMTP 필요)과 14일 이어 가기 주소.** 휴대폰은 저장만 하고 문자/알림톡은 발송 수단이 정해진 뒤. 언어별 인사말과 여러 운영 설정(창구)은 보류 (`docs/widget-ops-plan.md`) |

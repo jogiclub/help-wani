@@ -230,6 +230,7 @@ def check_headers():
         ('relay/src', ('.js',), ()),
         ('realtime/src', ('.js',), ()),
         ('launcher/RemoteHelp.App', ('.cs',), ('bin', 'obj')),
+        ('backend/app', ('.py',), ('__pycache__',)),
     )
 
     missing = []
@@ -491,6 +492,55 @@ def check_tunnel_proxy():
              f'apache-vhost.conf {trusted} / docker-compose.yml {match.group(1)}')
     else:
         ok('터널 프록시 신뢰 주소 일치')
+
+
+# ------------------------------------------- FastAPI 전환 (docs/fastapi-migration-plan.md)
+def check_fastapi():
+    if not os.path.isdir(os.path.join(ROOT, 'backend/app')):
+        ok('FastAPI 포털 없음')
+        return
+
+    compose = read('docker-compose.yml')
+    dockerfile = read('docker/api/Dockerfile')
+    db_py = read('backend/app/db.py')
+    problems = []
+
+    # 3.12: 고객 IP 는 X-Forwarded-For 로 받지 않는다. uvicorn 은 기본으로 127.0.0.1 의 프록시 헤더를 믿는다.
+    api_block = re.search(r'^  api:\n(.*?)(?=^  \S)', compose, re.S | re.M)
+    api_block = api_block.group(1) if api_block else ''
+    for name, text in (('docker/api/Dockerfile', dockerfile), ('docker-compose.yml api', api_block)):
+        if 'uvicorn' in text and '--no-proxy-headers' not in text:
+            problems.append(f'{name}: uvicorn 에 --no-proxy-headers 가 없습니다(X-Forwarded-For 로 고객 IP 를 위조할 수 있음)')
+
+    # PHP 와 FastAPI 가 같은 환경변수를 봐야 서명 토큰이 어긋나지 않는다.
+    web_block = re.search(r'^  web:\n(.*?)(?=^  \S)', compose, re.S | re.M)
+    web_block = web_block.group(1) if web_block else ''
+    if 'x-portal-env: &portal-env' not in compose:
+        problems.append('docker-compose.yml: 포털 환경변수 묶음(x-portal-env)이 없습니다')
+    if 'environment: *portal-env' not in web_block:
+        problems.append('docker-compose.yml web: 환경변수를 *portal-env 로 받지 않습니다(api 와 값이 어긋날 수 있음)')
+    if '<<: *portal-env' not in api_block:
+        problems.append('docker-compose.yml api: 환경변수를 *portal-env 로 받지 않습니다(web 과 값이 어긋날 수 있음)')
+
+    # 3.4 와 PHP(CI3 stricton = FALSE) 와 같은 DB 세션 설정
+    if "time_zone = '+00:00'" not in db_py:
+        problems.append("backend/app/db.py: DB 세션 시간대를 '+00:00' 으로 두지 않습니다")
+    if db_py.count('STRICT_TRANS_TABLES') < 3 or db_py.count('STRICT_ALL_TABLES') < 3:
+        problems.append('backend/app/db.py: PHP 처럼 sql_mode 에서 STRICT_* 를 빼지 않습니다')
+
+    # 버전을 고정하지 않으면 다시 빌드할 때 다른 버전이 들어온다.
+    loose = []
+    for line in read('backend/requirements.txt').splitlines():
+        line = line.split('#', 1)[0].strip()
+        if line and '==' not in line:
+            loose.append(line)
+    if loose:
+        problems.append('backend/requirements.txt: 버전이 고정되지 않았습니다 — ' + ', '.join(loose))
+
+    if problems:
+        fail('FastAPI 전환 규칙 위반', '\n    '.join(problems))
+    else:
+        ok('FastAPI 포털 설정 확인 (프록시 헤더 끔, PHP 와 같은 환경변수, UTC, sql_mode, 버전 고정)')
 
 
 # ------------------------------------------------------------------ 실행 점검
@@ -813,6 +863,7 @@ def main():
     check_chat_operation()
     check_macro()
     check_followup()
+    check_fastapi()
 
     if '--live' in sys.argv:
         check_live()

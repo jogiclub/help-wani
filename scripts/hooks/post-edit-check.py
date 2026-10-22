@@ -15,7 +15,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 이 디렉터리 아래가 바뀐 경우에만 검사한다.
-WATCHED = ('portal/', 'relay/', 'launcher/', 'scripts/', 'docker/', 'sql/', 'server/')
+WATCHED = ('portal/', 'relay/', 'launcher/', 'scripts/', 'docker/', 'sql/', 'server/', 'backend/')
 
 
 def main():
