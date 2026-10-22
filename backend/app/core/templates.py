@@ -8,11 +8,12 @@
 - 정의되지 않은 변수는 오류로 낸다(StrictUndefined). PHP 의 isset() 은 `x is defined` 로 옮긴다.
 - <script> 안에 값을 넣을 때는 |js 필터(PHP json_encode 와 같은 결과)를 쓴다.
 """
+import re
 from pathlib import Path
 
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, Undefined, select_autoescape
-from markupsafe import Markup
+from markupsafe import Markup, escape
 
 from app import config
 from app.core import csrf
@@ -25,8 +26,18 @@ from app.helpers.app import (asset_url, customer_url, format_duration, guide_ima
 
 TEMPLATE_DIR = Path(__file__).resolve().parent.parent / 'templates'
 
+def _php_echo(value):
+    """PHP echo 와 같은 출력: NULL·FALSE 는 빈 문자열, TRUE 는 '1'."""
+    if value is None or value is False:
+        return ''
+    if value is True:
+        return '1'
+    return value
+
+
 env = Environment(
     loader=FileSystemLoader(str(TEMPLATE_DIR)),
+    finalize=_php_echo,
     autoescape=select_autoescape(['html']),
     undefined=StrictUndefined,
     auto_reload=True,
@@ -34,9 +45,17 @@ env = Environment(
 )
 
 
-def _js(value, unescaped_unicode=True):
-    """<script> 안에 넣는 값. PHP json_encode($v, JSON_UNESCAPED_UNICODE) 와 같은 문자열."""
-    return Markup(php_json_encode(value, unescaped_unicode=unescaped_unicode))
+def _js(value, unicode=True, slashes=False, hex_tag=False):
+    """<script> 안에 넣는 값. 기본은 PHP json_encode($v, JSON_UNESCAPED_UNICODE) 와 같은 문자열.
+
+    slashes=True 는 JSON_UNESCAPED_SLASHES, hex_tag=True 는 JSON_HEX_TAG.
+    """
+    return Markup(php_json_encode(value, unescaped_unicode=unicode, unescaped_slashes=slashes, hex_tag=hex_tag))
+
+
+def _nl2br(text):
+    """PHP nl2br(html_escape($text)): 이스케이프한 뒤 줄바꿈 앞에 <br /> 를 넣는다(줄바꿈은 남긴다)."""
+    return Markup(re.sub(r'(\r\n|\n\r|\n|\r)', r'<br />\1', str(escape('' if text is None else text))))
 
 
 def _empty(value):
@@ -62,6 +81,7 @@ env.globals.update(
     php_date=php_date,
     # PHP empty() / (int). DB 값은 문자열이라 '0' 이 파이썬에서는 참이다. PHP 의 empty()·참거짓 판정은 empty() 로 옮긴다.
     empty=_empty,
+    nl2br=_nl2br,
     php_int=php_int,
     php_str=php_str,
     csrf_token_name=csrf.TOKEN_NAME,

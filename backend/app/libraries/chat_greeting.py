@@ -9,7 +9,7 @@ import json
 import re
 
 from app.core.i18n import lang_text
-from app.core.php import php_str
+from app.core.php import PCRE_U_SPACE, php_str
 from app.helpers.php_filter import validate_https_url
 
 BODY_MAX = 1000
@@ -47,7 +47,7 @@ def clean_buttons(value):
     out = []
     for item in items:
         item = item if isinstance(item, dict) else {}
-        label = re.sub(r'\s+', ' ', php_str(item.get('label', ''))).strip(' \t\n\r\x00\x0b')
+        label = re.sub(PCRE_U_SPACE + '+', ' ', php_str(item.get('label', ''))).strip(' \t\n\r\x00\x0b')
         url = php_str(item.get('url', '')).strip(' \t\n\r\x00\x0b')
 
         if label == '' and url == '':

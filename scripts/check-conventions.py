@@ -716,6 +716,35 @@ def check_fastapi_chat():
                 number = text.count('\n', 0, match.start()) + 1
                 problems.append(f'{rel}:{number} 상담원 답장을 저장했으면 publish_new_messages() 로 발행합니다')
 
+    # 5-1) publish_new_messages() 는 팔로업 메일 판단(chat_followup.after_agent_message)을 거친다.
+    console_py = os.path.join(ROOT, 'backend/app/routers/console.py')
+    if os.path.isfile(console_py):
+        block = re.search(r'\ndef publish_new_messages\(.*?(?=\n@router|\ndef |\Z)', read('backend/app/routers/console.py'), re.S)
+        if not block or 'chat_followup.after_agent_message(' not in block.group(0):
+            problems.append('console.publish_new_messages() 가 chat_followup.after_agent_message() 를 불러야 합니다')
+
+    # 5-2) macros 는 macro_model 만 고친다(검사 clean_macro, 이름 중복 owner_key, 추천 색인 macro_terms 를 함께 처리).
+    macro_write = re.compile(r"""db\.(update|insert)\(\s*'(macros|macro_terms)'|(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+`?(macros|macro_terms)`?\b""", re.I)
+    for rel, full in py_files:
+        if rel == 'backend/app/models/macro_model.py':
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if macro_write.search(line):
+                problems.append(f'{rel}:{number} macros 는 macro_model 로만 고칩니다(CLAUDE.md 3.17)')
+
+    # 5-3) 매크로 설정은 PHP config/macro.php 와 같아야 한다(전환 기간).
+    if os.path.isfile(os.path.join(ROOT, 'backend/app/settings/macro.py')):
+        php_macro = read('portal/application/config/macro.php')
+        for key in ('max_org', 'max_personal', 'max_favorites', 'name_max', 'body_max', 'keywords_max',
+                    'import_max_rows', 'max_terms', 'suggest_min_score', 'suggest_limit'):
+            php_val = re.search(r"\$config\['" + key + r"'\]\s*=\s*([0-9]+)\s*;", php_macro)
+            py_val = _py_literal('backend/app/settings/macro.py', name=key.upper())
+            if not php_val or py_val != int(php_val.group(1)):
+                problems.append(f'settings/macro.py {key.upper()} 가 PHP config/macro.php 와 다릅니다')
+        php_vars = re.findall(r"'(\w+)'\s*=>\s*'([^']*)'", re.search(r"\$config\['variables'\] = array\((.*?)\);", php_macro, re.S).group(1))
+        if dict(php_vars) != _py_literal('backend/app/settings/macro.py', name='VARIABLES'):
+            problems.append('settings/macro.py VARIABLES 가 PHP config/macro.php 와 다릅니다')
+
     # 6) CSRF 제외 경로는 PHP 설정과 같아야 한다(위젯 API 는 외부 도메인에서 온다).
     php_ex = re.search(r"\$config\['csrf_exclude_uris'\] = array\((.*?)\);", read('portal/application/config/config.php'), re.S)
     php_ex = re.findall(r"'([^']+)'", php_ex.group(1)) if php_ex else []
@@ -726,7 +755,7 @@ def check_fastapi_chat():
     if problems:
         fail('FastAPI 상담 규칙 위반', '\n    '.join(problems[:12]))
     else:
-        ok('FastAPI 상담 규칙 확인 (availability 한 곳, 발행 전 저장, 조직 방 이벤트, visitors 는 모델만, init 시청 갱신 없음, CSRF 제외 경로)')
+        ok('FastAPI 상담 규칙 확인 (availability 한 곳, 발행 전 저장, 조직 방 이벤트, visitors·macros 는 모델만, 답장 팔로업, 매크로 설정, CSRF 제외 경로)')
 
 
 # ------------------------------------------------------------------ 실행 점검

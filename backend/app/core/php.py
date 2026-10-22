@@ -29,7 +29,7 @@ def _php_numbers(value):
     return value
 
 
-def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False):
+def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False, hex_tag=False):
     """PHP json_encode() 와 같은 문자열을 만든다.
 
     - 기본으로 '/' 를 '\\/' 로 바꾼다. <script> 안에 넣어도 '</script>' 로 닫히지 않는다.
@@ -47,6 +47,10 @@ def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False):
 
     if unescaped_unicode:
         encoded = encoded.replace('\u2028', '\\u2028').replace('\u2029', '\\u2029')
+
+    if hex_tag:
+        # JSON_HEX_TAG: < > 는 JSON 문법 기호가 아니므로 문자열 안에서만 나온다.
+        encoded = encoded.replace('<', '\\u003C').replace('>', '\\u003E')
 
     return encoded
 
@@ -201,3 +205,7 @@ def number_format(value, decimals=0):
     rounded = php_round(float(value), decimals)
     text = f'{abs(rounded):,.{int(decimals)}f}'
     return ('-' + text) if rounded < 0 else text
+
+
+# PHP(PCRE2, /u) 의 \s 와 같은 글자. 파이썬 \s 는 \x1C~\x1F 를 더 넣고 U+180E 를 빼므로 PHP '/\s+/u' 는 이것으로 옮긴다.
+PCRE_U_SPACE = '[\t\n\x0b\x0c\r \x85\xa0 ᠎ -     　]'
