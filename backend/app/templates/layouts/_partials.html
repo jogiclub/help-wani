@@ -5,7 +5,10 @@
   ui_kit 은 레이아웃이 정한 값(_head.html 과 같음). Bootstrap 화면은 네이티브 <dialog class="dialog"> 를 쓴다.
 -#}
 {%- set ui_kit = ui_kit|default('tailwind') -%}
-{% if ui_kit == 'bootstrap' %}
+{% if ui_kit == 'plain' %}
+<!-- 토스트 (고객 화면, customer.css). 확인 다이얼로그는 고객 화면에서 쓰지 않으므로 두지 않는다(없으면 브라우저 confirm). -->
+<div id="toastContainer" class="rhc-toasts" aria-live="polite"></div>
+{% elif ui_kit == 'bootstrap' %}
 <!-- 토스트 (common.js 의 showToast 가 .toast 를 만들어 넣는다) -->
 <div id="toastContainer" class="rh-toasts" aria-live="polite" aria-atomic="false"></div>
 

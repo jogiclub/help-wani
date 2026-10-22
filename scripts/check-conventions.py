@@ -197,11 +197,11 @@ TAILWIND_ONLY = re.compile(
     r"""|(?<![\w-])(?:truncate|leading-[a-z]+|tracking-[a-z]+|rounded-(?:md|lg|xl|full)|shadow-(?:md|xl))\b""")
 
 
-def bootstrap_layouts():
-    """ui_kit 을 'bootstrap' 으로 정한 레이아웃 이름(layouts/xxx)."""
+def bootstrap_layouts(kit='bootstrap'):
+    """ui_kit 을 kit('bootstrap' 또는 'plain')으로 정한 레이아웃 이름(layouts/xxx)."""
     names = []
     for rel, full in walk(f'{TEMPLATES}/layouts', ('.html',)):
-        if re.search(r"""\{%-?\s*set\s+ui_kit\s*=\s*['"]bootstrap['"]""", open(full, encoding='utf-8').read()):
+        if re.search(r"""\{%-?\s*set\s+ui_kit\s*=\s*['"]""" + kit + r"""['"]""", open(full, encoding='utf-8').read()):
             names.append('layouts/' + os.path.basename(rel)[:-len('.html')])
     return sorted(names)
 
@@ -222,13 +222,20 @@ def bootstrap_files(layouts):
                 layout = value
         if layout not in layouts:
             continue
-        files.add(f'{TEMPLATES}/{view}.html')
-        text = read(f'{TEMPLATES}/{view}.html')
-        for inc in re.findall(r"""\{%-?\s*include\s+['"]([^'"]+)['"]""", text):
-            if not inc.startswith('layouts/'):
-                files.add(f'{TEMPLATES}/{inc}')
-        for js in re.findall(r"""asset_url\(\s*['"]assets/(js/[^'"]+\.js)['"]""", text):
-            files.add('backend/assets/' + js)
+        # 화면과 그 화면이 include 하는 템플릿(여러 단계)을 따라가며, 각 템플릿이 싣는 화면 JS 도 넣는다.
+        queue = [f'{view}.html']
+        while queue:
+            name = queue.pop()
+            path = f'{TEMPLATES}/{name}'
+            if path in files or not exists(path):
+                continue
+            files.add(path)
+            text = read(path)
+            for inc in re.findall(r"""\{%-?\s*include\s+['"]([^'"]+)['"]""", text):
+                if not inc.startswith('layouts/'):
+                    queue.append(inc)
+            for js in re.findall(r"""asset_url\(\s*['"]assets/(js/[^'"]+\.js)['"]""", text):
+                files.add('backend/assets/' + js)
     return sorted(f for f in files if exists(f))
 
 
@@ -278,6 +285,48 @@ def check_bootstrap():
         fail('Bootstrap 6 규칙 위반 (docs/frontend-bootstrap6-plan.md)', '\n    '.join(problems[:15]))
     else:
         ok(f'Bootstrap 6 확인 (무결성, 버전 일치, 레이아웃 {len(layouts)}개·파일 {len(files)}개에 5.3·Tailwind 이름 없음)')
+
+
+# ------------------------------------------------- 고객 화면 (ui_kit 'plain', customer.css)
+# 오래된 브라우저에서도 열려야 하므로(docs/frontend-bootstrap6-plan.md 4.4) 이 문법을 쓰지 않는다.
+CUSTOMER_CSS_FORBIDDEN = re.compile(r'oklch|color-mix|light-dark|:has\(|\(\s*width\s*[<>]|\bdvh\b|@layer|@container')
+
+
+def check_customer_css():
+    """고객 화면은 Bootstrap·Tailwind 없이 customer.css 의 rhc-* 클래스만 쓰고, 그 CSS 는 오래된 브라우저 문법만 쓴다."""
+    problems = []
+    layouts = bootstrap_layouts('plain')
+    if not layouts:
+        fail('ui_kit = plain 인 고객 레이아웃이 없습니다', 'layouts/customer.html')
+        return
+
+    head = read(f'{TEMPLATES}/layouts/_head.html')
+    plain = re.search(r"ui_kit == 'plain' %\}(.*?)\{% (?:else|elif)", head, re.S)
+    if not plain or 'bootstrap' in plain.group(1) or 'app.css' in plain.group(1) or 'customer.css' not in plain.group(1):
+        problems.append("_head.html 의 plain 분기는 customer.css 만 실어야 함(Bootstrap·app.css 금지)")
+
+    files = bootstrap_files(layouts)
+    for rel in files:
+        if not rel.endswith('.html'):
+            continue
+        for number, line in lines_of(os.path.join(ROOT, rel)):
+            for attr in re.findall(r'class="([^"{}]*)"', line):
+                for token in attr.split():
+                    if not token.startswith('rhc-'):
+                        problems.append(f'{rel}:{number} 고객 화면에 rhc- 가 아닌 클래스 "{token}"')
+            if 'bi bi-' in line or 'data-bs-' in line:
+                problems.append(f'{rel}:{number} 고객 화면에 Bootstrap 아이콘·속성')
+
+    for number, line in lines_of(os.path.join(ROOT, 'backend/assets/css/customer.css')):
+        if not line.lstrip().startswith(('*', '/*')):
+            found = CUSTOMER_CSS_FORBIDDEN.search(line)
+            if found:
+                problems.append(f'customer.css:{number} 오래된 브라우저에서 깨지는 문법 "{found.group(0)}"')
+
+    if problems:
+        fail('고객 화면 CSS 규칙 위반 (docs/frontend-bootstrap6-plan.md 4.4)', '\n    '.join(problems[:15]))
+    else:
+        ok(f'고객 화면 확인 (레이아웃 {len(layouts)}개·파일 {len(files)}개가 customer.css 의 rhc-* 만 씀, 오래된 브라우저 문법)')
 
 
 # ---------------------------------------------------------------- 3.1 자산 주소에 버전
@@ -336,25 +385,42 @@ def declared_icons():
     return {value for group in icons.values() for value in group.values()}
 
 
+BOOTSTRAP_ICONS_CSS = 'backend/assets/vendor/bootstrap-icons/1.13.2/bootstrap-icons.min.css'
+
+
 def check_icons():
+    """아이콘은 Bootstrap Icons(bi-*) 만 쓴다. 글꼴에 없는 이름은 빈칸이 되므로 글꼴 CSS 와 대조한다.
+
+    landing_icons() 의 이름(템플릿이 'bi-' 를 붙임)과 템플릿·화면 JS 에 적힌 bi-이름을 모두 본다.
+    Material Symbols 는 2026-10-22 에 뺐다(위젯은 인라인 SVG 라 해당 없음).
+    """
     declared = declared_icons()
 
     if declared is None:
         fail('routers/home.py 의 landing_icons() 를 찾지 못했습니다')
         return
+    if not exists(BOOTSTRAP_ICONS_CSS):
+        fail('Bootstrap Icons 글꼴 CSS 가 없습니다', BOOTSTRAP_ICONS_CSS)
+        return
 
-    literals = set()
-    for rel, full in list(walk(TEMPLATES, ('.html',))) + list(walk(JS, ('.js',))):
-        literals |= set(re.findall(r'material-symbols-outlined[^>]*>\s*([a-z][a-z0-9_]+)\s*<',
-                                   open(full, encoding='utf-8').read()))
+    available = set(re.findall(r'\.bi-([a-z0-9-]+)::before', read(BOOTSTRAP_ICONS_CSS)))
+    problems = [f'landing_icons() 의 "{name}"' for name in sorted(declared - available)]
 
-    missing = sorted(literals - declared)
+    for rel, full in list(walk(TEMPLATES, ('.html',))) + list(walk(JS, ('.js',), ('vendor',))):
+        if rel.endswith('widget.js'):
+            continue
+        for number, line in lines_of(full):
+            if 'material-symbols' in line:
+                problems.append(f'{rel}:{number} Material Symbols 를 씀(Bootstrap Icons 로 바꿉니다)')
+            for name in re.findall(r'(?<![\w-])bi-([a-z0-9]+(?:-[a-z0-9]+)*)(?![\w-])', line):
+                if name not in available:
+                    problems.append(f'{rel}:{number} bi-{name}')
 
-    if missing:
-        fail('아이콘이 landing_icons() 목록에 없습니다',
-             ', '.join(missing) + ' — 목록에 없으면 아이콘 대신 글자가 보입니다')
+    if problems:
+        fail('Bootstrap Icons 에 없는 아이콘이 있습니다 (CLAUDE.md 3.3)',
+             '\n    '.join(problems[:15]) + '\n    없는 이름은 아이콘 자리가 비어 보입니다')
     else:
-        ok(f'아이콘 목록 동기화 ({len(declared)}개 선언)')
+        ok(f'아이콘 확인 (Bootstrap Icons {len(available)}개 중 소개 페이지 {len(declared)}개와 화면 사용 이름 모두 있음)')
 
 
 # -------------------------------------------------------------------- 3.4 시간
@@ -938,13 +1004,9 @@ def check_live():
             fail(f'{path} 가 그리드를 쓰는데 use_grid 를 넘기지 않았습니다')
             return
 
-        used = set(re.findall(r'material-symbols-outlined[^>]*>\s*([a-z][a-z0-9_]+)\s*<', body))
-        requested = re.search(r'icon_names=([a-z0-9_,]+)', body)
-        if used and requested:
-            missing = sorted(used - set(requested.group(1).split(',')))
-            if missing:
-                fail(f'{path} 의 아이콘이 서브셋 요청에서 빠졌습니다', ', '.join(missing))
-                return
+        if 'bi bi-' in body and 'bootstrap-icons.min.css' not in body:
+            fail(f'{path} 가 Bootstrap Icons 를 쓰는데 아이콘 글꼴을 싣지 않았습니다')
+            return
 
     ok(f'실행 점검 통과 ({len(pages)}개 주소)')
 
@@ -952,6 +1014,7 @@ def check_live():
 def main():
     check_tailwind()
     check_bootstrap()
+    check_customer_css()
     check_asset_version()
     check_locales()
     check_icons()

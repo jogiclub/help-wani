@@ -6,11 +6,12 @@
  *   tailwind  : 아직 바꾸지 않은 레이아웃. Tailwind 클래스와 자체 모달/드로어.
  *   bootstrap : Bootstrap 6 + 왔니(docs/frontend-bootstrap6-plan.md). 네이티브 <dialog class="dialog|drawer"> 와
  *               Bootstrap 의 Dialog/Drawer/Toast. Bootstrap 은 bs.js(ESM)가 window.RHBootstrap 에 넘긴다.
+ *   plain     : 고객 화면(customer.css). Bootstrap 없이 토스트만 rhc-* 클래스로 그린다.
  */
 (function (window, $) {
     'use strict';
 
-    var KIT = window.RH_UI_KIT === 'bootstrap' ? 'bootstrap' : 'tailwind';
+    var KIT = (window.RH_UI_KIT === 'bootstrap' || window.RH_UI_KIT === 'plain') ? window.RH_UI_KIT : 'tailwind';
 
     var TOAST_STYLE = {
         success: 'bg-emerald-600',
@@ -75,15 +76,15 @@
             if (KIT === 'tailwind' && name && !UI_CLASS.tailwind.button[name]) {
                 return 'btn btn-sm ' + name;
             }
-            var map = UI_CLASS[KIT].button;
+            var map = (UI_CLASS[KIT] || UI_CLASS.tailwind).button;
             return map[toneOf(name, 'btn-', 'secondary')] || map.secondary;
         },
         badge: function (name) {
-            var map = UI_CLASS[KIT].badge;
+            var map = (UI_CLASS[KIT] || UI_CLASS.tailwind).badge;
             return map[toneOf(name, 'badge-', 'gray')] || map.gray;
         },
         actions: function () {
-            return UI_CLASS[KIT].actions;
+            return (UI_CLASS[KIT] || UI_CLASS.tailwind).actions;
         }
     };
 
@@ -120,6 +121,8 @@
      * type: success | danger | warning | info
      */
     function showToast(message, type) {
+        // 예전 호출의 'error' 는 'danger' 와 같다.
+        if (type === 'error') { type = 'danger'; }
         var $container = $('#toastContainer');
         if (!$container.length) {
             window.alert(message);
@@ -128,6 +131,10 @@
 
         if (KIT === 'bootstrap') {
             showBootstrapToast($container[0], message, type);
+            return;
+        }
+        if (KIT === 'plain') {
+            showPlainToast($container[0], message, type);
             return;
         }
 
@@ -194,6 +201,21 @@
     }
 
     /**
+     * 고객 화면 토스트(customer.css). 4초 뒤 사라진다.
+     */
+    function showPlainToast(container, message, type) {
+        var toast = document.createElement('div');
+        toast.className = 'rhc-toast' + (TOAST_THEME[type] ? ' rhc-toast-' + type : '');
+        toast.setAttribute('role', type === 'danger' ? 'alert' : 'status');
+        toast.textContent = message;
+        container.appendChild(toast);
+        window.setTimeout(function () {
+            toast.className += ' is-hiding';
+            window.setTimeout(function () { toast.remove(); }, 200);
+        }, 4000);
+    }
+
+    /**
      * 모달 열기 / 닫기
      * tailwind : id 로 지정한 요소의 hidden 클래스를 토글한다.
      * bootstrap: <dialog class="dialog"> 를 Bootstrap Dialog 로 연다(배경 클릭·ESC 는 Bootstrap 이 처리).
@@ -218,7 +240,8 @@
 
     /**
      * 드로어 열기 / 닫기 (오른쪽에서 밀려 나오는 설정 패널)
-     * 마크업은 .drawer-root > .drawer-backdrop + .drawer-panel. 예: views/console/_widget_settings.php
+     * Bootstrap 화면: <dialog class="drawer drawer-end rh-drawer"> (예: templates/console/_widget_settings.html).
+     * Tailwind 화면(전환 전): .drawer-root > .drawer-backdrop + .drawer-panel.
      */
     function openDrawer(id) {
         var $drawer = $('#' + id);

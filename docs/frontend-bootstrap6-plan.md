@@ -253,8 +253,8 @@ iOS 17 이하나 업데이트가 막힌 회사 PC 에서 다운로드 버튼이 
 | 1 | 운영자 (가장 작아 시범으로 먼저) | `operator.html`, `operator/organizations`, `operator/audit` | **완료(2026-10-22)** |
 | 2 | 조직 관리 | `main.html`, `admin/dashboard` `agents` `organization` `guide` `guide_edit` | 대기 |
 | 3 | 상담원 콘솔 | `console/chat` `queue` `viewer` `macro` `_macro_edit` `_widget_settings` | 대기 |
-| 4 | 로그인·가입·소개 | `blank.html`, `auth/*`, `public.html`, `home/landing` | 대기 |
-| 5 | 고객 화면(일반 CSS) | `customer.html`, `customer/*` | 대기 |
+| 4 | 로그인·가입·소개 | `blank.html`, `auth/*`, `public.html`, `home/landing` | **완료(2026-10-22)**. 아이콘을 Bootstrap Icons 로 바꾸고 Material Symbols 를 뺌(CLAUDE.md 3.3) |
+| 5 | 고객 화면(일반 CSS) | `customer.html`, `customer/*` | **완료(2026-10-22)**. `ui_kit = 'plain'`, `customer.css` 하나(oklch·:has·범위식 미디어 쿼리 없음) |
 | 6 | 정리: Tailwind·`app.css`·`build-css.sh`·`.tools/tailwindcss`·Material Symbols 제거, `ui_kit` 분기 삭제, CLAUDE.md 정식 반영 | — | 대기 |
 
 - `main.html` 은 콘솔(3단계)과 같은 레이아웃이므로 2·3단계는 **한 브랜치에서 함께 끝낸 뒤** 합칩니다.
@@ -303,3 +303,117 @@ CLAUDE.md 7장에 따라 검사를 붙일 때마다 일부러 어겨 보고 잡�
 | ESM 지연 실행으로 화면 스크립트가 Bootstrap 을 먼저 부름 | `rh:bootstrap-ready` 규칙, 공통 함수 안에서 준비 여부 확인 |
 | `.btn` 등 이름 충돌 | 레이아웃 단위 전환(5장), `check_ui_kit_mix` |
 | 콘솔 화면이 커서(`chat.js` 998줄) 한 번에 바꾸기 어려움 | 마크업을 만드는 JS 함수부터 목록으로 뽑고 클래스 대응표로 바꾼다 |
+
+---
+
+## 부록 A. 화면 전환 규칙 (2단계부터, 배포 CSS 로 확인한 이름)
+
+운영자 화면(`layouts/operator.html`, `operator/organizations.html`)이 기준 예시입니다. 모르는 클래스는 추측하지 말고
+`backend/assets/vendor/bootstrap/6.0.0-alpha.1/bootstrap.min.css` 에서 `grep -c -- '\.이름[^a-zA-Z0-9_-]'` 로 있는지 확인합니다.
+
+### A.1 화면 뼈대
+
+```html
+<div class="rh-page-header">
+  <div>
+    <nav aria-label="현재 위치">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><span class="breadcrumb-link">SETTING</span></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item" aria-current="page"><span class="breadcrumb-link active">상담원 관리</span></li>
+      </ol>
+    </nav>
+    <h1 class="page-title">상담원 관리</h1>
+  </div>
+  <div class="rh-page-actions"><!-- 화면 전체 동작(선택) --></div>
+</div>
+
+<section class="card">                         <!-- 그리드를 담으면 card overflow-hidden -->
+  <div class="card-header">
+    <h2 class="card-title">상담원 목록</h2>
+    <div class="card-actions">
+      <button type="button" class="btn-solid theme-primary">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="btn-label">상담원 추가</span>
+      </button>
+    </div>
+  </div>
+  <div class="card-body">…</div>
+</section>
+```
+
+- 빵부스러기 구역 이름은 사이드바 구역(OVERVIEW / CHAT / REMOTE / SETTING)과 같게 씁니다.
+- 패널 머리 버튼은 **아이콘 + `<span class="btn-label">`** 입니다(768px 미만에서 글자를 숨김).
+- 카드 안에 카드를 넣지 않습니다. 구역은 `bg-1 rounded-5 p-5` 또는 `border-top` 으로 나눕니다.
+
+### A.2 버튼과 아이콘
+
+| 용도 | 클래스 |
+|---|---|
+| 주 동작(저장, 추가, 확인) | `btn-solid theme-primary` |
+| 보조(취소, 닫기, 필터 끔) | `btn-outline theme-secondary` |
+| 위험(삭제) | `btn-outline theme-danger` (확인 다이얼로그를 거침) |
+| 글자 버튼 | `btn-text theme-secondary` / `btn-text theme-primary` |
+| 아이콘만 | `btn-icon` + `aria-label` |
+| 크기 | `btn-sm`, `btn-xs`, `btn-lg` |
+
+- 아이콘은 Bootstrap Icons `<i class="bi bi-…" aria-hidden="true"></i>`. 저장 `check-lg`, 취소·닫기 `x-lg`, 삭제 `trash`, 추가 `plus-lg`,
+  수정 `pencil-square`, 검색 `search`, 초기화 `arrow-counterclockwise`, 내려받기 `download`, 올리기 `upload`, 복사 `copy`, 설정 `gear`.
+- JS 로 만드는 버튼·배지는 `RHUi.button('primary')`, `RHUi.badge('green')` 톤 이름으로 클래스를 받습니다.
+
+### A.3 폼
+
+| 요소 | 마크업 |
+|---|---|
+| 라벨 | `<label class="form-label" for="x">` |
+| 입력·textarea·select | `class="form-control"` (`form-select` 없음) |
+| 도움말 | `<div class="form-text">` |
+| 앞뒤 붙임 | `<div class="input-group"><span class="input-group-text">…</span><input class="form-control"></div>` |
+| 체크박스 | `<div class="form-field"><input type="checkbox" class="check" id="a"><label for="a">…</label></div>` |
+| 라디오 | 같은 구조에 `class="radio"` |
+| 스위치 | `<div class="form-field"><div class="switch"><input type="checkbox" id="s" role="switch" switch></div><label for="s">…</label></div>` |
+| 배치 | `<div class="row g-5">` + `col-12 md:col-6` (반응형은 접두사 `md:`) |
+
+### A.4 다이얼로그·드로어·알림·탭
+
+- 확인·짧은 입력은 `<dialog class="dialog" id="…">` + `dialog-header/body/footer`, 닫기 `data-bs-dismiss="dialog"`. 여닫기 `openModal(id)` / `closeModal(id)`.
+- 상세 수정·설정은 오른쪽 드로어 `<dialog class="drawer drawer-end rh-drawer" tabindex="-1">` + `drawer-header/body/footer`(바닥은 취소·저장 반반),
+  닫기 `data-bs-dismiss="drawer"`. 여닫기 `openDrawer(id)` / `closeDrawer(id)`. 열고 닫을 때 `drawer:open` / `drawer:close` jQuery 이벤트가 그대로 납니다.
+- 알림 상자는 `<div class="alert theme-danger" role="alert">`(테마 `primary` `success` `warning` `danger` `info` `secondary`).
+- 탭은 `<div class="nav nav-underline" role="tablist">` 안의 `<button class="nav-link active" …>` 와 `.tab-content > .tab-pane.active`.
+  이미 있는 자체 탭 JS(data-tab)를 유지해도 되며, 그때는 활성 탭에 `active` 클래스를 붙입니다.
+
+### A.5 Tailwind → Bootstrap 6 자주 쓰는 대응 (간격 키가 다릅니다)
+
+| Tailwind | Bootstrap 6 |
+|---|---|
+| `flex` / `inline-flex` / `grid` / `hidden` / `block` | `d-flex` / `d-inline-flex` / `d-grid` / `d-none` / `d-block` |
+| `sm:flex` `md:hidden` | `sm:d-flex` `md:d-none` |
+| `items-center` `justify-between` `flex-wrap` `flex-1` `shrink-0` | `align-items-center` `justify-content-between` `flex-wrap` `flex-grow-1` `flex-shrink-0` |
+| `gap-1`(4) `gap-2`(8) `gap-3`(12) `gap-4`(16) `gap-6`(24) | `gap-1` `gap-3` `gap-4` `gap-5` `gap-7` |
+| `p-2`(8) `p-3`(12) `p-4`(16) `p-5`(20) `p-6`(24) | `p-3` `p-4` `p-5` `p-6` `p-7` (m 도 같은 키) |
+| `space-y-4` | 부모에 `vstack gap-5` |
+| `grid grid-cols-2 sm:grid-cols-3` | `d-grid grid-cols-2 sm:grid-cols-3` 또는 `row g-5` + `col-*` |
+| `text-xs` `text-sm` `text-base` `text-lg` `text-xl` `text-2xl` | `fs-xs` `fs-sm` `fs-md` `fs-lg` `fs-xl` `fs-2xl` |
+| `font-medium` `font-semibold` `font-bold` `font-mono` | `fw-medium` `fw-semibold` `fw-bold` `font-monospace` |
+| `text-slate-800/900` · `600/700` · `400/500` | `fg-1` · `fg-2` · `fg-3` |
+| `text-red-600` `text-emerald-600` `text-amber-600` | `fg-danger` `fg-success` `fg-emphasis-warning` |
+| `bg-white` `bg-slate-50` `bg-slate-100` | `bg-body` `bg-1` `bg-2` |
+| `border` `border-t` `rounded` `rounded-lg` `rounded-full` | `border` `border-top` `rounded-3` `rounded-5` `rounded-pill` |
+| `truncate` `whitespace-nowrap` `break-all` | `text-truncate` `text-nowrap` `text-break` |
+| `w-full` `h-full` `min-w-0` | `w-100` `h-100` `min-w-0` |
+| `sr-only` | `visually-hidden` |
+
+### A.6 Bootstrap 6 에서 알아 둘 함정
+
+- **유틸리티가 `@layer` 안에 있습니다.** 그래서 `wani*.css` 처럼 레이어 밖에 둔 규칙이 `d-none` 같은 유틸리티를 이깁니다.
+  우리 클래스가 `display` 를 정하는 요소를 숨길 때는 `d-none` 대신 그 클래스 쪽에 `.rh-xxx.d-none { display: none; }` 을 두거나, 숨김 전용 상태 클래스를 씁니다.
+- **`vstack` 은 `flex: 1 1 auto`** 입니다. 세로 flex 부모 안에서 남는 높이를 나눠 가지므로, `wani.css` 가 `drawer-body` / `dialog-body` / `card-body` 바로 아래의 `vstack` 은 내용 높이로 묶어 둡니다.
+  더 깊은 곳에서 벌어지면 `d-flex flex-column` 을 씁니다.
+- **연한 테마 색**(`--bs-*-bg-subtle` 등)은 `wani.css` 가 sRGB 로 직접 정합니다(위 8장 위험 표).
+
+### A.7 하지 않는 것
+
+- 5.3 이름(`btn-primary`, `form-select`, `text-muted`, `modal*`, `offcanvas*`, `dropdown-*`, `data-bs-toggle="modal"`)과 Tailwind 클래스를 남기지 않습니다(`check_bootstrap` 이 잡습니다).
+- 인라인 `style` 로 색을 주지 않습니다. 화면 전용 모양은 그 화면 묶음의 `wani-*.css` 에 `--wani-*` 토큰으로 둡니다.
+- 기능·문구·API 호출·요소 id 는 바꾸지 않습니다(JS 가 id 로 찾습니다). 바꾸는 것은 마크업 구조와 클래스뿐입니다.
+- 사용자 입력은 지금처럼 `textContent` 로 그립니다(`innerHTML` 에 값을 넣지 않습니다, CLAUDE.md 3.17).

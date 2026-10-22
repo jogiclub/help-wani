@@ -97,12 +97,14 @@
 | 고객 접속 페이지, 만족도 조사 | **조직 설정** (그 조직의 고객이 보는 화면, `use_org_locale()`) |
 | 소개 페이지, 상담원 콘솔 | 방문자 선택(`rh_locale` 쿠키) → 조직 설정 → 한국어 |
 
-### 3.3 아이콘 — 목록에 넣어야 나온다
+### 3.3 아이콘 — Bootstrap Icons 만, 글꼴에 있는 이름만
 
-[Material Symbols](https://fonts.google.com/icons) 를 **서브셋으로** 받습니다(전체 315KB → 약 5.5KB).
+아이콘은 [Bootstrap Icons](https://icons.getbootstrap.com/) 1.13.2 글꼴(`backend/assets/vendor/bootstrap-icons/1.13.2/`)의 `<i class="bi bi-이름" aria-hidden="true"></i>` 만 씁니다.
+Material Symbols 는 2026-10-22 에 뺐습니다(상담 위젯은 의존성 없이 인라인 SVG 를 씁니다, 3.9).
 
-- 아이콘을 추가하면 **`routers/home.py` 의 `landing_icons()` 목록에도 넣습니다.** 빠지면 아이콘 대신 영문 글자가 보입니다.
-- 아이콘 폰트는 `icon_names` 를 넘긴 화면에서만 불러옵니다.
+- 글꼴에 없는 이름을 쓰면 아이콘 자리가 비어 보입니다. 템플릿·화면 JS 의 `bi-이름` 과 소개 페이지의 `routers/home.py` `landing_icons()` 를 글꼴 CSS 와 대조합니다(검사가 잡습니다).
+- 동작 버튼 아이콘: 저장 `check-lg`, 취소·닫기 `x-lg`, 삭제 `trash`, 추가 `plus-lg`, 수정 `pencil-square`, 검색 `search`, 초기화 `arrow-counterclockwise`(`docs/frontend-bootstrap6-plan.md` 부록 A.2).
+- 아직 Tailwind 인 화면(고객 화면)은 아이콘 글꼴을 싣지 않습니다. 그 화면에서 아이콘이 필요하면 5단계에서 함께 정합니다.
 
 ### 3.4 시간 — UTC 로 저장하고 표시할 때만 변환
 

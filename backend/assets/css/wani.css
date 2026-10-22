@@ -127,6 +127,11 @@ body {
 
 .tabular-nums { font-variant-numeric: tabular-nums; }
 
+/* Bootstrap 6 유틸리티는 @layer 안에 있어 레이어 밖 규칙(wani*.css 의 display)을 이기지 못한다.
+   JS 가 숨김에 쓰는 .d-none 만 여기서 확실히 숨긴다. "d-none md:d-inline" 처럼 반응형 표시와 함께 쓴 요소는
+   그 접두사 클래스가 보이게 해야 하므로 제외한다. */
+.d-none:not([class*=":d-"]) { display: none !important; }
+
 /* ------------------------------------------------------------------ 패널(카드) */
 /* 왔니 Panel: radius-lg, border 1px, shadow-panel, 머리 테두리 없음, 제목 20px/700 */
 .card {
@@ -161,8 +166,15 @@ body {
 /* 768px 미만에서 패널 머리 버튼은 아이콘만 남긴다(왔니). 그래서 머리 버튼에는 아이콘을 꼭 넣는다. */
 @media (width < 768px) {
     .card > .card-header { padding: 10px 12px; }
-    .card-actions .btn-label { display: none; }
+    .card-actions .btn-label,
+    .rh-page-actions .btn-label { display: none; }
 }
+
+/* Bootstrap 6 의 vstack 은 flex: 1 1 auto 라서 세로 flex 부모(drawer-body, dialog-body, card-body) 안에서
+   남는 높이를 나눠 가져 아래로 벌어진다. 그 안의 묶음은 내용 높이만 차지하게 한다. */
+.drawer-body > .vstack,
+.dialog-body > .vstack,
+.card-body > .vstack { flex: 0 0 auto; }
 
 /* ------------------------------------------------------------------ 앱 셸 */
 /* 왔니 AppShell: 헤더 60px, 사이드바 200px. 1280px(Bootstrap 6 xl) 미만에서는 사이드바가 왼쪽 드로어가 된다. */
@@ -271,6 +283,25 @@ body {
 .rh-menu-link.is-active,
 .rh-menu-link.is-active:hover { background: var(--wani-primary); color: #ffffff; }
 
+/* 접힌 사이드바(왔니 70px): 구역 이름을 숨기고 아이콘 24px 위, 글자 12px 아래로 쌓는다. 원격 화면에서 쓴다. */
+@media (width >= 1280px) {
+    .rh-body.is-collapsed .rh-sidebar.xl\:drawer {
+        flex-basis: var(--wani-sidebar-collapsed-width);
+        width: var(--wani-sidebar-collapsed-width) !important;
+    }
+    .rh-body.is-collapsed .rh-menu-section { display: none; }
+    .rh-body.is-collapsed .rh-menu-link {
+        flex-direction: column;
+        gap: 2px;
+        margin: 2px 6px;
+        padding: 8px 2px;
+        font-size: 12px;
+        line-height: 1.2;
+        text-align: center;
+    }
+    .rh-body.is-collapsed .rh-menu-link .bi { font-size: 24px; }
+}
+
 .rh-main {
     flex: 1 1 auto;
     min-width: 0;
@@ -314,6 +345,9 @@ body {
 }
 
 /* ------------------------------------------------------------------ 다이얼로그·드로어 */
+/* 모달(드로어·다이얼로그)이 열려 있는 동안 페이지 스크롤바를 숨긴다. 그대로 두면 오른쪽 드로어의 끝 약 15px 이
+   스크롤바 밑으로 들어가 닫기 버튼과 입력칸 끝이 가려진다(2026-10-22 캡처로 확인). 뒤 화면은 어차피 스크롤하지 않는다. */
+html:has(dialog:modal) { overflow: hidden; }
 /* 왔니 Modal: 머리와 바닥 테두리 없음, 제목 600·자간 -1px, 뒤 배경은 backdrop 색 + 4px 블러 */
 .dialog {
     --bs-dialog-header-border-width: 0;
@@ -335,7 +369,8 @@ body {
 
 /* 왔니 Offcanvas: 오른쪽 700px, 왼쪽 2px primary, 머리 배경 offcanvas-header, 바닥 취소·저장 반반 */
 .drawer.rh-drawer {
-    --bs-drawer-width: var(--wani-offcanvas-width);
+    /* 좁은 화면에서는 화면 폭을 넘지 않는다(왔니 Offcanvas). 700px 고정이면 390px 에서 왼쪽으로 밀려난다. */
+    --bs-drawer-width: min(var(--wani-offcanvas-width), 100vw);
     --bs-drawer-inset: 0;
     --bs-drawer-border-radius: 0;
     border-inline-start: 2px solid var(--wani-primary);
@@ -431,3 +466,30 @@ body .wgrid {
 .image-drop.dz-drag-hover { border-color: var(--wani-primary); background: var(--wani-primary-bg-subtle); }
 .image-drop.is-uploading { pointer-events: none; opacity: .6; }
 .image-drop-hint { color: var(--wani-ink-muted); font-size: 12px; }
+
+/* ------------------------------------------------------------------ 로그인·가입 (layouts/blank.html) */
+.rh-auth {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 48px 16px;
+}
+.rh-auth-brand { font-size: 28px; }
+.rh-auth-card { width: 100%; max-width: 420px; }
+.rh-auth-card.rh-auth-card-wide { max-width: 760px; }
+.rh-auth-card > .card-body { padding: 32px; }
+.rh-auth-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    text-align: center;
+    color: var(--wani-ink-strong);
+}
+@media (width < 768px) {
+    .rh-auth { justify-content: flex-start; padding-top: 32px; }
+    .rh-auth-card > .card-body { padding: 20px; }
+}

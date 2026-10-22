@@ -15,6 +15,17 @@
 @source not "../../../backend/app/templates/operator";
 @source not "../js/operator";
 @source not "../js/bs.js";
+@source not "../../../backend/app/templates/layouts/main.html";
+@source not "../../../backend/app/templates/admin";
+@source not "../../../backend/app/templates/console";
+@source not "../js/admin";
+@source not "../js/console";
+@source not "../../../backend/app/templates/layouts/blank.html";
+@source not "../../../backend/app/templates/layouts/public.html";
+@source not "../../../backend/app/templates/auth";
+@source not "../../../backend/app/templates/home";
+@source not "../../../backend/app/templates/layouts/customer.html";
+@source not "../../../backend/app/templates/customer";
 
 @theme {
     --color-brand-50:  #eef5ff;
