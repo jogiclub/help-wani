@@ -242,7 +242,7 @@ def contact(request: Request, data: PostData = Depends(json_input)):
 
 @router.get('/api/widget/poll')
 def poll(request: Request, query: PostData = Depends(query_data)):
-    """GET ?key=&visitor_key=&after_id= — 대화창이 열려 있는 동안에만 호출된다."""
+    """GET ?key=&visitor_key=&after_id=&realtime=1(새 구독 토큰이 필요할 때) — 대화창이 열려 있는 동안에만 호출된다."""
     reply = _Reply()
     org = _authorize(request, reply, query.get('key'))
 
@@ -257,11 +257,17 @@ def poll(request: Request, query: PostData = Depends(query_data)):
     # 위젯은 대화창을 펼치고 탭이 보일 때만 폴링한다. 이 시각으로 자리 비움을 판단한다(팔로업 메일).
     chat_model.touch_visitor_seen(conversation.id)
 
-    return reply(True, '', {
+    data = {
         'online': availability['online'],
         'availability': _present_availability(org, availability, chat_model.has_visitor_message(conversation.id)),
         'messages': [chat_model.present(m) for m in chat_model.list_messages(conversation.id, after_id)],
-    })
+    }
+
+    # 실시간 서버가 토큰을 거절(만료)했다고 위젯이 알리면 새 구독 토큰을 내준다. 요청할 때만 넣는다.
+    if query.get('realtime') == '1':
+        data['realtime'] = realtime.client_config({'role': 'visitor', 'org_id': org.id, 'conversation_id': conversation.id})
+
+    return reply(True, '', data)
 
 
 # ------------------------------------------------------------------ 내부

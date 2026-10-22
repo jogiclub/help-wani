@@ -63,6 +63,9 @@
         socket: null,
         live: false,
         retry: 0,
+        // 실시간 서버가 토큰을 거절(4401, 대개 만료)하면 다음 폴링에서 새 토큰을 받는다. 새 토큰도 거절되면 횟수를 세어 멈춘다.
+        needToken: false,
+        authFails: 0,
         lastId: 0,
         open: false,
         timer: null,
@@ -716,7 +719,7 @@
      * 연결이 끊기면 다시 시도하되, 그 사이에는 폴링이 메시지를 가져온다.
      */
     function connectRealtime() {
-        if (!state.realtime || !state.realtime.url || !window.WebSocket) {
+        if (!state.realtime || !state.realtime.url || !window.WebSocket || state.needToken) {
             return;
         }
 
@@ -735,11 +738,9 @@
 
         state.socket = socket;
 
-        socket.onopen = function () {
-            state.live = true;
-            state.retry = 0;
-            applyPollInterval();
-        };
+        // 연결이 열려도 서버가 토큰을 확인하기 전이다. 'ready' 를 받아야 붙은 것으로 보고 재시도 간격을 되돌린다.
+        // (열릴 때 되돌리면 토큰이 거절될 때마다 간격이 1초로 돌아가 3초마다 다시 붙는다.)
+        socket.onopen = function () {};
 
         socket.onmessage = function (event) {
             var payload;
@@ -750,15 +751,36 @@
                 return;
             }
 
+            if (payload.type === 'ready') {
+                state.live = true;
+                state.retry = 0;
+                state.authFails = 0;
+                applyPollInterval();
+                return;
+            }
+
             if (payload.type === 'message' && payload.message) {
                 appendMessages([payload.message]);
             }
         };
 
-        socket.onclose = function () {
+        socket.onclose = function (event) {
+            var wasLive = state.live;
+
             state.live = false;
             state.socket = null;
-            applyPollInterval();
+
+            if (wasLive) {
+                applyPollInterval();
+            }
+
+            // 토큰 거절(realtime/src/server.js CLOSE_UNAUTHORIZED). 같은 토큰으로 다시 붙지 않고 폴링으로 새 토큰을 받는다.
+            // 새 토큰도 세 번 거절되면 실시간은 멈추고 폴링으로만 동작한다(페이지를 다시 열면 처음부터).
+            if (event && event.code === 4401) {
+                state.authFails++;
+                state.needToken = state.authFails <= 3;
+                return;
+            }
 
             // 1초에서 시작해 30초까지 점점 늘려 다시 붙는다.
             state.retry = Math.min(state.retry + 1, 5);
@@ -799,17 +821,30 @@
             return;
         }
 
-        get('/api/widget/poll', {
+        var params = {
             key: widgetKey,
             visitor_key: state.visitorKey,
             after_id: state.lastId,
-        }, function (res) {
+        };
+
+        if (state.needToken) {
+            params.realtime = 1;
+        }
+
+        get('/api/widget/poll', params, function (res) {
             if (!res || res.result !== true) {
                 return;
             }
 
             applyAvailability(res.data.availability || { state: res.data.online ? 'open' : 'away', accepting: true });
             appendMessages(res.data.messages);
+
+            // 새 구독 토큰을 받았으면 그 토큰으로 다시 붙는다.
+            if (state.needToken && res.data.realtime) {
+                state.realtime = res.data.realtime;
+                state.needToken = false;
+                connectRealtime();
+            }
         });
     }
 

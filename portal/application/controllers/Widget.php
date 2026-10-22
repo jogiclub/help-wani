@@ -273,7 +273,7 @@ class Widget extends MY_Controller {
     }
 
     /**
-     * GET /api/widget/poll?key=&visitor_key=&after_id=
+     * GET /api/widget/poll?key=&visitor_key=&after_id=&realtime=1(새 구독 토큰이 필요할 때)
      * 대화창이 열려 있는 동안에만 호출된다.
      */
     public function poll()
@@ -300,14 +300,26 @@ class Widget extends MY_Controller {
         // 위젯은 대화창을 펼치고 탭이 보일 때만 폴링한다. 이 시각으로 자리 비움을 판단한다(팔로업 메일).
         $this->chat_model->touch_visitor_seen($conversation->id);
 
-        api_response(TRUE, '', array(
+        $data = array(
             'online'       => $availability['online'],
             'availability' => $this->present_availability($org, $availability,
                 $this->chat_model->has_visitor_message($conversation->id)),
             'messages'     => $this->present_messages(
                 $this->chat_model->list_messages($conversation->id, $after_id)
             ),
-        ));
+        );
+
+        // 실시간 서버가 토큰을 거절(만료)했다고 위젯이 알리면 새 구독 토큰을 내준다. 요청할 때만 넣는다.
+        if ($this->input->get('realtime') === '1')
+        {
+            $data['realtime'] = $this->realtime->client_config(array(
+                'role'            => 'visitor',
+                'org_id'          => $org->id,
+                'conversation_id' => $conversation->id,
+            ));
+        }
+
+        api_response(TRUE, '', $data);
     }
 
     // ------------------------------------------------------------------
