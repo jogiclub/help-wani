@@ -181,29 +181,42 @@ def check_utc():
         ok('시간 저장 기준이 UTC 입니다')
 
 
-# ------------------------------------------------------------------ 3.5 AG Grid
+# ------------------------------------------------------------------ 3.5 wgrid
+WGRID_DIR = 'portal/assets/vendor/wgrid/0.1.0'
+
+
 def check_grid():
-    enterprise = ('agSetColumnFilter', 'agRichSelectCellEditor', 'agGroupCellRenderer',
-                  'sideBar', 'enableRangeSelection')
+    # AG Grid 옵션 이름이 남아 있으면 wgrid 가 조용히 무시해 열이 비거나 이벤트가 안 걸린다.
+    leftovers = ('agGrid', 'columnDefs', 'headerName', 'valueFormatter', 'cellRenderer',
+                 'setGridOption', 'applyTransaction', 'getRowId', 'overlayNoRowsTemplate',
+                 # wgrid Pro 는 운영 도메인에서 라이선스 키가 필요하다.
+                 'wgridPro', 'pro.global.js')
     found = []
 
     for rel, full in walk('portal/assets/js', ('.js',)):
         body = open(full, encoding='utf-8').read()
-        for name in enterprise:
+        for name in leftovers:
             if name in body:
                 found.append(f'{rel}: {name}')
 
     if found:
-        fail('AG Grid Enterprise 기능을 쓰고 있습니다', '\n    '.join(found))
+        fail('AG Grid 옵션이나 wgrid Pro 를 쓰고 있습니다', '\n    '.join(found))
+        return
+
+    missing = [name for name in ('wgrid.global.js', 'wgrid.css')
+               if not os.path.isfile(os.path.join(ROOT, WGRID_DIR, name))]
+
+    if missing:
+        fail('wgrid 파일이 없습니다', f'{WGRID_DIR}/' + ', '.join(missing))
         return
 
     grid_js = read('portal/assets/js/grid.js')
     size = re.search(r'DEFAULT_PAGE_SIZE\s*=\s*(\d+)', grid_js)
 
-    if not size or size.group(1) != '100':
-        fail('그리드 기본 페이지 크기가 100 이 아닙니다', 'portal/assets/js/grid.js')
+    if not size or size.group(1) != '20':
+        fail('그리드 기본 페이지 크기가 20 이 아닙니다', 'portal/assets/js/grid.js')
     else:
-        ok('AG Grid 설정 확인 (Community, 기본 100개)')
+        ok('wgrid 설정 확인 (코어만, 기본 20개)')
 
 
 # ------------------------------------------------------------- 3.7 파일 상단 주석
@@ -501,6 +514,23 @@ def check_customer_url():
 
 
 # ------------------------------------- 3.14 이미지 선택은 Dropzone
+def check_asset_version():
+    """뷰의 포털 JS/CSS 는 asset_url() 로 버전을 붙인다. base_url() 로 바로 쓰면 Cloudflare 가 예전 파일을 내준다."""
+    plain = re.compile(r"""base_url\(\s*['"]assets/[^'"]*\.(?:js|css)['"]\s*\)""")
+    found = []
+
+    for rel, full in walk('portal/application/views', ('.php',), ()):
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if plain.search(line):
+                found.append(f'{rel}:{number}')
+
+    if found:
+        fail('JS/CSS 주소에 버전이 없습니다 (CLAUDE.md 3.1)',
+             "base_url('assets/...js') 대신 asset_url('assets/...js') 를 씁니다\n    " + '\n    '.join(found[:10]))
+    else:
+        ok('뷰의 JS/CSS 주소가 모두 asset_url() 로 버전을 붙입니다')
+
+
 def check_image_drop():
     """이미지 선택은 RHImageDrop(Dropzone.js) 만 쓴다. 파일 입력을 직접 두거나 라이브러리 없이 부르면 안 된다."""
     file_input = re.compile(r"""<input[^>]*type\s*=\s*["']?file|type\s*[:=]\s*["']file["']""", re.I)
@@ -564,7 +594,37 @@ def check_guide():
     else:
         problems.append('Guide_model::themes() 를 찾지 못했습니다')
 
-    # 5) 올린 이미지는 git 에 넣지 않는다.
+    # 5) 모음 페이지(docs/guide-collections-plan.md)
+    #    - 라우트 (:any)/guide/{낱말} 은 글 주소 규칙 (:any)/guide/(:any) 보다 위여야 닿는다.
+    #    - 그 낱말은 Guide_model::RESERVED_SLUGS 에 있어야 같은 주소의 글이 생기지 않는다.
+    #    - 모든 테마 뷰가 탭(_tabs)과 모음 본문(_collection)을 부른다. 빠지면 그 테마만 모음 페이지가 목록으로 보인다.
+    #    - 유튜브 iframe 은 _video.php 한 곳에서만 만든다(주소 규칙이 한 곳에만 있게).
+    routes = read('portal/application/config/routes.php').splitlines()
+    article_rule = next((i for i, l in enumerate(routes) if re.match(r"\s*\$route\['\(:any\)/guide/\(:any\)'\]", l)), None)
+    words = []
+    for index, line in enumerate(routes):
+        match = re.match(r"\s*\$route\['\(:any\)/guide/([a-z][a-z0-9_-]*)'\]", line)
+        if match:
+            words.append(match.group(1))
+            if article_rule is not None and index > article_rule:
+                problems.append(f"routes.php {index + 1}행: (:any)/guide/{match.group(1)} 는 (:any)/guide/(:any) 보다 위에 둡니다")
+    reserved = re.search(r'const RESERVED_SLUGS = array\((.*?)\);', model, re.S)
+    reserved = re.findall(r"'([^']+)'", reserved.group(1)) if reserved else []
+    for word in words:
+        if word not in reserved:
+            problems.append(f'모음 주소 "{word}" 가 Guide_model::RESERVED_SLUGS 에 없습니다(같은 주소의 글을 만들 수 있게 됨)')
+    for rel, full in walk('portal/application/views/guide/themes', ('.php',)):
+        text = open(full, encoding='utf-8').read()
+        for part in ('guide/_tabs', 'guide/_collection'):
+            if part not in text:
+                problems.append(f'{rel} 가 {part} 를 부르지 않습니다')
+    for rel, full in walk('portal/application/views', ('.php',)):
+        if rel.endswith('views/guide/_video.php'):
+            continue
+        if 'youtube-nocookie.com/embed/' in open(full, encoding='utf-8').read():
+            problems.append(f'{rel} 유튜브 iframe 은 views/guide/_video.php 를 불러 그립니다')
+
+    # 6) 올린 이미지는 git 에 넣지 않는다.
     if os.path.isdir(os.path.join(ROOT, 'portal/assets/uploads/guides')) and \
             'portal/assets/uploads/guides/*' not in read('.gitignore'):
         problems.append('.gitignore 에 portal/assets/uploads/guides/* 가 없습니다')
@@ -572,7 +632,128 @@ def check_guide():
     if problems:
         fail('가이드 규칙 위반 (CLAUDE.md 3.15)', '\n    '.join(problems[:10]))
     else:
-        ok('가이드 규칙 확인 (nocookie 임베드, 출력 이스케이프, 카드 발행, 테마 뷰, 업로드 제외)')
+        ok('가이드 규칙 확인 (nocookie 임베드, 출력 이스케이프, 카드 발행, 테마 뷰, 모음 주소/탭, 업로드 제외)')
+
+
+# ---------------------------------------------------------------- 3.16 상담 운영 상태
+def check_chat_operation():
+    """운영 여부를 여러 곳에서 따로 판단하면 위젯, 자동 응답, 부재 메일이 서로 다른 상태를 말한다."""
+    problems = []
+
+    # 1) 상담원 응대 여부는 Chat_hours_model::availability() 안에서만 본다.
+    allowed = ('portal/application/models/Chat_model.php', 'portal/application/models/Chat_hours_model.php')
+    for rel, full in walk('portal/application', ('.php',), ('cache', 'logs')):
+        if rel in allowed:
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if re.search(r'->(has_available_agent|has_online_agent)\(', line):
+                problems.append(f'{rel}:{number} 운영 여부는 chat_hours_model->availability() 로 판단합니다')
+
+    # 2) 자동 응답은 send() 가 발행하는 범위 안에서 저장한다(3.11). 발행할 메시지를 읽기 전에 넣어야 한다.
+    widget = read('portal/application/controllers/Widget.php')
+    block = re.search(r'function send\(\).*?\n    \}', widget, re.S)
+    if block:
+        body = block.group(0)
+        reply, listing = body.find('->auto_reply('), body.find('->list_messages(')
+        if reply < 0 or listing < 0 or reply > listing:
+            problems.append('Widget::send 에서 auto_reply() 가 발행할 메시지를 읽기(list_messages) 전에 있어야 합니다')
+    else:
+        problems.append('Widget::send() 를 찾지 못했습니다')
+
+    # 3) 담당 변경, 보는 중/입력 중 이벤트에는 상담원 이름이 들어 있으므로 조직 방(publish_org)에만 보낸다.
+    #    publish_conversation / publish_message 는 방문자 방(conv:)에도 가서 고객 위젯으로 샌다.
+    for rel, full in walk('portal/application/controllers', ('.php',)):
+        text = open(full, encoding='utf-8').read()
+        for match in re.finditer(r"'type'\s*=>\s*'(presence|assignment)'", text):
+            call = text.rfind('->publish', 0, match.start())
+            if call < 0 or not text.startswith('->publish_org(', call):
+                number = text.count('\n', 0, match.start()) + 1
+                problems.append(f'{rel}:{number} {match.group(1)} 이벤트는 realtime->publish_org() 로만 보냅니다(고객 방으로 새지 않게)')
+
+    if problems:
+        fail('상담 운영 상태 규칙 위반 (CLAUDE.md 3.16)', '\n    '.join(problems[:10]))
+    else:
+        ok('상담 운영 상태를 한 곳(availability)에서 판단하고 자동 응답을 발행합니다, 상담원 이벤트는 조직 방에만')
+
+
+
+# ---------------------------------------------------------------- 3.18 인사말·연락처·팔로업
+def check_followup():
+    """상담원 답장이 팔로업 판단을 건너뛰면 자리를 비운 고객이 답을 영영 못 본다. 인사말은 발행 범위 안에서 저장한다."""
+    problems = []
+
+    # 1) 상담원 답장(sender 'agent')을 저장한 함수는 publish_new_messages() 를 부르고,
+    #    publish_new_messages() 안에서 Chat_followup 이 판단한다(3.11 발행과 한 길).
+    for rel, full in walk('portal/application/controllers', ('.php',)):
+        text = open(full, encoding='utf-8').read()
+        for match in re.finditer(r"add_message\([^;]*?'agent'", text):
+            start = text.rfind('function ', 0, match.start())
+            end = text.find('\n    }', match.end())
+            if '->publish_new_messages(' not in text[start:end]:
+                number = text.count('\n', 0, match.start()) + 1
+                problems.append(f'{rel}:{number} 상담원 답장을 저장했으면 publish_new_messages() 로 발행합니다(팔로업 메일 판단 포함)')
+
+    console = read('portal/application/controllers/Console.php')
+    block = re.search(r'function publish_new_messages\(.*?\n    \}', console, re.S)
+    if not block or 'chat_followup->after_agent_message(' not in block.group(0):
+        problems.append('Console::publish_new_messages() 가 chat_followup->after_agent_message() 를 불러야 합니다')
+
+    # 2) 인사말은 첫 메시지 앞에 저장하고 send() 가 함께 발행한다. 발행할 메시지를 읽기 전에 넣어야 한다.
+    widget = read('portal/application/controllers/Widget.php')
+    block = re.search(r'function send\(\).*?\n    \}', widget, re.S)
+    if block:
+        body = block.group(0)
+        greet, listing = body.find("'type' => 'greeting'"), body.find('->list_messages(')
+        if greet < 0 or listing < 0 or greet > listing:
+            problems.append('Widget::send 에서 인사말 저장(meta type greeting)이 발행할 메시지를 읽기(list_messages) 전에 있어야 합니다')
+
+    # 3) 방문자 연락처는 Visitor_model 만 고친다(입력 검사 clean_contact 하나, 수집 시각 함께 기록).
+    write = re.compile(r"""->(update|insert|replace)\(\s*'visitors'|(UPDATE|INSERT\s+INTO)\s+`?visitors`?\b""", re.I)
+    for rel, full in walk('portal/application', ('.php',), ('cache', 'logs')):
+        if rel == 'portal/application/models/Visitor_model.php':
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if write.search(line):
+                problems.append(f'{rel}:{number} visitors 는 Visitor_model 로만 고칩니다(연락처 검사 clean_contact)')
+
+    if problems:
+        fail('인사말·연락처·팔로업 규칙 위반 (CLAUDE.md 3.18)', '\n    '.join(problems[:10]))
+    else:
+        ok('상담원 답장이 모두 팔로업 판단을 거치고, 인사말은 발행 범위에서 저장, 연락처는 Visitor_model 만 고칩니다')
+
+# ---------------------------------------------------------------- 3.17 매크로
+def check_macro():
+    """매크로는 Macro_model 만 고친다(검사·이름 중복·추천 색인). 화면은 매크로 글을 HTML 로 넣지 않는다."""
+    problems = []
+
+    # 1) macros 테이블을 바꾸는 코드는 Macro_model 안에만 있다.
+    write = re.compile(r"""->(insert|update|delete|replace|insert_batch|update_batch)\(\s*'macros'|(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+`?macros`?\b""", re.I)
+    for rel, full in walk('portal/application', ('.php',), ('cache', 'logs')):
+        if rel == 'portal/application/models/Macro_model.php':
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if write.search(line):
+                problems.append(f'{rel}:{number} macros 는 Macro_model 의 save()/delete() 로만 고칩니다')
+
+    # 2) 매크로 이름·내용은 상담원이 쓴 글이다. innerHTML/.html() 에 값을 넣지 않고 textContent 로 그린다.
+    html = re.compile(r"""innerHTML\s*[+]?=(?!\s*['"]{2}\s*;)|\.html\(\s*[^)\s]""")
+    for rel, full in walk('portal/assets/js/console', ('.js',)):
+        if not os.path.basename(rel).startswith('macro'):
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if html.search(line):
+                problems.append(f'{rel}:{number} 매크로 화면은 textContent 로 그립니다(innerHTML 에 값을 넣지 않음)')
+
+    # 3) 매크로로 채운 글도 기존 전송 API 로 보낸다. 사용 기록은 거기서 남긴다.
+    console = read('portal/application/controllers/Console.php')
+    block = re.search(r'function api_chat_send\(\).*?\n    \}', console, re.S)
+    if not block or 'record_use(' not in block.group(0) or 'publish_new_messages' not in block.group(0):
+        problems.append('Console::api_chat_send 에 매크로 사용 기록(record_use)과 발행(publish_new_messages)이 함께 있어야 합니다')
+
+    if problems:
+        fail('매크로 규칙 위반 (CLAUDE.md 3.17)', '\n    '.join(problems[:10]))
+    else:
+        ok('매크로 규칙 확인 (Macro_model 만 저장, 화면 이스케이프, 기존 전송 API 로 사용 기록)')
 
 
 def check_live():
@@ -592,7 +773,7 @@ def check_live():
             return
 
         # 그리드를 쓰는 화면인데 라이브러리를 안 불렀는지 확인한다.
-        if 'RHGrid.create' in body and 'ag-grid-community' not in body:
+        if 'RHGrid.create' in body and 'wgrid.global.js' not in body:
             fail(f'{path} 가 그리드를 쓰는데 use_grid 를 넘기지 않았습니다')
             return
 
@@ -626,8 +807,12 @@ def main():
     check_no_vnc()
     check_tunnel_proxy()
     check_customer_url()
+    check_asset_version()
     check_image_drop()
     check_guide()
+    check_chat_operation()
+    check_macro()
+    check_followup()
 
     if '--live' in sys.argv:
         check_live()

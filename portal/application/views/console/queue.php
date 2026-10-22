@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/console/queue.php
- * 역할: 원격지원 화면 (코드 발급, 진행 중/지난 원격 세션 검색, 3초 갱신, AG Grid)
+ * 역할: 원격지원 화면 (코드 발급, 진행 중/지난 원격 세션 검색, 3초 갱신, wgrid)
  *       예전 원격 대기열과 원격 이력을 합친 화면이다.
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
@@ -67,4 +67,4 @@ var CONSOLE_URLS = {
     viewer: '<?= base_url('console/session/') ?>'
 };
 </script>
-<script src="<?= base_url('assets/js/console/queue.js') ?>"></script>
+<script src="<?= asset_url('assets/js/console/queue.js') ?>"></script>

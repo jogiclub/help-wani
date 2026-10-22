@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/operator/audit.php
- * 역할: 전체 조직의 관리 행위 감사 로그 (AG Grid)
+ * 역할: 전체 조직의 관리 행위 감사 로그 (wgrid)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -33,4 +33,4 @@ foreach ($logs as $log)
 <script>
 var AUDIT_ROWS = <?= json_encode($rows, JSON_UNESCAPED_UNICODE) ?>;
 </script>
-<script src="<?= base_url('assets/js/operator/audit.js') ?>"></script>
+<script src="<?= asset_url('assets/js/operator/audit.js') ?>"></script>

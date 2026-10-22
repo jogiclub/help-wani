@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/controllers/Admin.php
- * 역할: 조직 관리(상담원 관리, 조직 정보, 통계, 상담 위젯 설정 API)
+ * 역할: 조직 관리(상담원 관리, 조직 정보, 통계, 상담 위젯 설정 API, 상담 운영 시간·휴일·운영 상태 API)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -11,10 +11,16 @@ class Admin extends Admin_Controller {
     {
         $stats = $this->organization_model->statistics($this->agent->org_id, 30);
 
+        $this->load->model(array('chat_model', 'macro_model'));
+
         $this->render('admin/dashboard', array(
             'page_title' => '조직 관리',
             'org'        => $this->organization_model->get_by_id($this->agent->org_id),
             'stats'      => $stats,
+            // 상담 대화(위젯) 숫자. 원격지원 숫자와 섞지 않는다(CLAUDE.md 3.10).
+            'chat_stats' => $this->chat_model->reply_stats($this->agent->org_id, 30),
+            // 매크로 사용(docs/macro-plan.md M8). 개인 매크로는 이름 없이 합계만.
+            'macro_stats'=> $this->macro_model->usage_stats($this->agent->org_id, gmdate('Y-m-d H:i:s', time() - 30 * 86400)),
         ));
     }
 
@@ -207,6 +213,87 @@ class Admin extends Admin_Controller {
         $email = (string) $this->input->post('offline_email', TRUE);
         $email = filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : NULL;
 
+        // 운영 시간(docs/chat-operation-plan.md F1). 형식이 틀리면 아무것도 저장하지 않는다.
+        $this->load->model('chat_hours_model');
+        $hours = $this->chat_hours_model->clean_hours($this->input->post('hours'));
+
+        if (is_string($hours))
+        {
+            api_response(FALSE, $hours, array(), 400);
+            return;
+        }
+
+        $hours_enabled = $this->input->post('hours_enabled') ? 1 : 0;
+        $open_days = count(array_filter($hours));
+
+        if ($hours_enabled && $open_days === 0)
+        {
+            api_response(FALSE, '운영 시간을 쓰려면 운영하는 요일을 하루 이상 넣어 주세요.', array(), 400);
+            return;
+        }
+
+        $offhours = (string) $this->input->post('offhours_mode', TRUE);
+        $offhours = in_array($offhours, array('accept', 'info', 'hide'), TRUE) ? $offhours : 'accept';
+
+        // 답변 속도 안내(F6). 직접 지정 값은 위젯이 보여 주는 구간 중 하나만 받는다.
+        $this->load->model('chat_model');
+        $reply_mode = (string) $this->input->post('reply_mode', TRUE);
+        $reply_mode = in_array($reply_mode, array('off', 'manual', 'auto'), TRUE) ? $reply_mode : 'off';
+        $reply_minutes = (int) $this->input->post('reply_minutes');
+        $reply_minutes = in_array($reply_minutes, Chat_model::REPLY_BUCKETS, TRUE) ? $reply_minutes : NULL;
+
+        if ($reply_mode === 'manual' && $reply_minutes === NULL)
+        {
+            api_response(FALSE, '답변 속도를 골라 주세요.', array(), 400);
+            return;
+        }
+
+        // 자동 응답 문구는 위젯이 textContent 로 그리므로 원문을 받고 길이만 자른다. 비우면 기본 문구.
+        $messages = array();
+
+        foreach (array('closed', 'holiday', 'away') as $kind)
+        {
+            $text = mb_substr(trim((string) $this->input->post('msg_'.$kind)), 0, 500);
+            $messages['chat_msg_'.$kind] = $text === '' ? NULL : $text;
+        }
+
+        // 인사말(docs/widget-ops-plan.md 2장). 위젯이 textContent 로 그리므로 원문을 받고, 버튼 주소는 https 만 받는다.
+        $this->load->library('chat_greeting');
+        $greeting = str_replace(array("\r\n", "\r"), "\n", (string) $this->input->post('greeting'));
+        $greeting = trim(preg_replace('/[\x00-\x08\x0B-\x1F\x7F]/u', '', $greeting));
+
+        if (mb_strlen($greeting) > Chat_greeting::BODY_MAX)
+        {
+            api_response(FALSE, '인사말은 '.Chat_greeting::BODY_MAX.'자까지 쓸 수 있습니다.', array(), 400);
+            return;
+        }
+
+        $buttons = $this->chat_greeting->clean_buttons($this->input->post('greeting_buttons'));
+
+        if (is_string($buttons))
+        {
+            api_response(FALSE, $buttons, array(), 400);
+            return;
+        }
+
+        // 연락처 카드와 팔로업 메일(3장)
+        $ask = array();
+
+        foreach (array('name', 'email', 'phone') as $field)
+        {
+            $ask['chat_ask_'.$field] = $this->input->post('ask_'.$field) ? 1 : 0;
+        }
+
+        $contact_required = $this->input->post('contact_required') ? 1 : 0;
+
+        if ($contact_required && array_sum($ask) === 0)
+        {
+            api_response(FALSE, '연락처를 받아야 문의를 받으려면 묻는 항목을 하나 이상 골라 주세요.', array(), 400);
+            return;
+        }
+
+        $contact_notice = mb_substr(trim((string) $this->input->post('contact_notice')), 0, 500);
+
         // 도메인은 줄 단위로 받아 호스트만 남긴다.
         $lines = preg_split('/[\r\n,]+/', (string) $this->input->post('domains', TRUE));
         $domains = array();
@@ -230,12 +317,167 @@ class Admin extends Admin_Controller {
             'widget_domains'       => empty($domains) ? NULL : mb_substr(implode("\n", $domains), 0, 500),
             'widget_offline_email' => $email,
             'guide_autosuggest'    => $this->input->post('guide_autosuggest') ? 1 : 0,
-        ));
+            'chat_hours_enabled'   => $hours_enabled,
+            'chat_offhours_mode'   => $offhours,
+            'chat_reply_mode'      => $reply_mode,
+            'chat_reply_minutes'   => $reply_minutes,
+            // 방식을 바꾸면 실제 기록을 다음 요청에서 다시 계산한다.
+            'chat_reply_calc_at'   => NULL,
+            'chat_phone_button'    => $this->input->post('phone_button') ? 1 : 0,
+            'chat_phone_hours_only'=> $this->input->post('phone_hours_only') ? 1 : 0,
+            'chat_greeting'        => $greeting === '' ? NULL : $greeting,
+            'chat_greeting_buttons'=> empty($buttons) ? NULL : json_encode($buttons, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'chat_contact_required'=> $contact_required,
+            'chat_contact_notice'  => $contact_notice === '' ? NULL : $contact_notice,
+            'chat_followup_email'  => $this->input->post('followup_email') ? 1 : 0,
+        ) + $ask + $messages);
+
+        $this->chat_hours_model->save_hours($this->agent->org_id, $hours);
 
         $this->log_model->audit($this->agent->org_id, $this->agent->id, 'widget_update',
-            'domains='.count($domains), client_ip());
+            'domains='.count($domains).' hours='.($hours_enabled ? $open_days.'days' : 'off').' offhours='.$offhours
+            .' reply='.$reply_mode.' phone='.($this->input->post('phone_button') ? 1 : 0)
+            .' greeting='.($greeting === '' ? 'off' : mb_strlen($greeting).'chars/'.count($buttons).'btn')
+            .' ask='.implode('', array_map(function ($k) use ($ask) { return $ask['chat_ask_'.$k] ? $k[0] : '-'; }, array('name', 'email', 'phone')))
+            .' required='.$contact_required.' followup='.($this->input->post('followup_email') ? 1 : 0), client_ip());
 
-        api_response(TRUE, '위젯 설정을 저장했습니다.');
+        // 모르는 변수는 저장은 하되 알려 준다(매크로와 같은 방식).
+        $unknown = $this->chat_greeting->unknown_variables($greeting);
+        $message = empty($unknown) ? '위젯 설정을 저장했습니다.'
+            : '저장했습니다. 인사말의 {'.implode('}, {', $unknown).'} 는 알 수 없는 변수라 글자 그대로 보입니다.';
+
+        api_response(TRUE, $message);
+    }
+
+    /**
+     * POST /admin/api/chat_state  (state = auto | open | closed)
+     * 조직 운영 상태를 바로 바꾼다. 자동 판정이 같은 값이 되는 때 '자동' 으로 돌아간다(F3).
+     */
+    public function api_chat_state()
+    {
+        $state = (string) $this->input->post('state', TRUE);
+
+        if ( ! in_array($state, array('auto', 'open', 'closed'), TRUE))
+        {
+            api_response(FALSE, '운영 상태 값이 올바르지 않습니다.', array(), 400);
+            return;
+        }
+
+        $this->load->model('chat_hours_model');
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+        $availability = $this->chat_hours_model->set_manual($org, $state);
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'chat_state',
+            'state='.$state.' applied='.$availability['manual'].' until='.($availability['manual_until'] ?: '-'), client_ip());
+
+        $labels = array('auto' => '운영 시간대로 돌렸습니다.', 'open' => '지금부터 상담을 받습니다.', 'closed' => '지금부터 상담을 받지 않습니다.');
+        $message = $availability['manual'] === 'auto' && $state !== 'auto'
+            ? '지금 운영 시간 설정과 같은 상태라 운영 시간대로 둡니다.'
+            : $labels[$state];
+
+        api_response(TRUE, $message, array('availability' => $this->chat_hours_model->console_view($org, $availability)));
+    }
+
+    /**
+     * GET /admin/api/holiday_candidates
+     * 조직 국가의 공휴일 후보(config/holidays.php). 자동으로 넣지 않고 관리자가 고른다.
+     */
+    public function api_holiday_candidates()
+    {
+        $this->load->model('chat_hours_model');
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
+        api_response(TRUE, '', array('candidates' => $this->chat_hours_model->holiday_candidates($org)));
+    }
+
+    /**
+     * POST /admin/api/holiday_add
+     * 한 건(start_date, end_date, name, mode, start, end, repeat_yearly) 또는
+     * 공휴일 후보 여러 건(items = JSON [{date, name}])을 넣는다.
+     */
+    public function api_holiday_add()
+    {
+        $this->load->model('chat_hours_model');
+
+        $items = json_decode((string) $this->input->post('items'), TRUE);
+
+        if ( ! is_array($items))
+        {
+            $items = array(array(
+                'start_date'    => $this->input->post('start_date', TRUE),
+                'end_date'      => $this->input->post('end_date', TRUE),
+                'name'          => $this->input->post('name', TRUE),
+                'mode'          => $this->input->post('mode', TRUE),
+                'start'         => $this->input->post('start', TRUE),
+                'end'           => $this->input->post('end', TRUE),
+                'repeat_yearly' => $this->input->post('repeat_yearly'),
+            ));
+        }
+        else
+        {
+            $items = array_map(function ($item) {
+                $date = is_array($item) && isset($item['date']) ? $item['date'] : '';
+                $name = is_array($item) && isset($item['name']) ? $item['name'] : '';
+                return array('start_date' => $date, 'end_date' => $date, 'name' => $name, 'mode' => 'closed');
+            }, array_slice($items, 0, 50));
+        }
+
+        $rows = array();
+
+        foreach ($items as $item)
+        {
+            $row = $this->chat_hours_model->clean_holiday($item);
+
+            if (is_string($row))
+            {
+                api_response(FALSE, $row, array(), 400);
+                return;
+            }
+
+            $rows[] = $row;
+        }
+
+        if (empty($rows))
+        {
+            api_response(FALSE, '추가할 휴일을 골라 주세요.', array(), 400);
+            return;
+        }
+
+        foreach ($rows as $row)
+        {
+            $this->chat_hours_model->add_holiday($this->agent->org_id, $row);
+        }
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'chat_holiday_add',
+            'count='.count($rows).' first='.$rows[0]['start_date'], client_ip());
+
+        api_response(TRUE, '휴일 '.count($rows).'건을 추가했습니다.', array('holidays' => $this->holiday_rows()));
+    }
+
+    /**
+     * POST /admin/api/holiday_delete
+     */
+    public function api_holiday_delete()
+    {
+        $this->load->model('chat_hours_model');
+
+        $id = (int) $this->input->post('id');
+
+        if ( ! $this->chat_hours_model->delete_holiday($this->agent->org_id, $id))
+        {
+            api_response(FALSE, '휴일을 찾을 수 없습니다.', array(), 404);
+            return;
+        }
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'chat_holiday_delete', 'id='.$id, client_ip());
+
+        api_response(TRUE, '휴일을 지웠습니다.', array('holidays' => $this->holiday_rows()));
+    }
+
+    protected function holiday_rows()
+    {
+        return array_map(array($this->chat_hours_model, 'present_holiday'),
+            $this->chat_hours_model->list_holidays($this->agent->org_id));
     }
 
     /**

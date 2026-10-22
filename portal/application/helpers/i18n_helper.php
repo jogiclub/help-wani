@@ -41,6 +41,20 @@ if ( ! function_exists('supported_countries'))
     }
 }
 
+if ( ! function_exists('country_dial_codes'))
+{
+    /**
+     * 위젯 연락처 카드의 휴대폰 국가번호. 키는 supported_countries() 와 같다(허용 목록).
+     */
+    function country_dial_codes()
+    {
+        return array(
+            'KR' => '82', 'JP' => '81', 'US' => '1', 'SG' => '65', 'VN' => '84',
+            'ID' => '62', 'AU' => '61', 'GB' => '44', 'DE' => '49',
+        );
+    }
+}
+
 if ( ! function_exists('supported_timezones'))
 {
     /**

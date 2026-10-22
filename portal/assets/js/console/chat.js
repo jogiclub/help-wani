@@ -1,6 +1,9 @@
 /**
  * 파일 위치: assets/js/console/chat.js
- * 역할: 상담 위젯 대화 목록과 응답 패널 (폴링), 추천 가이드 보내기
+ * 역할: 상담 위젯 대화 목록과 응답 패널 (폴링), 추천 가이드 보내기, 운영 상태 표시와 전환,
+ *       중복 응대 방지(담당 표시·가져오기, 보는 중/입력 중, 새 문의 브라우저 알림 1회),
+ *       매크로(입력창 / 목록은 macro-picker.js, 보낸 메시지로 만들기는 macro-editor.js),
+ *       고객 휴대폰·답장 알림 메일 표시(docs/widget-ops-plan.md 3-7)
  */
 (function ($) {
     'use strict';
@@ -19,6 +22,10 @@
     var STATUS_CLASS = { open: 'badge-green', closed: 'badge-gray' };
     var STATUS_LABEL = { open: '진행 중', closed: '종료' };
 
+    /** 고객 위젯에 보이는 운영 상태(Chat_hours_model::availability) */
+    var AVAILABILITY_LABEL = { open: '상담 가능', away: '응대 가능 상담원 없음', closed: '운영 시간 외' };
+    var AVAILABILITY_CLASS = { open: 'badge-green', away: 'badge-amber', closed: 'badge-gray' };
+
     var grid = null;
     var current = null;
     var lastId = 0;
@@ -29,26 +36,44 @@
     var messageTimer = null;
     var guideTimer = null;
 
+    /**
+     * 보는 중/입력 중(docs/chat-operation-plan.md F7). 실시간 연결이 있을 때만 주고받으며 저장하지 않는다.
+     * presence[대화 id][상담원 id] = { name, kind, until }
+     */
+    var PRESENCE_HEARTBEAT_MS = 20000;
+    var PRESENCE_VIEWING_TTL_MS = 45000;
+    var PRESENCE_TYPING_TTL_MS = 6000;
+    var TYPING_THROTTLE_MS = 3000;
+    var presence = {};
+    var lastTypingAt = 0;
+
+    /** 새 문의 알림: 대화마다 미확인이 0 이 될 때까지 한 번만 띄운다. */
+    var notifications = {};
+    var prevUnread = null;
+    var baseTitle = document.title;
+    var pendingSend = null;
+
     // ------------------------------------------------------------------
     // 목록
     // ------------------------------------------------------------------
 
-    function columnDefs() {
+    function columns() {
         return [
             {
-                headerName: '방문자', field: 'visitor_name', minWidth: 140,
-                cellRenderer: function (params) {
+                title: '방문자', key: 'visitor_name', width: 140, flex: 1, align: 'left',
+                render: function (row, value) {
                     var wrap = document.createElement('div');
-                    wrap.className = 'flex h-full items-center gap-2';
+                    wrap.className = 'flex h-full min-w-0 items-center gap-2';
 
                     var name = document.createElement('span');
-                    name.textContent = params.value || '이름 없음';
+                    name.className = 'truncate';
+                    name.textContent = value || '이름 없음';
                     wrap.appendChild(name);
 
-                    if (params.data.unread > 0) {
+                    if (row.unread > 0) {
                         var badge = document.createElement('span');
                         badge.className = 'badge badge-red';
-                        badge.textContent = params.data.unread;
+                        badge.textContent = row.unread;
                         wrap.appendChild(badge);
                     }
 
@@ -56,19 +81,64 @@
                 }
             },
             {
-                headerName: '마지막 메시지', field: 'last_body', minWidth: 200,
-                valueFormatter: function (p) { return p.value || '-'; }
+                title: '요청 페이지', key: 'page_url', width: 180, flex: 1, align: 'left',
+                render: renderPageUrl,
+                format: function (v) { return v || '-'; }
             },
             {
-                headerName: '상태', field: 'status', width: 100, flex: 0,
-                cellRenderer: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
-                valueFormatter: function (p) { return STATUS_LABEL[p.value] || p.value; }
+                title: '마지막 메시지', key: 'last_body', width: 200, flex: 1, align: 'left',
+                format: function (v) { return v || '-'; }
             },
-            { headerName: '담당', field: 'agent_name', width: 110, flex: 0,
-              valueFormatter: function (p) { return p.value || '-'; } },
-            { headerName: '최근', field: 'last_message_at', width: 150, flex: 0,
-              valueFormatter: RHGrid.dateTime }
+            {
+                title: '상태', key: 'status', width: 100,
+                render: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
+                format: function (v) { return STATUS_LABEL[v] || v; }
+            },
+            { title: '담당', key: 'agent_name', width: 110,
+              format: function (v) { return v || '-'; } },
+            { title: '최근', key: 'last_message_at', width: 150,
+              format: RHGrid.dateTime }
         ];
+    }
+
+    /**
+     * 방문자가 위젯을 띄운 페이지. 위젯이 페이지를 열 때마다 갱신하므로 지금 보고 있는 페이지다.
+     * 주소는 고객사 사이트가 보낸 값이므로 http(s) 만 링크로 만들고 나머지는 글자로 둔다.
+     */
+    function renderPageUrl(row, value) {
+        var wrap = document.createElement('div');
+        wrap.className = 'flex h-full min-w-0 items-center';
+
+        if (!value) {
+            wrap.textContent = '-';
+            return wrap;
+        }
+
+        var parsed = null;
+
+        try { parsed = new URL(value); } catch (e) { parsed = null; }
+
+        var label = parsed ? parsed.host + parsed.pathname + parsed.search : value;
+        var el;
+
+        if (parsed && (parsed.protocol === 'https:' || parsed.protocol === 'http:')) {
+            el = document.createElement('a');
+            el.href = parsed.href;
+            el.target = '_blank';
+            el.rel = 'noopener noreferrer';
+            el.className = 'truncate text-brand-600 hover:underline';
+            // 링크를 눌러도 대화가 선택되지 않게 한다.
+            el.addEventListener('click', function (e) { e.stopPropagation(); });
+        } else {
+            el = document.createElement('span');
+            el.className = 'truncate';
+        }
+
+        el.textContent = label;
+        el.title = value;
+        wrap.appendChild(el);
+
+        return wrap;
     }
 
     function refreshList() {
@@ -76,7 +146,14 @@
 
         apiGet(CHAT_URLS.list + '?' + $.param(params), function (data) {
             if (grid) {
-                grid.setGridOption('rowData', data.conversations);
+                grid.setRows(data.conversations);
+            }
+
+            checkNotifications(data.conversations);
+            document.title = data.unread_total > 0 ? '(' + data.unread_total + ') ' + baseTitle : baseTitle;
+
+            if (data.availability) {
+                renderAvailability(data.availability);
             }
 
             var $badge = $('#chatUnread');
@@ -100,6 +177,76 @@
     }
 
     // ------------------------------------------------------------------
+    // 운영 상태
+    // ------------------------------------------------------------------
+
+    /**
+     * 시각은 서버가 조직 시간대로 바꾼 문구(오늘 18:00 등)로 받는다.
+     */
+    function renderAvailability(av) {
+        var $badge = $('#chatAvailability');
+
+        $badge.removeClass('badge-green badge-amber badge-gray')
+            .addClass(AVAILABILITY_CLASS[av.state] || 'badge-gray');
+
+        var label = AVAILABILITY_LABEL[av.state] || av.state;
+
+        if (av.state === 'closed' && av.reason === 'holiday' && av.holiday) {
+            label = '휴무 · ' + av.holiday;
+        } else if (av.state === 'closed' && av.reason === 'manual') {
+            label = '운영 종료(수동)';
+        }
+
+        $badge.text(label);
+
+        var notes = [];
+
+        if (av.state === 'closed' && av.next_open) {
+            notes.push('다음 운영 ' + av.next_open);
+        }
+
+        if (av.state === 'away') {
+            notes.push('고객에게 부재중 자동 응답이 나갑니다');
+        }
+
+        if (av.manual !== 'auto') {
+            notes.push(av.manual_until ? av.manual_until + ' 에 운영 시간대로 돌아갑니다' : '직접 바꿀 때까지 유지합니다');
+        }
+
+        if (!av.hours_enabled && av.state !== 'closed') {
+            notes.push('운영 시간 미설정');
+        }
+
+        $('#chatAvailabilityNote').text(notes.join(' · '));
+        $('#chatManualState').val(av.manual);
+    }
+
+    function bindAvailability() {
+        renderAvailability(CHAT_AVAILABILITY);
+
+        $('#chatMyStatus').on('change', function () {
+            var $select = $(this).prop('disabled', true);
+
+            apiPost(CHAT_URLS.myStatus, { status: $select.val() }, function (data, message) {
+                showToast(message, 'success');
+                renderAvailability(data.availability);
+            }).always(function () { $select.prop('disabled', false); });
+        });
+
+        $('#chatManualState').on('change', function () {
+            var $select = $(this).prop('disabled', true);
+
+            apiPost(CHAT_URLS.chatState, { state: $select.val() }, function (data, message) {
+                showToast(message, 'success');
+                renderAvailability(data.availability);
+            }, function (message) {
+                showToast(message, 'danger');
+                refreshList();
+            }).always(function () { $select.prop('disabled', false); });
+        });
+    }
+
+    // ------------------------------------------------------------------
     // 대화 패널
     // ------------------------------------------------------------------
 
@@ -109,6 +256,10 @@
         var meta = [];
 
         if (current.visitor_email) { meta.push(current.visitor_email); }
+        if (current.visitor_phone) { meta.push(current.visitor_phone); }
+        if (current.followup_sent_at) {
+            meta.push('답장 알림 메일 ' + RHI18n.formatDate(current.followup_sent_at, 'datetime'));
+        }
         if (current.page_url) { meta.push(current.page_url); }
 
         $('#chatMeta').text(meta.join(' · ') || '연락처 없음');
@@ -118,6 +269,234 @@
         $('#chatClose').prop('disabled', closed);
         $('#chatRemote').prop('disabled', closed);
         $('#chatInput').prop('disabled', closed);
+
+        var owner = current.assigned_agent_id;
+        var mine = owner === CHAT_ME.id;
+        var $assignee = $('#chatAssignee').removeClass('badge-gray badge-blue badge-amber');
+
+        if (!owner) {
+            $assignee.addClass('badge-gray').text('담당 없음 · 대기 중');
+        } else if (mine) {
+            $assignee.addClass('badge-blue').text('담당: 나');
+        } else {
+            $assignee.addClass('badge-amber').text('담당: ' + (current.agent_name || '다른 상담원'));
+        }
+
+        $('#chatTake').toggleClass('hidden', closed || !owner || mine);
+        $('#chatRelease').toggleClass('hidden', closed || !owner || !(mine || CHAT_ME.role === 'admin'));
+        renderPresence();
+    }
+
+    // ------------------------------------------------------------------
+    // 중복 응대 방지: 담당, 보는 중/입력 중, 새 문의 알림
+    // ------------------------------------------------------------------
+
+    function renderPresence() {
+        if (!current) {
+            return;
+        }
+
+        var now = Date.now();
+        var people = presence[current.id] || {};
+        var typing = [];
+        var viewing = [];
+
+        Object.keys(people).forEach(function (agentId) {
+            var p = people[agentId];
+
+            if (p.until < now) {
+                delete people[agentId];
+            } else if (p.kind === 'typing') {
+                typing.push(p.name);
+            } else {
+                viewing.push(p.name);
+            }
+        });
+
+        var parts = [];
+
+        if (typing.length) { parts.push(typing.join(', ') + ' 님이 입력 중'); }
+        if (viewing.length) { parts.push(viewing.join(', ') + ' 님이 보는 중'); }
+
+        $('#chatPresence').text(parts.join(' · '));
+    }
+
+    function sendPresence(conversationId, kind) {
+        if (!live || !conversationId) {
+            return;
+        }
+
+        apiPost(CHAT_URLS.presence, { conversation_id: conversationId, kind: kind }, null, function () {
+            // 보는 중 표시는 보조 정보라 실패를 알리지 않는다.
+        });
+    }
+
+    function onPresence(payload) {
+        if (payload.agent_id === CHAT_ME.id) {
+            return;
+        }
+
+        var people = presence[payload.conversation_id] = presence[payload.conversation_id] || {};
+
+        if (payload.kind === 'leave') {
+            delete people[payload.agent_id];
+        } else {
+            people[payload.agent_id] = {
+                name: payload.agent_name,
+                kind: payload.kind,
+                until: Date.now() + (payload.kind === 'typing' ? PRESENCE_TYPING_TTL_MS : PRESENCE_VIEWING_TTL_MS)
+            };
+            // 다른 상담원이 이 대화를 열었으면 내 알림은 거둔다.
+            closeNotification(payload.conversation_id);
+        }
+
+        if (current && current.id === payload.conversation_id) {
+            renderPresence();
+        }
+    }
+
+    function onAssignment(payload) {
+        if (payload.previous_agent_id === CHAT_ME.id && payload.by_agent_id !== CHAT_ME.id && payload.assigned_agent_id) {
+            showToast(payload.by_agent_name + ' 님이 대화 #' + payload.conversation_id + ' 의 담당을 가져갔습니다.', 'info');
+        }
+
+        if (payload.assigned_agent_id && payload.assigned_agent_id !== CHAT_ME.id) {
+            closeNotification(payload.conversation_id);
+        }
+
+        if (current && current.id === payload.conversation_id) {
+            current.assigned_agent_id = payload.assigned_agent_id;
+            current.agent_name = payload.agent_name;
+            renderHeader();
+        }
+
+        refreshList();
+    }
+
+    function changeAssignment(action) {
+        if (!current) {
+            return;
+        }
+
+        var id = current.id;
+
+        apiPost(CHAT_URLS.assign, { conversation_id: id, action: action }, function (data, message) {
+            showToast(message, 'success');
+
+            if (current && current.id === id) {
+                current.assigned_agent_id = action === 'take' ? CHAT_ME.id : null;
+                current.agent_name = action === 'take' ? CHAT_ME.name : null;
+                renderHeader();
+            }
+
+            refreshList();
+        });
+    }
+
+    /**
+     * 목록이 갱신될 때 미확인이 늘어난 대화를 찾아 브라우저 알림을 띄운다(실시간과 폴링 모두 이 길로 온다).
+     * 담당이 있는 대화는 담당자에게만, 내가 '응대 종료' 이거나 알림을 끈 경우에는 띄우지 않는다.
+     */
+    function checkNotifications(rows) {
+        var first = prevUnread === null;
+        var next = {};
+
+        rows.forEach(function (row) {
+            var before = first ? row.unread : (prevUnread[row.id] || 0);
+            next[row.id] = row.unread;
+
+            if (row.unread === 0 || row.status !== 'open' || (row.assigned_agent_id && row.assigned_agent_id !== CHAT_ME.id)) {
+                closeNotification(row.id);
+                return;
+            }
+
+            if (row.unread > before) {
+                notify(row);
+            }
+        });
+
+        prevUnread = next;
+    }
+
+    function notify(row) {
+        if (notifications[row.id] || !$('#chatNotify').is(':checked') || $('#chatMyStatus').val() === 'off') {
+            return;
+        }
+
+        // 지금 보고 있는 대화면 알릴 필요가 없다.
+        if (current && current.id === row.id && !document.hidden) {
+            return;
+        }
+
+        if (!window.Notification || Notification.permission !== 'granted') {
+            return;
+        }
+
+        var notice;
+
+        try {
+            notice = new Notification('새 상담 문의', {
+                body: (row.visitor_name || '이름 없음') + ': ' + (row.last_body || ''),
+                tag: 'rh-chat-' + row.id
+            });
+        } catch (e) {
+            return;
+        }
+
+        notice.onclick = function () {
+            window.focus();
+            select(row);
+            notice.close();
+        };
+
+        notifications[row.id] = notice;
+    }
+
+    function closeNotification(conversationId) {
+        if (notifications[conversationId]) {
+            notifications[conversationId].close();
+            delete notifications[conversationId];
+        }
+    }
+
+    function bindDuplicateGuard() {
+        $('#chatTake').on('click', function () { changeAssignment('take'); });
+        $('#chatRelease').on('click', function () { changeAssignment('release'); });
+
+        $('#chatConflictJoin').on('click', function () { resend('join'); });
+        $('#chatConflictTake').on('click', function () { resend('take'); });
+
+        $('#chatInput').on('input', function () {
+            var now = Date.now();
+
+            if (current && now - lastTypingAt > TYPING_THROTTLE_MS) {
+                lastTypingAt = now;
+                sendPresence(current.id, 'typing');
+            }
+        });
+
+        $('#chatNotify').on('change', function () {
+            var on = this.checked;
+
+            // 브라우저 권한은 상담원이 켤 때 한 번만 묻는다.
+            if (on && window.Notification && Notification.permission === 'default') {
+                Notification.requestPermission();
+            } else if (on && (!window.Notification || Notification.permission === 'denied')) {
+                showToast('브라우저에서 이 사이트의 알림이 막혀 있습니다. 주소창의 사이트 설정에서 허용해 주세요.', 'warning');
+            }
+
+            apiPost(CHAT_URLS.notify, { enabled: on ? 1 : 0 }, function (data, message) {
+                showToast(message, 'success');
+            });
+        });
+
+        // 보고 있는 동안에는 주기적으로 알리고, 탭이 숨으면 멈춘다. 표시 만료도 같은 주기로 정리한다.
+        window.setInterval(function () {
+            if (current && !document.hidden) {
+                sendPresence(current.id, 'viewing');
+            }
+        }, PRESENCE_HEARTBEAT_MS);
+        window.setInterval(renderPresence, 3000);
     }
 
     function messageNode(message) {
@@ -129,6 +508,13 @@
 
         if (message.meta && message.meta.type === 'guide') {
             fillGuideCard(bubble, message);
+        } else if (message.meta && message.meta.type === 'auto_reply') {
+            // 운영 시간 외 / 부재중에 위젯이 고객에게 보낸 자동 응답
+            bubble.textContent = '[자동 응답] ' + message.body;
+        } else if (message.meta && message.meta.type === 'greeting') {
+            // 고객이 첫 메시지를 보내기 전에 본 인사말과 바로가기 버튼
+            var labels = (message.meta.buttons || []).map(function (b) { return '[' + b.label + ']'; }).join(' ');
+            bubble.textContent = '[인사말] ' + message.body + (labels ? '\n' + labels : '');
         } else {
             bubble.textContent = message.body;
         }
@@ -150,7 +536,30 @@
         row.appendChild(bubble);
         row.appendChild(time);
 
+        // 상담원이 직접 쓴 글은 매크로로 저장할 수 있다(docs/macro-plan.md M4). 카드와 자동 응답은 빼고.
+        if (message.sender === 'agent' && !message.meta && window.RHMacroEditor) {
+            row.className += ' group';
+            var save = document.createElement('button');
+            save.type = 'button';
+            save.className = 'ml-2 hidden text-[11px] text-brand-600 hover:underline group-hover:inline';
+            save.textContent = '매크로로 저장';
+            save.addEventListener('click', function () { saveAsMacro(message.body); });
+            time.appendChild(save);
+        }
+
         return row;
+    }
+
+    /**
+     * 보낸 글로 매크로를 만든다. 고객 이름이 들어 있으면 변수로 바꾸라고 안내만 한다(우연히 같은 낱말일 수 있다).
+     */
+    function saveAsMacro(body) {
+        var name = current && current.visitor_name;
+        var hint = name && body.indexOf(name) >= 0
+            ? '내용에 고객 이름(' + name + ')이 들어 있습니다. [고객 이름] 변수로 바꾸면 다른 고객에게도 맞게 들어갑니다.'
+            : '';
+
+        RHMacroEditor.open({ body: body, hint: hint });
     }
 
     /**
@@ -242,7 +651,7 @@
 
             if (CHAT_URLS.guideAdmin) {
                 $empty.append(' ').append($('<a class="text-brand-600 hover:underline">')
-                    .attr('href', CHAT_URLS.guideAdmin).attr('target', '_blank').text('가이드 관리'));
+                    .attr('href', CHAT_URLS.guideAdmin).attr('target', '_blank').text('가이드'));
             }
 
             $list.append($empty);
@@ -275,13 +684,48 @@
 
         apiPost(CHAT_URLS.sendGuide, { conversation_id: current.id, article_id: item.id }, function (data, message) {
             showToast(message, 'success');
+            notifyFollowup(data);
             pollMessages();
             refreshList();
             loadGuides();
         }).always(function () { $btn.prop('disabled', false); });
     }
 
+    /**
+     * 입력창 / 매크로 목록. 변수 값은 고를 때의 대화로 채운다.
+     */
+    function bindMacros() {
+        if (!window.RHMacroPicker) {
+            return;
+        }
+
+        RHMacroPicker.attach({
+            input: document.getElementById('chatInput'),
+            popup: document.getElementById('chatMacroPicker'),
+            button: document.getElementById('chatMacroButton'),
+            listUrl: CHAT_URLS.macroList,
+            suggestUrl: CHAT_URLS.macroSuggest,
+            manageUrl: CHAT_URLS.macroAdmin,
+            context: function () {
+                return {
+                    conversationId: current ? current.id : 0,
+                    values: {
+                        visitor_name: (current && current.visitor_name) || CHAT_MACRO.visitorFallback,
+                        agent_name: CHAT_ME.name,
+                        org_name: CHAT_MACRO.orgName
+                    }
+                };
+            }
+        });
+    }
+
     function select(row) {
+        if (current && current.id !== row.id) {
+            sendPresence(current.id, 'leave');
+        }
+
+        closeNotification(row.id);
+        if (window.RHMacroPicker) { RHMacroPicker.reset(); }
         current = row;
         lastId = 0;
         $('#chatMessages').empty();
@@ -292,6 +736,7 @@
         $('#chatGuideList').empty();
         pollMessages();
         loadGuides();
+        sendPresence(row.id, 'viewing');
     }
 
     function pollMessages() {
@@ -309,6 +754,7 @@
 
             current.status = data.conversation.status;
             current.session_id = data.conversation.session_id;
+            current.assigned_agent_id = data.conversation.assigned_agent_id;
             appendMessages(data.messages);
             renderHeader();
         });
@@ -323,14 +769,58 @@
         }
 
         $input.val('');
+        doSend(current.id, body, '', window.RHMacroPicker ? RHMacroPicker.takeMacroId() : 0);
+    }
 
-        apiPost(CHAT_URLS.send, { conversation_id: current.id, body: body }, function () {
+    /**
+     * mode: '' 처음 보내기, join 함께 답하기, take 담당 가져오고 보내기.
+     * 다른 상담원이 담당이면 서버가 409 와 담당자 이름을 돌려주고, 여기서 확인 창을 띄운다.
+     */
+    function doSend(conversationId, body, mode, macroId) {
+        apiPost(CHAT_URLS.send, { conversation_id: conversationId, body: body, mode: mode, macro_id: macroId || 0 }, function (data) {
+            notifyFollowup(data);
+            // 보냈으니 다른 상담원 화면의 '입력 중' 을 바로 거둔다.
+            lastTypingAt = 0;
+            sendPresence(conversationId, 'viewing');
             pollMessages();
             refreshList();
-        }, function (message) {
+        }, function (message, res) {
+            if (res && res.data && res.data.conflict) {
+                pendingSend = { conversationId: conversationId, body: body, macroId: macroId };
+                $('#chatConflictBody').text((res.data.agent_name || '다른 상담원') + ' 님이 이 대화를 담당하고 있습니다. '
+                    + '고객이 두 사람에게 답을 받지 않도록 확인해 주세요.');
+                openModal('chatConflictModal');
+                $('#chatInput').val(body);
+                return;
+            }
+
             showToast(message, 'error');
-            $input.val(body);
+            $('#chatInput').val(body);
         });
+    }
+
+    /** 고객이 자리를 비워 답장을 메일로 알렸으면 상담원에게 알려 준다(목록 갱신이 헤더 표시도 바꾼다). */
+    function notifyFollowup(data) {
+        if (data && data.followup) {
+            showToast('고객이 자리를 비워 답장을 이메일로 알렸습니다.', 'info');
+        }
+    }
+
+    function resend(mode) {
+        closeModal('chatConflictModal');
+
+        if (!pendingSend) {
+            return;
+        }
+
+        var job = pendingSend;
+        pendingSend = null;
+
+        if (current && current.id === job.conversationId) {
+            $('#chatInput').val('');
+        }
+
+        doSend(job.conversationId, job.body, mode, job.macroId);
     }
 
     // ------------------------------------------------------------------
@@ -383,6 +873,16 @@
 
             if (payload.type === 'conversation') {
                 refreshList();
+                return;
+            }
+
+            if (payload.type === 'presence') {
+                onPresence(payload);
+                return;
+            }
+
+            if (payload.type === 'assignment') {
+                onAssignment(payload);
             }
         };
 
@@ -421,10 +921,11 @@
 
     $(function () {
         grid = RHGrid.create('chatGrid', {
-            columnDefs: columnDefs(),
-            rowData: CHAT_ROWS,
-            rowClass: 'cursor-pointer',
-            onRowClicked: function (event) { select(event.data); }
+            columns: columns(),
+            rows: CHAT_ROWS,
+            rowId: function (row) { return row.id; },
+            rowClass: function () { return 'cursor-pointer'; },
+            onRowClicked: function (row) { select(row); }
         });
 
         $('#chatForm').on('submit', function (event) {
@@ -433,7 +934,12 @@
         });
 
         $('#chatInput').on('keydown', function (event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
+            // 매크로 목록이 열려 있으면 화살표·Enter·Esc 는 목록이 쓴다.
+            if (window.RHMacroPicker && RHMacroPicker.handleKey(event)) {
+                return;
+            }
+
+            if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
                 event.preventDefault();
                 send();
             }
@@ -480,6 +986,10 @@
         $('#chatShowClosed').on('change', refreshList);
 
         $('#chatGuideSearch').on('input', scheduleGuides);
+
+        bindAvailability();
+        bindDuplicateGuard();
+        bindMacros();
 
         connectRealtime();
         restartTimers();

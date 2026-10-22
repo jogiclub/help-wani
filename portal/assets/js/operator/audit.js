@@ -38,31 +38,32 @@
 
     $(function () {
         RHGrid.create('auditGrid', {
-            columnDefs: [
-                { headerName: '일시', field: 'created_at', width: 160, flex: 0, valueFormatter: RHGrid.dateTime },
+            columns: [
+                { title: '일시', key: 'created_at', width: 160, format: RHGrid.dateTime },
                 {
-                    headerName: '행위', field: 'action', width: 180, flex: 0,
-                    cellRenderer: RHGrid.badgeRenderer(ACTION_CLASS, ACTION_LABEL),
-                    valueFormatter: function (p) { return ACTION_LABEL[p.value] || p.value; }
+                    title: '행위', key: 'action', width: 180,
+                    render: RHGrid.badgeRenderer(ACTION_CLASS, ACTION_LABEL),
+                    format: function (v) { return ACTION_LABEL[v] || v; }
                 },
                 {
-                    headerName: '조직', field: 'org_name', minWidth: 140,
-                    valueFormatter: function (p) { return p.value || '-'; }
+                    title: '조직', key: 'org_name', width: 140, flex: 1,
+                    format: function (v) { return v || '-'; }
                 },
                 {
-                    headerName: '수행자', field: 'agent_name', minWidth: 140,
-                    cellRenderer: function (params) {
-                        if (!params.value || params.value === '-') { return '-'; }
+                    title: '수행자', key: 'agent_name', width: 140, flex: 1, align: 'left',
+                    render: function (row, value) {
+                        if (!value || value === '-') { return '-'; }
 
                         var wrap = document.createElement('div');
-                        wrap.className = 'leading-tight';
+                        wrap.className = 'min-w-0 leading-tight';
 
                         var name = document.createElement('div');
-                        name.textContent = params.value;
+                        name.className = 'truncate';
+                        name.textContent = value;
 
                         var email = document.createElement('div');
-                        email.className = 'text-xs text-slate-400';
-                        email.textContent = params.data.agent_email;
+                        email.className = 'truncate text-xs text-slate-400';
+                        email.textContent = row.agent_email;
 
                         wrap.appendChild(name);
                         wrap.appendChild(email);
@@ -70,14 +71,13 @@
                     }
                 },
                 {
-                    headerName: '내용', field: 'detail', minWidth: 200,
-                    tooltipField: 'detail',
-                    valueFormatter: function (p) { return p.value || '-'; }
+                    title: '내용', key: 'detail', width: 200, flex: 1, align: 'left', tooltip: true,
+                    format: function (v) { return v || '-'; }
                 },
-                { headerName: 'IP', field: 'ip', width: 130, flex: 0 }
+                { title: 'IP', key: 'ip', width: 130 }
             ],
-            rowData: AUDIT_ROWS,
-            tooltipShowDelay: 300
+            rows: AUDIT_ROWS,
+            rowId: function (row) { return row.id; }
         });
     });
 })(jQuery);

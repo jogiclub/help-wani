@@ -5,6 +5,20 @@
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+if ( ! function_exists('asset_url'))
+{
+    /**
+     * 포털 JS/CSS 주소에 파일 수정 시각(?v=)을 붙인다. Cloudflare 와 브라우저가 자산을 몇 시간씩 캐시하므로
+     * 버전 없이 내보내면 파일을 고쳐도 예전 파일이 나간다. 뷰에서 JS/CSS 는 base_url() 대신 이것을 쓴다.
+     */
+    function asset_url($path)
+    {
+        $path = ltrim((string) $path, '/');
+
+        return base_url($path).'?v='.(int) @filemtime(FCPATH.$path);
+    }
+}
+
 if ( ! function_exists('api_response'))
 {
     /**
@@ -132,13 +146,32 @@ if ( ! function_exists('check_uploaded_image'))
             return array('error' => '이미지는 '.round($max_bytes / 1048576, 1).'MB 이하로 올려 주세요.');
         }
 
-        $allowed = array('image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp');
-        $finfo   = new finfo(FILEINFO_MIME_TYPE);
-        $mime    = $finfo->file($file['tmp_name']);
+        $ext = image_file_ext($file['tmp_name']);
 
-        if ( ! isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === FALSE)
+        if ($ext === NULL)
         {
             return array('error' => 'PNG, JPG, WEBP 이미지만 올릴 수 있습니다.');
+        }
+
+        return $ext;
+    }
+}
+
+if ( ! function_exists('image_file_ext'))
+{
+    /**
+     * 파일 내용으로 형식을 판별해 확장자(png, jpg, webp)를 돌려준다. 그 밖의 형식(SVG 포함)은 NULL.
+     * 올린 파일(check_uploaded_image)과 서버가 받아 온 파일(외부 이미지 저장)이 같은 검사를 쓴다.
+     */
+    function image_file_ext($path)
+    {
+        $allowed = array('image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp');
+        $finfo   = new finfo(FILEINFO_MIME_TYPE);
+        $mime    = $finfo->file($path);
+
+        if ( ! isset($allowed[$mime]) || @getimagesize($path) === FALSE)
+        {
+            return NULL;
         }
 
         return $allowed[$mime];

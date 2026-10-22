@@ -92,6 +92,8 @@ class Agent_model extends CI_Model {
     {
         $this->db->where('id', (int) $id)->update($this->table, array(
             'last_login_at' => date('Y-m-d H:i:s'),
+            // 로그인하면 응대 가능으로 시작한다. 어제 '응대 종료' 로 두고 퇴근한 사람이 오늘 안 보이는 일을 막는다.
+            'chat_status'   => 'available',
         ));
     }
 }

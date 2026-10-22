@@ -5,6 +5,7 @@
  *
  * 받는 값은 Guide_model::page_data() 와 views/guide/page.php 의 $link, $is_current.
  * 좁은 화면에서는 목차를 접고 머리말의 목차 버튼으로 연다(assets/js/guide.js 의 data-gt-toc).
+ * 넓은 화면에서는 목차와 본문 사이를 Split.js 로 끌어 너비를 바꾼다(data-gt-split, layouts/guide.php 가 docs 테마에서만 불러온다).
  * 아이콘은 아이콘 글꼴 대신 SVG 로 넣는다(아이콘 목록 등록 불필요).
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
@@ -30,13 +31,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   </div>
 </header>
 
-<div class="gt-docs-shell">
+<div class="gt-docs-shell" data-gt-split data-gt-split-label="<?= html_escape(lang_text('guide.toc_resize')) ?>">
   <aside class="gt-docs-side" id="gtToc">
     <?php foreach ($groups as $group): ?>
     <div class="gt-docs-heading"><?= html_escape($group['name']) ?></div>
     <ol class="gt-docs-list">
       <?php foreach ($group['articles'] as $item): ?>
-      <li><a class="gt-docs-link <?= html_escape($is_current($item) ? 'is-active' : '') ?>" href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?></a></li>
+      <li><a class="gt-docs-link <?= html_escape($is_current($item) ? 'is-active' : '') ?>" href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?></a></li>
       <?php endforeach; ?>
     </ol>
     <?php endforeach; ?>
@@ -44,8 +45,14 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
   <main class="gt-docs-main">
     <div class="gt-docs-wrap">
+    <?php $this->load->view('guide/_tabs'); ?>
 
-    <?php if ($results !== NULL): ?>
+    <?php if ($view !== 'list'): ?>
+      <section class="gt-docs-card">
+        <div class="gt-docs-card-body"><?php $this->load->view('guide/_collection'); ?></div>
+      </section>
+
+    <?php elseif ($results !== NULL): ?>
       <section class="gt-docs-card">
         <div class="gt-docs-card-head">
           <h1 class="gt-docs-card-title"><?= html_escape(lang_text('guide.results', array('q' => $q))) ?></h1>
@@ -57,7 +64,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
           <div class="gt-docs-results">
             <?php foreach ($results as $item): ?>
             <a href="<?= html_escape($link($item)) ?>">
-              <strong><?= html_escape($item['title']) ?></strong>
+              <strong><?= html_escape($item['title']) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item['id'])); ?></strong>
               <?php if ( ! empty($item['subtitle'])): ?><span><?= html_escape($item['subtitle']) ?></span><?php endif; ?>
             </a>
             <?php endforeach; ?>
@@ -106,6 +113,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
         </div>
         <div class="gt-docs-card-body">
           <p class="gt-docs-summary"><?= html_escape(lang_text('guide.subtitle')) ?></p>
+          <?php $this->load->view('guide/_feature_strip'); ?>
           <?php if (empty($groups)): ?>
             <p class="gt-docs-empty"><?= html_escape(lang_text('guide.empty')) ?></p>
           <?php else: ?>
@@ -115,7 +123,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
               <h2><?= html_escape($group['name']) ?> <small><?= html_escape(lang_text('guide.count', array('n' => count($group['articles'])))) ?></small></h2>
               <ol>
                 <?php foreach ($group['articles'] as $item): ?>
-                <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?></a></li>
+                <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?></a></li>
                 <?php endforeach; ?>
               </ol>
             </div>

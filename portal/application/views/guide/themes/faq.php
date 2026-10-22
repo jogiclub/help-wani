@@ -24,8 +24,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       <button type="submit"><?= html_escape(lang_text('guide.search_button')) ?></button>
     </form>
   </header>
+  <?php $this->load->view('guide/_tabs'); ?>
 
-<?php if ($results !== NULL): ?>
+<?php if ($view !== 'list'): ?>
+  <div class="gt-faq-collection"><?php $this->load->view('guide/_collection'); ?></div>
+
+<?php elseif ($results !== NULL): ?>
   <div class="gt-faq-bar">
     <h2><?= html_escape(lang_text('guide.results', array('q' => $q))) ?></h2>
     <a href="<?= html_escape($base) ?>"><?= html_escape(lang_text('guide.reset')) ?></a>
@@ -37,7 +41,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       <?php foreach ($results as $item): ?>
       <a class="gt-faq-row" href="<?= html_escape($link($item)) ?>">
         <span class="gt-faq-q">Q</span>
-        <span><strong><?= html_escape($item['title']) ?></strong>
+        <span><strong><?= html_escape($item['title']) ?></strong> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item['id'])); ?>
         <?php if ( ! empty($item['subtitle'])): ?><small><?= html_escape($item['subtitle']) ?></small><?php endif; ?></span>
       </a>
       <?php endforeach; ?>
@@ -64,6 +68,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   <p class="gt-faq-empty"><?= html_escape(lang_text('guide.empty')) ?></p>
 
 <?php else: ?>
+  <?php $this->load->view('guide/_feature_strip'); ?>
   <?php if (count($groups) > 1): ?>
   <nav class="gt-faq-chips">
     <?php foreach ($groups as $group): ?>
@@ -79,7 +84,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <details class="gt-faq-item">
       <summary class="gt-faq-summary">
         <span class="gt-faq-q">Q</span>
-        <span><strong><?= html_escape($item->title) ?></strong>
+        <span><strong><?= html_escape($item->title) ?></strong> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?>
         <?php if ( ! empty($item->subtitle)): ?><small><?= html_escape($item->subtitle) ?></small><?php endif; ?></span>
       </summary>
       <div class="gt-faq-answer">

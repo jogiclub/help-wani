@@ -5,6 +5,7 @@
  *
  * 고객 화면이므로 조직이 정한 언어를 쓴다(CLAUDE.md 3.2). 공개(published) 글만 보인다.
  * 화면 모양은 조직이 고른 테마(organizations.guide_theme)를 따른다. views/guide/page.php 가 테마 뷰를 고른다.
+ * 새 기능 모음(/guide/features)과 동영상 모음(/guide/videos)은 조직이 켤 때만 열린다(docs/guide-collections-plan.md).
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -25,6 +26,28 @@ class Guide extends MY_Controller {
         $q = trim(mb_substr((string) $this->input->get('q'), 0, 100));
 
         $this->render_page($org, NULL, $q, lang_text('guide.page_title', array('org' => $org->name)));
+    }
+
+    /**
+     * GET /{org_code}/guide/features?page=
+     */
+    public function features($org_code = '')
+    {
+        $org = $this->require_org($org_code);
+        $this->require_collection($org, 'feature_enabled');
+
+        $this->render_page($org, NULL, '', lang_text('guide.features_title').' - '.$org->name, 'features');
+    }
+
+    /**
+     * GET /{org_code}/guide/videos?page=&category=
+     */
+    public function videos($org_code = '')
+    {
+        $org = $this->require_org($org_code);
+        $this->require_collection($org, 'video_enabled');
+
+        $this->render_page($org, NULL, '', lang_text('guide.videos_title').' - '.$org->name, 'videos');
     }
 
     /**
@@ -56,9 +79,12 @@ class Guide extends MY_Controller {
 
     // ------------------------------------------------------------------
 
-    protected function render_page($org, $article, $q, $title)
+    protected function render_page($org, $article, $q, $title, $view = 'list')
     {
-        $data = $this->guide_model->page_data($org, $article, $q, $this->preview_theme($org));
+        $data = $this->guide_model->page_data($org, $article, $q, $this->preview_theme($org), $view, array(
+            'page'     => (int) $this->input->get('page'),
+            'category' => (int) $this->input->get('category'),
+        ));
 
         $data['page_title'] = $title;
         $data['preview']    = FALSE;
@@ -81,10 +107,27 @@ class Guide extends MY_Controller {
             return NULL;
         }
 
-        $is_admin = $this->session->userdata('agent_role') === 'admin'
-            && (int) $this->session->userdata('org_id') === (int) $org->id;
+        return $this->is_org_admin($org) ? $theme : NULL;
+    }
 
-        return $is_admin ? $theme : NULL;
+    /**
+     * 모음 페이지는 조직 옵션을 켰을 때만 연다. 꺼져 있어도 그 조직 관리자 세션이면 미리 볼 수 있다(가이드 관리 > 미리보기).
+     */
+    protected function require_collection($org, $option)
+    {
+        $options = Guide_model::page_options($org);
+
+        if ( ! $options[$option] && ! $this->is_org_admin($org))
+        {
+            show_404();
+            exit;
+        }
+    }
+
+    protected function is_org_admin($org)
+    {
+        return $this->session->userdata('agent_role') === 'admin'
+            && (int) $this->session->userdata('org_id') === (int) $org->id;
     }
 
     protected function require_org($org_code)

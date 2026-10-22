@@ -20,6 +20,7 @@
  *   params          함께 보낼 값. 객체 또는 객체를 돌려주는 함수 (예: { mode: 'merge' })
  *   invalidTypeText 형식이 틀렸을 때 문구
  *   tooBigText      크기가 넘쳤을 때 문구
+ *   onError         실패 응답을 받을 함수 (res) — 서버가 data 에 오류 목록을 담아 줄 때(매크로 CSV 등록). 알림은 그대로 띄운다
  */
 (function (window, $) {
     'use strict';
@@ -74,11 +75,14 @@
                 if (options.onSuccess) { options.onSuccess(res.data, res.message); }
             } else {
                 showToast(errorText(res), 'danger');
+                if (options.onError) { options.onError(res); }
             }
         });
 
         dz.on('error', function (file, message) {
             showToast(errorText(message), 'danger');
+            // 서버가 4xx 와 함께 JSON 을 돌려주면 Dropzone 이 파싱한 객체가 온다.
+            if (options.onError && message && typeof message === 'object') { options.onError(message); }
         });
 
         // 한 번 올린 파일은 목록에서 비워 다음 선택을 막지 않게 한다.

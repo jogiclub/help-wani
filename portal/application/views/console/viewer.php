@@ -114,6 +114,6 @@ var VIEWER_CONFIG = {
     queueUrl:  '<?= base_url('console') ?>'
 };
 </script>
-<script src="<?= base_url('assets/js/console/protocol.js') ?>"></script>
-<script src="<?= base_url('assets/js/console/keymap.js') ?>"></script>
-<script src="<?= base_url('assets/js/console/viewer.js') ?>"></script>
+<script src="<?= asset_url('assets/js/console/protocol.js') ?>"></script>
+<script src="<?= asset_url('assets/js/console/keymap.js') ?>"></script>
+<script src="<?= asset_url('assets/js/console/viewer.js') ?>"></script>

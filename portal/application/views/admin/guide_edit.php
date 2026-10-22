@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/admin/guide_edit.php
- * 역할: 가이드 편집 (제목, 부제목, 주소, 키워드, 분류, 상태, 본문 블록: 글/이미지/유튜브 동영상)
+ * 역할: 가이드 편집 (제목, 부제목, 주소, 키워드, 분류, 상태, 새 기능 표시, 본문 블록: 글/이미지/유튜브 동영상)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -102,6 +102,29 @@ $initial = array(
     </div>
 
     <div class="card">
+      <div class="card-body space-y-3">
+        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <input type="checkbox" id="guideIsFeature" <?= ($a && (int) $a->is_feature === 1) ? 'checked' : '' ?>> 새 기능으로 표시
+        </label>
+        <div class="space-y-3" id="featureFields">
+          <div>
+            <label class="form-label" for="guideFeatureDate">출시일</label>
+            <input class="form-input" id="guideFeatureDate" type="date" value="<?= html_escape($feature_date) ?>">
+            <div class="form-help">조직 시간대(<?= html_escape($timezone) ?>) 기준 날짜입니다.
+              비우면 처음 공개한 날<?= $published_on !== '' ? '('.html_escape($published_on).')' : '' ?>을 씁니다.</div>
+          </div>
+          <div>
+            <label class="form-label" for="guideFeatureLabel">버전</label>
+            <input class="form-input" id="guideFeatureLabel" maxlength="30" value="<?= $a ? html_escape($a->feature_label) : '' ?>"
+                   placeholder="예) v2.3 (선택)">
+          </div>
+        </div>
+        <div class="form-help">공개 가이드의 <b>새 기능</b> 모음에 출시일 최신순으로 보입니다.
+          모음은 가이드 관리의 "공개 페이지 구성" 에서 켭니다.</div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-body">
         <label class="form-label" for="guideKeywords">키워드</label>
         <textarea class="form-input" id="guideKeywords" rows="3"
@@ -121,4 +144,4 @@ var GUIDE_URLS = {
     assetBase: '<?= base_url() ?>'
 };
 </script>
-<script src="<?= base_url('assets/js/admin/guide-edit.js') ?>"></script>
+<script src="<?= asset_url('assets/js/admin/guide-edit.js') ?>"></script>

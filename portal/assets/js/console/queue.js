@@ -54,8 +54,8 @@
         apiGet(CONSOLE_URLS.list + (query ? '?' + query : ''), function (data) {
             if (seq !== requestSeq) { return; }
             if (grid) {
-                // 갱신마다 그리드를 다시 만들지 않고 행 데이터만 바꾼다(정렬/필터 유지).
-                grid.setGridOption('rowData', data.sessions || []);
+                // 갱신마다 그리드를 다시 만들지 않고 행 데이터만 바꾼다(정렬/필터/페이지/스크롤 유지).
+                grid.setRows(data.sessions || []);
             }
         }).always(function () {
             if (seq === requestSeq) { loading = false; }
@@ -89,52 +89,48 @@
 
     $(function () {
         grid = RHGrid.create('sessionGrid', {
-            columnDefs: [
-                { headerName: '일시', field: 'created_at', width: 150, flex: 0, sort: 'desc',
-                  valueFormatter: RHGrid.shortDateTime },
+            columns: [
+                { title: '일시', key: 'created_at', width: 150,
+                  format: RHGrid.shortDateTime },
+                { title: '코드', key: 'code', width: 100, cellClass: 'font-mono font-semibold' },
                 {
-                    headerName: '코드', field: 'code', width: 100, flex: 0,
-                    cellClass: 'font-mono font-semibold'
-                },
-                {
-                    headerName: '상태', field: 'status', width: 130, flex: 0,
+                    title: '상태', key: 'status', width: 130,
                     // 표시 문구는 서버가 내려준 status_label 을 쓴다.
-                    cellRenderer: function (params) {
+                    render: function (row, value) {
                         var span = document.createElement('span');
-                        span.className = 'badge ' + (STATUS_CLASS[params.value] || 'badge-gray');
-                        span.textContent = params.data.status_label || params.value;
+                        span.className = 'badge ' + (STATUS_CLASS[value] || 'badge-gray');
+                        span.textContent = row.status_label || value;
                         return span;
                     },
-                    valueFormatter: function (p) { return p.data.status_label || p.value; }
+                    format: function (v, row) { return row.status_label || v; }
                 },
-                { headerName: '고객 PC', field: 'pc_name', minWidth: 150,
-                  valueFormatter: function (p) { return p.value || '-'; } },
-                { headerName: '고객 IP', field: 'customer_ip', width: 140, flex: 0,
-                  valueFormatter: function (p) { return p.value || '-'; } },
-                { headerName: '담당', field: 'agent_name', width: 110, flex: 0 },
+                { title: '고객 PC', key: 'pc_name', width: 150, flex: 1,
+                  format: function (v) { return v || '-'; } },
+                { title: '고객 IP', key: 'customer_ip', width: 140,
+                  format: function (v) { return v || '-'; } },
+                { title: '담당', key: 'agent_name', width: 110 },
                 {
                     // 코드 발급 중이면 남은 시간, 끝난 세션이면 소요시간
-                    headerName: '시간', field: 'duration', width: 110, flex: 0, sortable: false, filter: false,
-                    valueFormatter: function (p) {
-                        if (p.data.status === 'issued') { return '남음 ' + formatRemain(p.data.remain_sec); }
-                        return formatDuration(p.data.duration);
+                    title: '시간', key: 'duration', width: 110, sortable: false, filterable: false,
+                    format: function (v, row) {
+                        if (row.status === 'issued') { return '남음 ' + formatRemain(row.remain_sec); }
+                        return formatDuration(v);
                     }
                 },
                 {
-                    headerName: '만족도', field: 'survey_score', width: 100, flex: 0,
-                    filter: 'agNumberColumnFilter',
-                    cellRenderer: function (params) {
-                        if (!params.value) { return '-'; }
+                    title: '만족도', key: 'survey_score', width: 100, type: 'number', align: 'center',
+                    render: function (row, value) {
+                        if (!value) { return '-'; }
 
                         var span = document.createElement('span');
                         span.className = 'text-amber-500';
-                        span.textContent = '★'.repeat(params.value);
+                        span.textContent = '★'.repeat(value);
                         return span;
                     }
                 },
                 {
-                    headerName: '작업', width: 160, flex: 0, sortable: false, filter: false, pinned: 'right',
-                    cellRenderer: RHGrid.buttonsRenderer([
+                    title: '작업', key: '_actions', width: 160, sortable: false, pinned: 'right',
+                    render: RHGrid.buttonsRenderer([
                         {
                             label: '원격 시작', className: 'btn-success',
                             show: function (row) {
@@ -159,9 +155,10 @@
                     ])
                 }
             ],
-            rowData: [],
-            getRowId: function (params) { return String(params.data.id); },
-            overlayNoRowsTemplate: '<span class="text-slate-400">조건에 맞는 원격지원이 없습니다.</span>'
+            rows: [],
+            sort: [{ key: 'created_at', dir: 'desc' }],
+            rowId: function (row) { return row.id; },
+            noRowsText: '조건에 맞는 원격지원이 없습니다.'
         });
 
         $('#btnCreate').on('click', function () {

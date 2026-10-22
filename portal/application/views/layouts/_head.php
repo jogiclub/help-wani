@@ -16,7 +16,7 @@ $icon_names = isset($icon_names) ? $icon_names : array();
 <meta name="csrf-name" content="<?= $this->security->get_csrf_token_name() ?>">
 <meta name="csrf-hash" content="<?= $this->security->get_csrf_hash() ?>">
 <title><?= html_escape(isset($page_title) ? $page_title : $app_name) ?> · <?= html_escape($app_name) ?></title>
-<link href="<?= base_url('assets/css/app.css') ?>" rel="stylesheet">
+<link href="<?= asset_url('assets/css/app.css') ?>" rel="stylesheet">
 <?php if ( ! empty($icon_names)): ?>
 <!--
   Material Symbols (https://fonts.google.com/icons)
@@ -33,20 +33,18 @@ $icon_names = isset($icon_names) ? $icon_names : array();
     // 서버가 정한 조직 언어/타임존을 그대로 넘겨 추가 요청 없이 번역과 날짜 표시를 처리한다.
     var RH_I18N = <?= json_encode($i18n, JSON_UNESCAPED_UNICODE) ?>;
 </script>
-<script src="<?= base_url('assets/js/i18n.js') ?>"></script>
+<script src="<?= asset_url('assets/js/i18n.js') ?>"></script>
 <?php if ($use_grid): ?>
-<!-- AG Grid Community v36. 테마는 CSS 파일 없이 Theming API 로 적용한다. -->
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@36.1.0/dist/ag-grid-community.min.js"></script>
-<script>
-    // v33 부터 모듈을 명시적으로 등록해야 한다.
-    agGrid.ModuleRegistry.registerModules([agGrid.AllCommunityModule]);
-</script>
-<script src="<?= base_url('assets/js/grid.js') ?>"></script>
+<!-- wgrid 0.1.0 코어(MIT). npm 배포 전이라 assets/vendor/wgrid/ 에 둔다. window.wgrid 를 만든다.
+     포털 색은 tailwind.src.css 끝의 .wgrid 변수 덮어쓰기로 맞춘다. -->
+<link href="<?= asset_url('assets/vendor/wgrid/0.1.0/wgrid.css') ?>" rel="stylesheet">
+<script src="<?= asset_url('assets/vendor/wgrid/0.1.0/wgrid.global.js') ?>"></script>
+<script src="<?= asset_url('assets/js/grid.js') ?>"></script>
 <?php endif; ?>
-<script src="<?= base_url('assets/js/common.js') ?>"></script>
+<script src="<?= asset_url('assets/js/common.js') ?>"></script>
 <?php if ($use_dropzone): ?>
 <!-- Dropzone.js 6.3.5 (MIT). dist/dropzone-min.js 가 window.Dropzone 을 만드는 브라우저용 빌드다.
      기본 CSS 는 쓰지 않고 tailwind.src.css 의 .image-drop 으로 그린다. 이미지 선택은 모두 image-drop.js 를 거친다. -->
 <script src="https://cdn.jsdelivr.net/npm/dropzone@6.3.5/dist/dropzone-min.js"></script>
-<script src="<?= base_url('assets/js/image-drop.js') ?>"></script>
+<script src="<?= asset_url('assets/js/image-drop.js') ?>"></script>
 <?php endif; ?>

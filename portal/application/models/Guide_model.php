@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/models/Guide_model.php
- * 역할: 조직 가이드(분류, 글, 동의어) 저장/조회, 입력 검사, 매칭 색인 갱신, guide.json 내보내기/가져오기
+ * 역할: 조직 가이드(분류, 글, 동의어) 저장/조회, 입력 검사, 매칭 색인 갱신, 외부 이미지 저장, guide.json 내보내기/가져오기
  *
  * 원본은 DB 이고 guide.json 은 주고받는 형식이다. 화면 저장과 파일 가져오기는 같은 검사(clean_article)를 거친다.
  * 모든 조회는 org_id 로 거른다. (docs/guide-plan.md)
@@ -25,6 +25,20 @@ class Guide_model extends CI_Model {
 
     /** 키워드 개수 상한 */
     const MAX_KEYWORDS = 20;
+
+    /**
+     * 공개 가이드의 모음 페이지 주소(/{조직코드}/guide/{낱말}). 글 주소(slug)로 쓸 수 없다.
+     * routes.php 의 (:any)/guide/{낱말} 규칙과 같아야 한다(check-conventions 가 대조한다).
+     */
+    const RESERVED_SLUGS = array('features', 'videos');
+
+    /** 새 기능 모음 한 쪽 개수, 동영상 모음 한 쪽 개수, [더 보기] 최대 쪽 */
+    const FEATURE_PAGE = 20;
+    const VIDEO_PAGE   = 12;
+    const MAX_PAGE     = 50;
+
+    /** 조직 시간대 캐시 (org_id => IANA 이름) */
+    protected $timezones = array();
 
     // ------------------------------------------------------------------
     // 분류
@@ -86,6 +100,7 @@ class Guide_model extends CI_Model {
     public function list_articles($org_id, $published_only = FALSE)
     {
         $this->db->select('a.id, a.category_id, a.slug, a.title, a.subtitle, a.keywords, a.status, '
+                        . 'a.is_feature, a.feature_at, a.feature_label, a.published_at, '
                         . 'a.sort_order, a.view_count, a.updated_at, a.created_at, '
                         . 'c.name AS category_name, c.sort_order AS category_sort')
                  ->from('guide_articles a')
@@ -213,16 +228,21 @@ class Guide_model extends CI_Model {
             'blocks'      => json_encode($clean['blocks'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'status'      => $clean['status'],
             'sort_order'  => $clean['sort_order'],
+            'is_feature'    => empty($clean['is_feature']) ? 0 : 1,
+            'feature_at'    => isset($clean['feature_at']) ? $clean['feature_at'] : NULL,
+            'feature_label' => isset($clean['feature_label']) ? $clean['feature_label'] : NULL,
             'updated_by'  => $agent_id === NULL ? NULL : (int) $agent_id,
         );
 
         if ($id > 0)
         {
+            $this->mark_published($clean['status']);
             $this->db->where('org_id', (int) $org_id)->where('id', (int) $id)->update('guide_articles', $data);
         }
         else
         {
             $data['org_id'] = (int) $org_id;
+            $data['published_at'] = $clean['status'] === 'published' ? date('Y-m-d H:i:s') : NULL;
             $this->db->insert('guide_articles', $data);
             $id = (int) $this->db->insert_id();
         }
@@ -256,11 +276,24 @@ class Guide_model extends CI_Model {
             return 0;
         }
 
+        $this->mark_published($status);
         $this->db->where('org_id', (int) $org_id)->where('id', (int) $id)
                  ->update('guide_articles', array('status' => $status));
         $this->rebuild_index($org_id, $id);
 
         return 1;
+    }
+
+    /**
+     * 공개로 바꾸는 갱신이면 처음 공개한 시각(published_at)을 함께 찍는다. 이미 찍힌 값은 바꾸지 않는다.
+     * 새 기능 출시일을 비워 두었을 때 이 값을 쓴다.
+     */
+    protected function mark_published($status)
+    {
+        if ($status === 'published')
+        {
+            $this->db->set('published_at', 'IFNULL(published_at, '.$this->db->escape(date('Y-m-d H:i:s')).')', FALSE);
+        }
     }
 
     public function increment_view($article_id)
@@ -311,6 +344,18 @@ class Guide_model extends CI_Model {
         if ($slug !== '' && ( ! preg_match('/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/', $slug) || strlen($slug) > 60 || ctype_digit($slug)))
         {
             return '주소는 영문 소문자, 숫자, 하이픈(-), 밑줄(_)로 60자까지 쓸 수 있고 숫자만으로는 만들 수 없습니다.';
+        }
+
+        if (in_array($slug, self::RESERVED_SLUGS, TRUE))
+        {
+            return '"'.$slug.'" 는 공개 가이드의 모음 페이지 주소라 쓸 수 없습니다. 다른 주소를 입력해 주세요.';
+        }
+
+        $feature = $this->clean_feature($org_id, $input);
+
+        if (is_string($feature))
+        {
+            return $feature;
         }
 
         $status = (string) $this->value($input, 'status');
@@ -366,7 +411,96 @@ class Guide_model extends CI_Model {
             'sort_order'  => max(-100000, min(100000, (int) $this->value($input, 'sort_order'))),
             'category_id' => $category_id > 0 ? $category_id : NULL,
             'blocks'      => $blocks,
+            'is_feature'    => $feature['is_feature'],
+            'feature_at'    => $feature['feature_at'],
+            'feature_label' => $feature['feature_label'],
         );
+    }
+
+    /**
+     * 새 기능 표시를 검사한다. 화면은 is_feature / feature_date / feature_label 로,
+     * guide.json 은 feature: {date, label} 로 보낸다. 날짜는 조직 시간대의 날짜(YYYY-MM-DD)이며
+     * 그날 00:00 을 UTC 로 바꿔 저장한다(CLAUDE.md 3.4). 비우면 처음 공개한 시각을 출시일로 쓴다.
+     *
+     * @return array|string {is_feature, feature_at, feature_label} 또는 거부 사유
+     */
+    protected function clean_feature($org_id, $input)
+    {
+        $json = $this->value($input, 'feature', NULL);
+
+        if (is_array($json))
+        {
+            $is_feature = TRUE;
+            $date  = (string) $this->value($json, 'date');
+            $label = (string) $this->value($json, 'label');
+        }
+        else
+        {
+            $is_feature = in_array((string) $this->value($input, 'is_feature'), array('1', 'true', 'on'), TRUE);
+            $date  = (string) $this->value($input, 'feature_date');
+            $label = (string) $this->value($input, 'feature_label');
+        }
+
+        if ( ! $is_feature)
+        {
+            return array('is_feature' => 0, 'feature_at' => NULL, 'feature_label' => NULL);
+        }
+
+        $date = trim($date);
+        $feature_at = NULL;
+
+        if ($date !== '')
+        {
+            $local = DateTime::createFromFormat('!Y-m-d', $date, new DateTimeZone($this->org_timezone($org_id)));
+
+            if ( ! $local || $local->format('Y-m-d') !== $date)
+            {
+                return '출시일은 YYYY-MM-DD 형식의 날짜여야 합니다.';
+            }
+
+            $local->setTimezone(new DateTimeZone('UTC'));
+            $feature_at = $local->format('Y-m-d H:i:s');
+        }
+
+        return array(
+            'is_feature'    => 1,
+            'feature_at'    => $feature_at,
+            'feature_label' => $this->nullable(mb_substr(trim($label), 0, 30)),
+        );
+    }
+
+    /**
+     * 조직 시간대(IANA). 허용 목록 밖이거나 없으면 Asia/Seoul.
+     */
+    public function org_timezone($org_id)
+    {
+        $org_id = (int) $org_id;
+
+        if ( ! isset($this->timezones[$org_id]))
+        {
+            $row = $this->db->select('timezone')->get_where('organizations', array('id' => $org_id))->row();
+            $tz = $row ? (string) $row->timezone : '';
+            $this->timezones[$org_id] = in_array($tz, timezone_identifiers_list(), TRUE) ? $tz : 'Asia/Seoul';
+        }
+
+        return $this->timezones[$org_id];
+    }
+
+    /**
+     * 새 기능 출시일(UTC). 지정한 출시일이 없으면 처음 공개한 시각.
+     *
+     * @param object|array $article
+     */
+    public static function feature_date($article)
+    {
+        $article = (array) $article;
+
+        if ( ! empty($article['feature_at']))
+        {
+            return $article['feature_at'];
+        }
+
+        return empty($article['published_at']) ? NULL : $article['published_at'];
     }
 
     /**
@@ -620,6 +754,230 @@ class Guide_model extends CI_Model {
     }
 
     // ------------------------------------------------------------------
+    // 외부 이미지를 조직 폴더로 저장
+    // ------------------------------------------------------------------
+
+    /** 외부 이미지 한 개의 최대 크기(2MB, 직접 올리는 이미지와 같다) */
+    const FETCH_MAX_BYTES = 2097152;
+
+    /** 리다이렉트를 따라가는 최대 횟수 */
+    const FETCH_MAX_REDIRECTS = 3;
+
+    /**
+     * 이 조직 글의 외부 https 이미지를 받아 조직 폴더(image_dir)에 저장하고 블록 주소를 바꾼다.
+     * 같은 주소는 한 번만 받는다. 받지 못한 이미지는 외부 주소 그대로 둔다.
+     *
+     * @return array saved(저장한 이미지 수), articles(바뀐 글 수), failed([[주소, 사유], ...])
+     */
+    public function localize_external_images($org_id, $agent_id = NULL)
+    {
+        $done   = array();   // 외부 주소 => 저장한 경로(실패하면 FALSE)
+        $failed = array();
+        $saved  = 0;
+        $changed_articles = 0;
+
+        $ids = $this->db->select('id')->where('org_id', (int) $org_id)->order_by('id', 'ASC')
+                        ->get('guide_articles')->result();
+
+        foreach ($ids as $row)
+        {
+            $article = $this->get_article($org_id, $row->id);
+            $changed = FALSE;
+
+            foreach ($article->blocks as $index => $block)
+            {
+                if ( ! isset($block['type'], $block['src']) || $block['type'] !== 'image'
+                    || ! self::is_external_image($block['src']))
+                {
+                    continue;
+                }
+
+                $url = $block['src'];
+
+                if ( ! array_key_exists($url, $done))
+                {
+                    $result = $this->fetch_external_image($org_id, $url);
+
+                    if (is_array($result))
+                    {
+                        $done[$url] = FALSE;
+                        $failed[]   = array($url, $result['error']);
+                    }
+                    else
+                    {
+                        $done[$url] = $result;
+                        $saved++;
+                    }
+                }
+
+                if ($done[$url] !== FALSE)
+                {
+                    $article->blocks[$index]['src'] = $done[$url];
+                    $changed = TRUE;
+                }
+            }
+
+            if ($changed)
+            {
+                // 블록 주소만 바꾼다. 나머지 값은 저장된 그대로 넘긴다.
+                $this->save_article($org_id, $article->id, array(
+                    'category_id' => $article->category_id,
+                    'slug'        => $article->slug,
+                    'title'       => $article->title,
+                    'subtitle'    => $article->subtitle,
+                    'keywords'    => $article->keywords,
+                    'blocks'      => $article->blocks,
+                    'status'      => $article->status,
+                    'sort_order'  => (int) $article->sort_order,
+                ), $agent_id);
+                $changed_articles++;
+            }
+        }
+
+        return array('saved' => $saved, 'articles' => $changed_articles, 'failed' => $failed);
+    }
+
+    /**
+     * 외부 이미지 한 개를 받아 조직 폴더에 저장한다.
+     * 서버가 대신 요청하므로 내부망으로 향하지 않게 막는다(SSRF): https 만, 공인 IPv4 만,
+     * 확인한 IP 로 고정해 접속(CURLOPT_RESOLVE), 리다이렉트는 직접 따라가며 매번 다시 검사한다.
+     *
+     * @return string|array 저장한 경로, 또는 array('error' => 사유)
+     */
+    protected function fetch_external_image($org_id, $url)
+    {
+        for ($hop = 0; $hop <= self::FETCH_MAX_REDIRECTS; $hop++)
+        {
+            if ( ! self::is_external_image($url))
+            {
+                return array('error' => 'https 주소가 아닙니다.');
+            }
+
+            $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+            $port = (int) (parse_url($url, PHP_URL_PORT) ?: 443);
+            $ip   = $this->public_ipv4($host);
+
+            if ($ip === NULL)
+            {
+                return array('error' => '주소를 찾지 못했거나 내부망 주소입니다.');
+            }
+
+            $body = '';
+            $too_big = FALSE;
+            $ch = curl_init($url);
+            curl_setopt_array($ch, array(
+                CURLOPT_RESOLVE         => array($host.':'.$port.':'.$ip),
+                CURLOPT_PROTOCOLS       => CURLPROTO_HTTPS,
+                CURLOPT_FOLLOWLOCATION  => FALSE,
+                CURLOPT_CONNECTTIMEOUT  => 5,
+                CURLOPT_TIMEOUT         => 15,
+                CURLOPT_SSL_VERIFYPEER  => TRUE,
+                CURLOPT_SSL_VERIFYHOST  => 2,
+                CURLOPT_USERAGENT       => 'RemoteHelp-Guide/1.0',
+                CURLOPT_HTTPHEADER      => array('Accept: image/png,image/jpeg,image/webp,image/*;q=0.8'),
+                CURLOPT_WRITEFUNCTION   => function ($ch, $chunk) use (&$body, &$too_big) {
+                    if (strlen($body) + strlen($chunk) > self::FETCH_MAX_BYTES)
+                    {
+                        $too_big = TRUE;
+                        return 0;   // 받은 길이와 다르게 돌려주면 전송이 끊긴다.
+                    }
+                    $body .= $chunk;
+                    return strlen($chunk);
+                },
+            ));
+
+            $ok       = curl_exec($ch);
+            $status   = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $location = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+            $error    = curl_error($ch);
+            curl_close($ch);
+
+            if ($too_big)
+            {
+                return array('error' => (self::FETCH_MAX_BYTES / 1048576).'MB 보다 큽니다.');
+            }
+
+            if ($ok === FALSE)
+            {
+                return array('error' => '받지 못했습니다('.mb_substr($error, 0, 80).').');
+            }
+
+            if ($status >= 300 && $status < 400 && $location !== '')
+            {
+                $url = $location;
+                continue;
+            }
+
+            if ($status !== 200)
+            {
+                return array('error' => '응답 코드 '.$status.'.');
+            }
+
+            return $this->store_fetched_image($org_id, $body);
+        }
+
+        return array('error' => '리다이렉트가 너무 많습니다.');
+    }
+
+    /**
+     * 호스트의 IPv4 주소 중 첫 번째를 돌려준다. 하나라도 사설/예약 대역이면 NULL(섞어 두고 고르는 우회를 막는다).
+     */
+    protected function public_ipv4($host)
+    {
+        if ($host === '' || $host === 'localhost')
+        {
+            return NULL;
+        }
+
+        $ips = filter_var($host, FILTER_VALIDATE_IP) ? array($host) : (gethostbynamel($host) ?: array());
+
+        foreach ($ips as $ip)
+        {
+            if ( ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))
+            {
+                return NULL;
+            }
+        }
+
+        return empty($ips) ? NULL : $ips[0];
+    }
+
+    /**
+     * 받은 내용을 임시 파일로 쓰고, 올린 이미지와 같은 검사(image_file_ext)를 거쳐 조직 폴더로 옮긴다.
+     */
+    protected function store_fetched_image($org_id, $body)
+    {
+        $tmp = tempnam(sys_get_temp_dir(), 'rhimg');
+
+        if ($tmp === FALSE || file_put_contents($tmp, $body) === FALSE)
+        {
+            return array('error' => '임시 파일을 만들지 못했습니다.');
+        }
+
+        $ext = image_file_ext($tmp);
+
+        if ($ext === NULL)
+        {
+            @unlink($tmp);
+            return array('error' => 'PNG, JPG, WEBP 이미지가 아닙니다.');
+        }
+
+        $dir = $this->image_dir($org_id);
+        is_dir(FCPATH.$dir) OR @mkdir(FCPATH.$dir, 0775, TRUE);
+        $src = $dir.bin2hex(random_bytes(10)).'.'.$ext;
+
+        if ( ! @rename($tmp, FCPATH.$src))
+        {
+            @unlink($tmp);
+            return array('error' => '저장하지 못했습니다. 업로드 폴더 권한을 확인해 주세요.');
+        }
+
+        @chmod(FCPATH.$src, 0664);
+
+        return $src;
+    }
+
+    // ------------------------------------------------------------------
     // 동의어
     // ------------------------------------------------------------------
 
@@ -779,6 +1137,212 @@ class Guide_model extends CI_Model {
         return 1;
     }
 
+    // ------------------------------------------------------------------
+    // 공개 페이지 구성 (새 기능 모음, 동영상 모음) — docs/guide-collections-plan.md
+    // ------------------------------------------------------------------
+
+    /** NEW 배지 기간(일). 0 은 끔 */
+    public static function new_days_options()
+    {
+        return array(0, 7, 14, 30, 60, 90);
+    }
+
+    /** 동영상 정렬 */
+    public static function video_sorts()
+    {
+        return array('toc' => '가이드 목차 순', 'updated' => '최근 수정순');
+    }
+
+    /**
+     * 조직의 공개 페이지 구성. 옵션 목록과 기본값은 여기 한 곳에 둔다.
+     */
+    public static function page_options($org)
+    {
+        $days  = isset($org->guide_feature_new_days) ? (int) $org->guide_feature_new_days : 30;
+        $sort  = isset($org->guide_video_sort) ? (string) $org->guide_video_sort : 'toc';
+        $sorts = self::video_sorts();
+
+        return array(
+            'feature_enabled'  => ! empty($org->guide_feature_enabled),
+            'feature_new_days' => in_array($days, self::new_days_options(), TRUE) ? $days : 30,
+            'feature_banner'   => ! empty($org->guide_feature_banner),
+            'video_enabled'    => ! empty($org->guide_video_enabled),
+            'video_sort'       => isset($sorts[$sort]) ? $sort : 'toc',
+            'video_filter'     => ! empty($org->guide_video_filter),
+        );
+    }
+
+    /**
+     * 공개 페이지 구성을 저장한다. 허용 목록 밖의 값은 거부한다.
+     *
+     * @return array|string 저장한 값(page_options 형식) 또는 거부 사유
+     */
+    public function set_page_options($org_id, $input)
+    {
+        $days = (string) $this->value($input, 'feature_new_days', '30');
+        $sort = (string) $this->value($input, 'video_sort', 'toc');
+
+        if ( ! ctype_digit($days) || ! in_array((int) $days, self::new_days_options(), TRUE))
+        {
+            return 'NEW 배지 기간을 목록에서 골라 주세요.';
+        }
+
+        if ( ! array_key_exists($sort, self::video_sorts()))
+        {
+            return '동영상 정렬을 목록에서 골라 주세요.';
+        }
+
+        $flag = function ($key) use ($input) {
+            return in_array((string) $this->value($input, $key), array('1', 'true', 'on'), TRUE) ? 1 : 0;
+        };
+
+        $data = array(
+            'guide_feature_enabled'  => $flag('feature_enabled'),
+            'guide_feature_new_days' => (int) $days,
+            'guide_feature_banner'   => $flag('feature_banner'),
+            'guide_video_enabled'    => $flag('video_enabled'),
+            'guide_video_sort'       => $sort,
+            'guide_video_filter'     => $flag('video_filter'),
+        );
+
+        $this->db->where('id', (int) $org_id)->update('organizations', $data);
+
+        return self::page_options((object) $data);
+    }
+
+    /** 새 기능으로 표시된 공개 글 수 */
+    public function count_features($org_id)
+    {
+        return (int) $this->db->where('org_id', (int) $org_id)
+                              ->where('status', 'published')
+                              ->where('is_feature', 1)
+                              ->count_all_results('guide_articles');
+    }
+
+    /**
+     * 새 기능으로 표시된 공개 글. 출시일(없으면 첫 공개 시각) 최신순.
+     * 각 행에 feature_date(UTC) 를 붙인다.
+     */
+    public function public_features($org_id, $limit)
+    {
+        $rows = $this->db->select('id, slug, title, subtitle, category_id, feature_at, feature_label, published_at, updated_at')
+                         ->where('org_id', (int) $org_id)
+                         ->where('status', 'published')
+                         ->where('is_feature', 1)
+                         ->order_by('COALESCE(feature_at, published_at, updated_at)', 'DESC', FALSE)
+                         ->order_by('id', 'DESC')
+                         ->limit((int) $limit)
+                         ->get('guide_articles')
+                         ->result();
+
+        foreach ($rows as $row)
+        {
+            $row->feature_date = self::feature_date($row) ?: $row->updated_at;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * NEW 배지를 붙일 글 id (id => TRUE). 새 기능 모음이 꺼져 있거나 기간이 0 이면 빈 배열.
+     */
+    public function new_feature_ids($org)
+    {
+        $options = self::page_options($org);
+
+        if ( ! $options['feature_enabled'] || $options['feature_new_days'] === 0)
+        {
+            return array();
+        }
+
+        $since = gmdate('Y-m-d H:i:s', time() - $options['feature_new_days'] * 86400);
+        $rows = $this->db->select('id')
+                         ->where('org_id', (int) $org->id)
+                         ->where('status', 'published')
+                         ->where('is_feature', 1)
+                         ->where('COALESCE(feature_at, published_at) >=', $since)
+                         ->get('guide_articles')
+                         ->result();
+        $ids = array();
+
+        foreach ($rows as $row)
+        {
+            $ids[(int) $row->id] = TRUE;
+        }
+
+        return $ids;
+    }
+
+    /**
+     * 공개 글의 유튜브 동영상을 모은다. 따로 저장하지 않고 본문 블록에서 그때그때 꺼낸다(원본은 가이드 본문 하나).
+     * 같은 영상이 여러 글에 있으면 처음 나온 것 하나만 두고, 그 영상이 있는 글을 articles 에 함께 담는다.
+     *
+     * @param string $sort toc(가이드 목차 순) | updated(최근 수정순)
+     * @return array [{youtube_id, caption, category_id, category_name, articles: [{id, slug, title}]}]
+     */
+    public function public_videos($org_id, $sort = 'toc')
+    {
+        $this->db->select('a.id, a.slug, a.title, a.category_id, a.blocks, c.name AS category_name')
+                 ->from('guide_articles a')
+                 ->join('guide_categories c', 'c.id = a.category_id', 'left')
+                 ->where('a.org_id', (int) $org_id)
+                 ->where('a.status', 'published')
+                 // 동영상 블록이 있는 글만 읽는다.
+                 ->where("JSON_SEARCH(a.blocks, 'one', 'video', NULL, '$[*].type') IS NOT NULL", NULL, FALSE);
+
+        if ($sort === 'updated')
+        {
+            $this->db->order_by('a.updated_at', 'DESC')->order_by('a.id', 'DESC');
+        }
+        else
+        {
+            // list_articles() 와 같은 목차 순서
+            $this->db->order_by('a.category_id IS NULL', 'ASC', FALSE)
+                     ->order_by('c.sort_order', 'ASC')
+                     ->order_by('a.category_id', 'ASC')
+                     ->order_by('a.sort_order', 'ASC')
+                     ->order_by('a.id', 'ASC');
+        }
+
+        $videos = array();
+
+        foreach ($this->db->get()->result() as $row)
+        {
+            $row = $this->decode($row);
+            $article = array('id' => (int) $row->id, 'slug' => $row->slug, 'title' => $row->title);
+
+            foreach ($row->blocks as $block)
+            {
+                if ( ! isset($block['type'], $block['youtube_id']) || $block['type'] !== 'video'
+                    || ! preg_match('/^[A-Za-z0-9_-]{11}$/', (string) $block['youtube_id']))
+                {
+                    continue;
+                }
+
+                $id = $block['youtube_id'];
+
+                if (isset($videos[$id]))
+                {
+                    if ( ! in_array($article, $videos[$id]['articles'], TRUE))
+                    {
+                        $videos[$id]['articles'][] = $article;
+                    }
+                    continue;
+                }
+
+                $videos[$id] = array(
+                    'youtube_id'    => $id,
+                    'caption'       => isset($block['caption']) ? (string) $block['caption'] : '',
+                    'category_id'   => $row->category_id ? (int) $row->category_id : 0,
+                    'category_name' => $row->category_name ?: lang_text('guide.uncategorized'),
+                    'articles'      => array($article),
+                );
+            }
+        }
+
+        return array_values($videos);
+    }
+
     /**
      * 공개 목차. 분류별 묶음과, 이전/다음 글을 찾기 위한 한 줄 목록을 함께 돌려준다.
      *
@@ -815,11 +1379,14 @@ class Guide_model extends CI_Model {
      *
      * @param object|null $article 상세면 글, 목록이면 NULL
      * @param string      $q       검색어(목록에서만)
+     * @param string      $view    list | features | videos (모음 페이지는 Guide 컨트롤러가 옵션을 확인한 뒤 넘긴다)
+     * @param array       $params  모음 페이지의 page, category
      */
-    public function page_data($org, $article = NULL, $q = '', $theme = NULL)
+    public function page_data($org, $article = NULL, $q = '', $theme = NULL, $view = 'list', $params = array())
     {
         $nav = $this->public_nav($org->id);
         $results = NULL;
+        $view = in_array($view, array('features', 'videos'), TRUE) ? $view : 'list';
 
         if ($article === NULL && $q !== '')
         {
@@ -878,12 +1445,48 @@ class Guide_model extends CI_Model {
         // 테마 강조색은 상담 위젯 색을 따른다. 허용 형식이 아니면 기본 파랑.
         $accent = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $org->widget_color) ? $org->widget_color : '#2563eb';
 
-        return array(
+        $base = base_url($org->org_code.'/guide');
+        $options = self::page_options($org);
+        $collection = $this->collection_data($org, $view, $options, $base, $params);
+
+        // 첫 화면(검색 전 목록)의 최근 새 기능 띠
+        $strip = array();
+
+        if ($view === 'list' && $article === NULL && $results === NULL && $options['feature_enabled'] && $options['feature_banner'])
+        {
+            $strip = $this->public_features($org->id, 3);
+        }
+
+        // 탭은 켜 둔 모음이 있을 때만 보인다. 관리자 미리보기로 연 모음은 꺼져 있어도 탭에 넣는다.
+        $tabs = array();
+
+        if ($options['feature_enabled'] || $options['video_enabled'] || $view !== 'list')
+        {
+            $tabs[] = array('key' => 'list', 'label' => lang_text('guide.tab_all'), 'url' => $base);
+
+            if ($options['feature_enabled'] || $view === 'features')
+            {
+                $tabs[] = array('key' => 'features', 'label' => lang_text('guide.tab_features'), 'url' => $base.'/features');
+            }
+
+            if ($options['video_enabled'] || $view === 'videos')
+            {
+                $tabs[] = array('key' => 'videos', 'label' => lang_text('guide.tab_videos'), 'url' => $base.'/videos');
+            }
+        }
+
+        return $collection + array(
+            'view'      => $view,
+            'options'   => $options,
+            'tabs'      => $tabs,
+            'strip'     => $strip,
+            'new_ids'   => $this->new_feature_ids($org),
+            'timezone'  => $this->org_timezone($org->id),
             'org'       => $org,
             'theme'     => $theme,
             'bodies'    => $bodies,
             'accent'    => $accent,
-            'base'      => base_url($org->org_code.'/guide'),
+            'base'      => $base,
             'groups'    => $nav['groups'],
             'total'     => count($nav['flat']),
             'q'         => $q,
@@ -893,6 +1496,89 @@ class Guide_model extends CI_Model {
             'prev'      => $prev,
             'next'      => $next,
         );
+    }
+
+    /**
+     * 모음 페이지 데이터. [더 보기] 는 page 쪽까지 이어서 보여준다(?page=2 면 처음부터 2쪽 분량).
+     */
+    protected function collection_data($org, $view, $options, $base, $params)
+    {
+        $page = isset($params['page']) ? max(1, min(self::MAX_PAGE, (int) $params['page'])) : 1;
+        $data = array('page' => $page, 'more_url' => '', 'features' => array(), 'videos' => array(),
+                      'video_total' => 0, 'video_categories' => array(), 'video_category' => 0);
+
+        if ($view === 'features')
+        {
+            $limit = $page * self::FEATURE_PAGE;
+            $rows = $this->public_features($org->id, $limit + 1);
+            $tz = $this->org_timezone($org->id);
+
+            if (count($rows) > $limit)
+            {
+                $rows = array_slice($rows, 0, $limit);
+                $data['more_url'] = $base.'/features?page='.($page + 1);
+            }
+
+            // 조직 시간대 기준 월별 묶음
+            foreach ($rows as $row)
+            {
+                $month = to_timezone($row->feature_date, $tz, 'Y-m');
+
+                if ( ! isset($data['features'][$month]))
+                {
+                    list($year, $mon) = explode('-', $month);
+                    $data['features'][$month] = array(
+                        'label' => lang_text('guide.month_label', array('year' => $year, 'month' => (int) $mon)),
+                        'items' => array(),
+                    );
+                }
+
+                $data['features'][$month]['items'][] = $row;
+            }
+
+            $data['features'] = array_values($data['features']);
+        }
+        elseif ($view === 'videos')
+        {
+            $videos = $this->public_videos($org->id, $options['video_sort']);
+
+            // 분류 거르기: 동영상이 있는 분류만 고를 수 있다(허용 목록).
+            if ($options['video_filter'])
+            {
+                foreach ($videos as $video)
+                {
+                    $data['video_categories'][$video['category_id']] = $video['category_name'];
+                }
+
+                $category = isset($params['category']) ? (int) $params['category'] : 0;
+
+                if (isset($data['video_categories'][$category]) && count($data['video_categories']) > 1)
+                {
+                    $data['video_category'] = $category;
+                    $videos = array_values(array_filter($videos, function ($video) use ($category) {
+                        return $video['category_id'] === $category;
+                    }));
+                }
+            }
+
+            $limit = $page * self::VIDEO_PAGE;
+            $data['video_total'] = count($videos);
+            $data['videos'] = array_slice($videos, 0, $limit);
+
+            if (count($videos) > $limit)
+            {
+                $query = array('page' => $page + 1);
+
+                if ($data['video_category'] > 0)
+                {
+                    $query['category'] = $data['video_category'];
+                }
+
+                $data['more_url'] = $base.'/videos?'.http_build_query($query);
+            }
+        }
+
+        return $data;
     }
 
     protected function title_contains($org_id, $q)
@@ -1057,6 +1743,12 @@ class Guide_model extends CI_Model {
                 'keywords'   => $row->keywords ? array_map('trim', explode(',', $row->keywords)) : array(),
                 'status'     => $row->status,
                 'sort_order' => (int) $row->sort_order,
+                // 새 기능 표시. 날짜는 사람이 고치는 형식이라 조직 시간대 날짜로 내보낸다.
+                // 출시일을 비워 둔 글은 첫 공개 날짜를 적는다(다시 가져와도 날짜가 바뀌지 않게).
+                'feature'    => (int) $row->is_feature === 1 ? array(
+                    'date'  => self::feature_date($row) ? to_timezone(self::feature_date($row), $this->org_timezone($org->id), 'Y-m-d') : '',
+                    'label' => (string) $row->feature_label,
+                ) : NULL,
                 'blocks'     => $row->blocks,
                 'updated_at' => gmdate('Y-m-d\TH:i:s\Z', strtotime($row->updated_at.' UTC')),
             );
@@ -1169,6 +1861,14 @@ class Guide_model extends CI_Model {
             $item['category_id'] = isset($category_map[$category_key]) ? $category_map[$category_key] : 0;
 
             $warnings = array();
+
+            // 모음 페이지 주소(features, videos)는 글 주소로 쓸 수 없으므로 비우고(번호로 접속) 알린다.
+            if (in_array(strtolower(trim((string) $this->value($item, 'slug'))), self::RESERVED_SLUGS, TRUE))
+            {
+                $warnings[] = '주소 "'.$item['slug'].'" 는 모음 페이지 주소라 비웠습니다(번호로 접속).';
+                $item['slug'] = '';
+            }
+
             $clean = $this->clean_article($org_id, $item, $warnings);
             $label = (string) $this->value($item, 'slug') ?: mb_substr((string) $this->value($item, 'title'), 0, 40);
 

@@ -120,20 +120,20 @@
         $('#orgModalTimezone').on('change', updateModalTzPreview);
         $('#orgModalSave').on('click', saveOrg);
 
-        var columnDefs = [
+        var columns = [
             {
-                headerName: '조직명', field: 'name', minWidth: 160,
-                cellRenderer: function (params) {
+                title: '조직명', key: 'name', width: 160, flex: 1, align: 'left',
+                render: function (row, value) {
                     var wrap = document.createElement('div');
-                    wrap.className = 'leading-tight';
+                    wrap.className = 'min-w-0 leading-tight';
 
                     var name = document.createElement('div');
-                    name.className = 'font-medium text-slate-800';
-                    name.textContent = params.value;
+                    name.className = 'truncate font-medium text-slate-800';
+                    name.textContent = value;
 
                     var code = document.createElement('div');
-                    code.className = 'font-mono text-xs text-slate-400';
-                    code.textContent = ORG_BASE_URL + params.data.org_code;
+                    code.className = 'truncate font-mono text-xs text-slate-400';
+                    code.textContent = ORG_BASE_URL + row.org_code;
 
                     wrap.appendChild(name);
                     wrap.appendChild(code);
@@ -141,50 +141,44 @@
                 }
             },
             {
-                headerName: '상태', field: 'status', width: 110, flex: 0,
-                cellRenderer: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
-                valueFormatter: function (p) { return STATUS_LABEL[p.value] || p.value; }
+                title: '상태', key: 'status', width: 110,
+                render: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
+                format: function (v) { return STATUS_LABEL[v] || v; }
             },
             {
-                headerName: '담당자', field: 'owner_name', minWidth: 150,
-                cellRenderer: function (params) {
-                    if (!params.value) { return '-'; }
+                title: '담당자', key: 'owner_name', width: 150, flex: 1, align: 'left',
+                render: function (row, value) {
+                    if (!value) { return '-'; }
 
                     var wrap = document.createElement('div');
-                    wrap.className = 'leading-tight';
+                    wrap.className = 'min-w-0 leading-tight';
 
                     var name = document.createElement('div');
-                    name.textContent = params.value;
+                    name.className = 'truncate';
+                    name.textContent = value;
 
                     var email = document.createElement('div');
-                    email.className = 'text-xs text-slate-400';
-                    email.textContent = params.data.owner_email;
+                    email.className = 'truncate text-xs text-slate-400';
+                    email.textContent = row.owner_email;
 
                     wrap.appendChild(name);
                     wrap.appendChild(email);
                     return wrap;
                 }
             },
-            { headerName: '사업자번호', field: 'biz_no', width: 130, flex: 0 },
-            { headerName: '연락처', field: 'phone', width: 130, flex: 0 },
+            { title: '사업자번호', key: 'biz_no', width: 130 },
+            { title: '연락처', key: 'phone', width: 130 },
+            { title: '상담원', key: 'agent_count', width: 90, type: 'number' },
+            { title: '세션', key: 'session_count', width: 90, type: 'number' },
+            { title: '신청일', key: 'created_at', width: 130, format: RHGrid.shortDateTime },
+            { title: '승인일', key: 'approved_at', width: 130, format: RHGrid.shortDateTime },
             {
-                headerName: '상담원', field: 'agent_count', width: 90, flex: 0,
-                type: 'numericColumn', filter: 'agNumberColumnFilter'
+                title: '사유', key: 'status_reason', width: 140, flex: 1, align: 'left', tooltip: true,
+                format: function (v) { return v || '-'; }
             },
             {
-                headerName: '세션', field: 'session_count', width: 90, flex: 0,
-                type: 'numericColumn', filter: 'agNumberColumnFilter'
-            },
-            { headerName: '신청일', field: 'created_at', width: 130, flex: 0, valueFormatter: RHGrid.shortDateTime },
-            { headerName: '승인일', field: 'approved_at', width: 130, flex: 0, valueFormatter: RHGrid.shortDateTime },
-            {
-                headerName: '사유', field: 'status_reason', minWidth: 140,
-                tooltipField: 'status_reason',
-                valueFormatter: function (p) { return p.value || '-'; }
-            },
-            {
-                headerName: '처리', width: 170, flex: 0, sortable: false, filter: false, pinned: 'right',
-                cellRenderer: RHGrid.buttonsRenderer([
+                title: '처리', key: '_actions', width: 170, sortable: false, pinned: 'right',
+                render: RHGrid.buttonsRenderer([
                     {
                         label: '승인', className: 'btn-primary',
                         show: function (row) { return row.status === 'pending'; },
@@ -225,12 +219,12 @@
         ];
 
         RHGrid.create('orgGrid', {
-            columnDefs: columnDefs,
-            rowData: ORG_ROWS,
-            tooltipShowDelay: 300,
-            rowClass: 'cursor-pointer',
-            onRowClicked: function (event) {
-                openOrgModal(event.data);
+            columns: columns,
+            rows: ORG_ROWS,
+            rowId: function (row) { return row.id; },
+            rowClass: function () { return 'cursor-pointer'; },
+            onRowClicked: function (row) {
+                openOrgModal(row);
             }
         });
     });

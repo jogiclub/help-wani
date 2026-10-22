@@ -1,0 +1,779 @@
+/*
+ * wgrid 기본 테마 — 왔니 컴포넌트(wani-grid)의 모양을 기준으로 한다.
+ * 연한 회색 헤더, 가로 경계선만 있는 36px 행, 파란 호버·선택 표시, 남색(#003a7f) 주색,
+ * 테두리 없는 8px 둥근 모서리, 하단 가운데에 떠 있는 페이지 막대.
+ *
+ * 색·크기는 모두 CSS 변수라서 .wgrid(또는 상위 요소)에서 덮어쓸 수 있다.
+ */
+.wgrid {
+  /* 바탕·글자 */
+  --wgrid-bg: #fff;
+  --wgrid-fg: #181d1f;
+  --wgrid-muted: #5f6b7a; /* 흰 배경에서 대비 4.5:1 이상 */
+  --wgrid-font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Noto Sans KR', 'Segoe UI', sans-serif;
+  --wgrid-font-size: 14px;
+
+  /* 경계선 */
+  --wgrid-border: rgba(24, 29, 31, 0.15);
+  --wgrid-border-strong: rgba(24, 29, 31, 0.4); /* 고정 컬럼 경계 */
+
+  /* 헤더 */
+  --wgrid-header-bg: #fafafb;
+  --wgrid-header-fg: #181d1f;
+
+  /* 강조: 호버·선택·체크박스·활성 셀 / 주색: 활성 페이지·기본 버튼 */
+  --wgrid-accent: #2196f3;
+  --wgrid-primary: #003a7f;
+  --wgrid-primary-fg: #fff;
+  --wgrid-hover-bg: color-mix(in srgb, var(--wgrid-accent) 8%, var(--wgrid-bg));
+  --wgrid-selected-bg: color-mix(in srgb, var(--wgrid-accent) 12%, var(--wgrid-bg));
+
+  /* 버튼·입력 등 컨트롤 (부트스트랩과 같은 회색 계열) */
+  --wgrid-control-bg: #fff;
+  --wgrid-control-fg: #212529;
+  --wgrid-control-border: #dee2e6;
+  --wgrid-control-hover-bg: #e9ecef;
+  --wgrid-control-disabled-bg: #e9ecef;
+  --wgrid-control-disabled-fg: rgba(33, 37, 41, 0.75);
+  --wgrid-surface-alt: #f8f9fa;
+  --wgrid-focus-border: #809dbf;
+  --wgrid-focus-ring: rgba(0, 58, 127, 0.25);
+  --wgrid-danger: #cb1414;
+
+  /* 크기 */
+  --wgrid-cell-padding: 0 16px;
+  --wgrid-row-height: 36px;
+  --wgrid-header-height: 36px;
+  --wgrid-filter-height: 40px;
+  --wgrid-radius: 8px;
+  --wgrid-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--wgrid-bg);
+  color: var(--wgrid-fg);
+  border: 0;
+  border-radius: var(--wgrid-radius);
+  font: var(--wgrid-font-size) / 1.4 var(--wgrid-font);
+}
+
+.wgrid *,
+.wgrid *::before,
+.wgrid *::after {
+  box-sizing: border-box;
+}
+
+/* ── 헤더 ── */
+.wgrid-header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  width: max-content;
+  min-width: 100%;
+  background: var(--wgrid-header-bg);
+  color: var(--wgrid-header-fg);
+  border-bottom: 1px solid var(--wgrid-border);
+  font-weight: 500;
+}
+
+.wgrid-row {
+  display: flex;
+  height: var(--wgrid-row-height);
+}
+
+.wgrid-header .wgrid-row {
+  height: var(--wgrid-header-height);
+}
+
+.wgrid-cell {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: var(--wgrid-cell-padding);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wgrid-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.wgrid-viewport:focus {
+  outline: none;
+}
+
+.wgrid-header .wgrid-filter-row {
+  height: var(--wgrid-filter-height);
+  border-top: 1px solid var(--wgrid-border);
+  font-weight: 400;
+}
+
+.wgrid-header-cell {
+  position: relative;
+}
+
+/* 컬럼 사이의 짧은 세로 구분선 (헤더 높이의 약 28%) */
+.wgrid-header-cell:not(.wgrid-select-cell)::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 1px;
+  height: 28%;
+  background: var(--wgrid-border);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.wgrid-header-cell.wgrid-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 호버 배경은 반드시 불투명해야 한다: 고정(sticky) 헤더 셀이 반투명해지면 아래로 지나가는 가운데 컬럼의 글자가 비쳐 헤더가 깨져 보인다 */
+.wgrid-header-cell.wgrid-sortable:hover {
+  background: color-mix(in srgb, var(--wgrid-header-fg) 5%, var(--wgrid-header-bg));
+}
+
+.wgrid-header-cell:focus-visible {
+  outline: 2px solid var(--wgrid-accent);
+  outline-offset: -2px;
+}
+
+.wgrid-cell-text,
+.wgrid-cell-html {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgrid-header-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wgrid-sort-indicator {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+  color: var(--wgrid-accent);
+}
+.wgrid-sort-indicator svg {
+  display: block;
+}
+.wgrid-sort-order {
+  margin-left: -2px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.wgrid-filter-cell {
+  padding: 6px 8px;
+}
+
+.wgrid-filter-input {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--wgrid-control-fg);
+  background: var(--wgrid-control-bg);
+  border: 1px solid var(--wgrid-control-border);
+  border-radius: 4px;
+}
+
+.wgrid-filter-input:focus {
+  border-color: var(--wgrid-focus-border);
+  outline: 0;
+  box-shadow: 0 0 0 0.25rem var(--wgrid-focus-ring);
+}
+
+.wgrid-filter-input[aria-invalid='true'] {
+  border-color: var(--wgrid-danger);
+}
+
+.wgrid-select-cell {
+  justify-content: center;
+  padding: 0;
+}
+
+/* ── 본문 ── */
+.wgrid-body {
+  position: relative;
+  user-select: none;
+}
+
+.wgrid-body .wgrid-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--wgrid-row-bg, transparent);
+  border-bottom: 1px solid var(--wgrid-border);
+  will-change: transform;
+}
+
+.wgrid-body .wgrid-row:hover {
+  --wgrid-row-bg: var(--wgrid-hover-bg);
+}
+
+.wgrid-body .wgrid-row.wgrid-row-selected {
+  --wgrid-row-bg: var(--wgrid-selected-bg);
+}
+
+.wgrid-body .wgrid-cell {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+}
+
+.wgrid-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--wgrid-muted);
+}
+
+/* ── 체크박스 (선택 컬럼·불리언 편집·헤더 전체 선택) ── */
+.wgrid input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  background: var(--wgrid-bg) center / 12px no-repeat;
+  border: 1px solid color-mix(in srgb, var(--wgrid-fg) 50%, var(--wgrid-bg));
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wgrid input[type='checkbox']:checked,
+.wgrid input[type='checkbox']:indeterminate {
+  background-color: var(--wgrid-accent);
+  border-color: var(--wgrid-accent);
+}
+
+.wgrid input[type='checkbox']:checked {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6.5l2.5 2.5 4.5-5.5'/%3e%3c/svg%3e");
+}
+
+.wgrid input[type='checkbox']:indeterminate {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3e%3cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' d='M3 6h6'/%3e%3c/svg%3e");
+}
+
+.wgrid input[type='checkbox']:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--wgrid-accent) 50%, transparent);
+}
+
+.wgrid input[type='checkbox']:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── 페이지 막대 ──
+ * 기본은 그리드 아래쪽 가운데에 떠 있는 막대(.wgrid-pager-floating), pagination.floating:false면 아래에 붙는다.
+ * 떠 있는 막대는 높이 0인 자리 표시 요소 + 절대 위치의 막대라서, 아래에 상태바가 있어도 본문 바닥 기준으로 놓인다. */
+.wgrid-pager {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  pointer-events: none;
+}
+
+.wgrid-pager-floating {
+  position: relative;
+  z-index: 10;
+  height: 0;
+  padding: 0;
+}
+
+.wgrid-pager-floating .wgrid-pager-group {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: var(--wgrid-shadow);
+}
+
+/* 떠 있는 막대에 마지막 행이 가려지지 않도록 본문 아래에 여백을 둔다 */
+.wgrid-has-floating-pager .wgrid-body {
+  margin-bottom: 64px;
+}
+
+.wgrid-pager-group {
+  display: flex;
+  align-items: stretch;
+  max-width: calc(100% - 16px);
+  pointer-events: auto;
+  background: var(--wgrid-control-bg);
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.wgrid-pager-info {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  color: var(--wgrid-control-fg);
+  background: var(--wgrid-surface-alt);
+  border: 1px solid var(--wgrid-control-border);
+  border-radius: 4px 0 0 4px;
+  white-space: nowrap;
+}
+
+.wgrid-pager-btn {
+  min-width: 32px;
+  height: 31px;
+  margin-left: -1px;
+  padding: 0 8px;
+  font: inherit;
+  color: var(--wgrid-primary);
+  background: var(--wgrid-control-bg);
+  border: 1px solid var(--wgrid-control-border);
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.wgrid-pager-btn:hover:not(:disabled):not([aria-current='page']) {
+  background: var(--wgrid-control-hover-bg);
+}
+
+.wgrid-pager-btn:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--wgrid-accent);
+  outline-offset: -2px;
+}
+
+.wgrid-pager-btn[aria-current='page'] {
+  position: relative;
+  z-index: 1;
+  color: var(--wgrid-primary-fg);
+  background: var(--wgrid-primary);
+  border-color: var(--wgrid-primary);
+  cursor: default;
+}
+
+.wgrid-pager-btn:disabled {
+  color: var(--wgrid-control-disabled-fg);
+  background: var(--wgrid-control-disabled-bg);
+  cursor: default;
+}
+
+.wgrid-pager-size {
+  height: 31px;
+  margin-left: -1px;
+  padding: 0 28px 0 12px;
+  font: inherit;
+  color: var(--wgrid-control-fg);
+  background: var(--wgrid-surface-alt)
+    url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3e%3cpath d='M1 5l4-4 4 4z' fill='%23212529'/%3e%3c/svg%3e") right 10px center / 10px no-repeat;
+  border: 1px solid var(--wgrid-control-border);
+  border-radius: 0 4px 4px 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.wgrid-pager-size:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 2px solid var(--wgrid-accent);
+  outline-offset: -2px;
+}
+
+/* ── 다크 테마: <div class="wgrid" data-theme="dark"> ── */
+.wgrid[data-theme='dark'] {
+  --wgrid-bg: #1b1f24;
+  --wgrid-fg: #e4e7eb;
+  --wgrid-muted: #9aa5b1;
+  --wgrid-border: rgba(228, 231, 235, 0.16);
+  --wgrid-border-strong: rgba(228, 231, 235, 0.4);
+  --wgrid-header-bg: #232932;
+  --wgrid-header-fg: #e4e7eb;
+  --wgrid-accent: #64b5f6;
+  --wgrid-primary: #6ea8fe;
+  --wgrid-primary-fg: #0b1220;
+  --wgrid-control-bg: #232932;
+  --wgrid-control-fg: #e4e7eb;
+  --wgrid-control-border: #3a424c;
+  --wgrid-control-hover-bg: #2f3946;
+  --wgrid-control-disabled-bg: #2a313a;
+  --wgrid-control-disabled-fg: #9aa5b1;
+  --wgrid-surface-alt: #232932;
+  --wgrid-focus-border: #6ea8fe;
+  --wgrid-focus-ring: rgba(110, 168, 254, 0.3);
+  --wgrid-danger: #ff6b6b;
+  --wgrid-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.wgrid[data-theme='dark'] .wgrid-pager-size {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3e%3cpath d='M1 5l4-4 4 4z' fill='%23e4e7eb'/%3e%3c/svg%3e");
+}
+
+/* 밀도: <div class="wgrid" data-density="compact">. 행 높이는 옵션 rowHeight(예: 28)로 함께 줄인다 */
+.wgrid[data-density='compact'] {
+  --wgrid-font-size: 12px;
+  --wgrid-cell-padding: 0 8px;
+}
+
+/* ── 포커스·편집 ── */
+.wgrid-cell-active {
+  box-shadow: inset 0 0 0 2px var(--wgrid-accent);
+}
+
+.wgrid:not(:focus-within) .wgrid-cell-active {
+  box-shadow: inset 0 0 0 1px var(--wgrid-muted);
+}
+
+.wgrid-cell-editing {
+  padding: 0;
+  overflow: visible;
+  background: var(--wgrid-bg);
+}
+
+.wgrid-editor {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  padding: 0 15px;
+  font: inherit;
+  color: var(--wgrid-fg);
+  background: var(--wgrid-bg);
+  border: 2px solid var(--wgrid-accent);
+  border-radius: 0;
+  outline: none;
+}
+
+.wgrid-editor-invalid {
+  border-color: var(--wgrid-danger);
+}
+
+.wgrid-button-cell {
+  padding: 0 8px;
+}
+.wgrid-cell-button {
+  max-width: 100%;
+  height: 24px;
+  padding: 0 10px;
+  overflow: hidden;
+  color: var(--wgrid-primary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 1px solid var(--wgrid-primary);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.wgrid-cell-button:hover:not(:disabled) {
+  color: #fff;
+  background: var(--wgrid-primary);
+}
+.wgrid-cell-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.wgrid-bool-cell {
+  justify-content: center;
+  padding: 0;
+}
+
+.wgrid-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (forced-colors: active) {
+  .wgrid-cell-active {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  .wgrid-row-selected {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+  .wgrid input[type='checkbox']:checked {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
+}
+
+/* ── 컬럼 리사이즈·고정·그룹 ── */
+.wgrid-group-cell {
+  justify-content: center;
+  border-bottom: 1px solid var(--wgrid-border);
+  font-weight: 500;
+}
+
+.wgrid-group-blank {
+  border-bottom-color: transparent;
+}
+
+.wgrid-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.wgrid-resize-handle:hover {
+  background: color-mix(in srgb, var(--wgrid-accent) 45%, transparent);
+}
+
+/* 고정 컬럼: 행/헤더 흐름 안의 sticky 셀. 가운데 셀은 absolute라 그 아래로 지나간다.
+ * 배경은 행의 현재 배경(호버·선택 포함)을 따라간다. */
+.wgrid-pinned,
+.wgrid-body .wgrid-cell.wgrid-pinned {
+  position: sticky;
+  z-index: 2;
+  background: var(--wgrid-row-bg, var(--wgrid-bg));
+}
+
+.wgrid-body .wgrid-cell.wgrid-pinned-right {
+  left: auto;
+}
+
+.wgrid-header .wgrid-pinned {
+  background: var(--wgrid-header-bg);
+}
+
+.wgrid-pinned-left.wgrid-pin-edge {
+  border-right: 1px solid var(--wgrid-border-strong);
+}
+
+.wgrid-pinned-right.wgrid-pin-edge {
+  border-left: 1px solid var(--wgrid-border-strong);
+}
+
+.wgrid-dragging {
+  opacity: 0.5;
+}
+
+.wgrid-drop-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--wgrid-accent);
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* 드래그 고스트는 body에 붙으므로 변수를 쓰지 않는다 */
+.wgrid-drag-ghost {
+  position: fixed;
+  z-index: 1000;
+  padding: 4px 10px;
+  font: 500 14px 'Pretendard Variable', Pretendard, system-ui, sans-serif;
+  color: #fff;
+  background: #003a7f;
+  border-radius: 4px;
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+body.wgrid-resizing,
+body.wgrid-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.wgrid-col-dragging,
+body.wgrid-col-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* 필터가 걸린 컬럼의 헤더 표시 */
+.wgrid-filter-indicator {
+  flex: none;
+  margin-left: 4px;
+  font-size: 8px;
+  line-height: 1;
+  color: var(--wgrid-accent);
+}
+
+/* 라이선스 안내(워터마크): 운영 도메인에서 Pro 모듈을 유효한 키 없이 쓸 때만 나타난다 */
+.wgrid-watermark {
+  position: absolute;
+  right: 18px;
+  bottom: 8px;
+  z-index: 20;
+  padding: 2px 8px;
+  color: #fff;
+  background: rgba(180, 35, 24, 0.88);
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── 셀 범위 선택 (cellRange 모듈) ── */
+.wgrid {
+  --wgrid-range-bg: color-mix(in srgb, var(--wgrid-accent) 16%, transparent);
+  --wgrid-range-border: var(--wgrid-accent);
+}
+
+/* 배경 위에 겹쳐 그려야 고정 컬럼·선택된 행의 배경과도 어울린다 */
+.wgrid-in-range {
+  background-image: linear-gradient(var(--wgrid-range-bg), var(--wgrid-range-bg));
+}
+
+.wgrid-in-range {
+  --wgrid-rt: 0 0 0 0 transparent;
+  --wgrid-rb: 0 0 0 0 transparent;
+  --wgrid-rl: 0 0 0 0 transparent;
+  --wgrid-rr: 0 0 0 0 transparent;
+  box-shadow: var(--wgrid-rt), var(--wgrid-rb), var(--wgrid-rl), var(--wgrid-rr);
+}
+.wgrid-in-range.wgrid-range-top {
+  --wgrid-rt: inset 0 1px 0 var(--wgrid-range-border);
+}
+.wgrid-in-range.wgrid-range-bottom {
+  --wgrid-rb: inset 0 -1px 0 var(--wgrid-range-border);
+}
+.wgrid-in-range.wgrid-range-left {
+  --wgrid-rl: inset 1px 0 0 var(--wgrid-range-border);
+}
+.wgrid-in-range.wgrid-range-right {
+  --wgrid-rr: inset -1px 0 0 var(--wgrid-range-border);
+}
+
+/* 활성 셀은 범위 안에서도 굵은 테두리로 구분한다 (뒤에 와야 이긴다) */
+.wgrid-in-range.wgrid-cell-active {
+  box-shadow: inset 0 0 0 2px var(--wgrid-accent);
+}
+
+.wgrid-viewport:has(.wgrid-in-range) .wgrid-cell {
+  user-select: none;
+}
+
+/* ── 오버레이 스크롤바 (scrollbar: 'hover' | 'always') ──
+ * 네이티브 스크롤바를 숨기고 .wgrid 위에 얇은 트랙·썸을 올린다. */
+.wgrid {
+  --wgrid-scrollbar-thumb: color-mix(in srgb, var(--wgrid-fg) 38%, transparent);
+  --wgrid-scrollbar-thumb-hover: color-mix(in srgb, var(--wgrid-fg) 58%, transparent);
+}
+
+.wgrid-overlay-scroll .wgrid-viewport {
+  scrollbar-width: none;
+}
+.wgrid-overlay-scroll .wgrid-viewport::-webkit-scrollbar {
+  display: none;
+}
+
+.wgrid-scrollbar {
+  position: absolute;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.wgrid-scroll-visible .wgrid-scrollbar,
+.wgrid-scroll-always .wgrid-scrollbar {
+  opacity: 1;
+}
+.wgrid-scrollbar-y {
+  right: 0;
+  width: 10px;
+}
+.wgrid-scrollbar-x {
+  left: 0;
+  bottom: 0;
+  height: 10px;
+}
+.wgrid-scrollbar-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+  background: var(--wgrid-scrollbar-thumb);
+  transition: background-color 0.15s ease;
+}
+.wgrid-scrollbar-y .wgrid-scrollbar-thumb {
+  bottom: auto;
+}
+.wgrid-scrollbar-x .wgrid-scrollbar-thumb {
+  right: auto;
+}
+.wgrid-scrollbar-thumb:hover,
+.wgrid-scrollbar-thumb.wgrid-dragging {
+  background: var(--wgrid-scrollbar-thumb-hover);
+}
+
+
+/* ── 하단 고정 행(합계 등) ── */
+.wgrid-pinned-bottom {
+  position: relative;
+  flex: none;
+  overflow: hidden;
+  background: var(--wgrid-bg);
+  border-top: 1px solid var(--wgrid-border-strong);
+}
+.wgrid-pinned-bottom .wgrid-select-cell input {
+  visibility: hidden;
+}
+.wgrid-pinned-bottom-row:hover {
+  --wgrid-row-bg: transparent;
+}
+
+/* ── 행 드래그 ── */
+.wgrid-row-drag-handle {
+  flex: none;
+  margin-right: 6px;
+  color: var(--wgrid-muted);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.wgrid-row-drag-handle:active {
+  cursor: grabbing;
+}
+.wgrid-row-dragging {
+  opacity: 0.55;
+}
+.wgrid-drop-line {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--wgrid-accent);
+  pointer-events: none;
+  z-index: 3;
+}

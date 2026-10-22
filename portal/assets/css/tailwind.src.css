@@ -72,6 +72,10 @@
     .drawer-title  { @apply text-base font-semibold text-slate-800; }
     .drawer-body   { @apply flex-1 space-y-5 overflow-y-auto px-5 py-5; }
     .drawer-footer { @apply flex justify-end gap-2 border-t border-slate-200 px-5 py-3; }
+    /* 드로어 안 탭. 버튼에 data-tab="키", 내용에 data-tab-panel="키" (예: 상담 대화 > 설정) */
+    .drawer-tabs { @apply flex gap-1 overflow-x-auto border-b border-slate-200 px-5; }
+    .drawer-tab  { @apply -mb-px shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2.5 text-sm text-slate-500 hover:text-slate-800; }
+    .drawer-tab.is-active { @apply border-brand-500 font-semibold text-brand-600; }
 
     /* 가이드 관리 > 공개 페이지 테마의 미니 그림. 세 칸(i)의 자리로 테마 배치를 흉내 낸다. */
     .theme-thumb { @apply relative block h-11 w-16 shrink-0 overflow-hidden rounded border border-slate-200 bg-slate-50; }
@@ -187,4 +191,22 @@
         @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-full
                bg-brand-500 text-sm font-bold text-white;
     }
+}
+
+/*
+ * wgrid 포털 색 (assets/vendor/wgrid/0.1.0/wgrid.css 의 변수 덮어쓰기)
+ * wgrid.css 는 레이어 밖 스타일이라 @layer 안에 두면 지므로 레이어 밖에, 한 단계 구체적인 선택자로 둔다.
+ */
+body .wgrid {
+    --wgrid-font: var(--font-sans);
+    --wgrid-fg: var(--color-slate-700);
+    --wgrid-header-fg: var(--color-slate-600);
+    --wgrid-header-bg: var(--color-slate-50);
+    --wgrid-border: var(--color-slate-200);
+    --wgrid-accent: var(--color-brand-500);
+    --wgrid-primary: var(--color-brand-500);
+    --wgrid-focus-border: var(--color-brand-300);
+    --wgrid-focus-ring: color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+    --wgrid-cell-padding: 0 12px;
+    border: 1px solid var(--color-slate-200);
 }

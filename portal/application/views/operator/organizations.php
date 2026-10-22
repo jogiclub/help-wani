@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/operator/organizations.php
- * 역할: 플랫폼 운영자의 조직 가입 승인 목록 (AG Grid)
+ * 역할: 플랫폼 운영자의 조직 가입 승인 목록 (wgrid)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -179,4 +179,4 @@ var ORG_URLS = {
 };
 var ORG_BASE_URL = '<?= base_url() ?>';
 </script>
-<script src="<?= base_url('assets/js/operator/organizations.js') ?>"></script>
+<script src="<?= asset_url('assets/js/operator/organizations.js') ?>"></script>

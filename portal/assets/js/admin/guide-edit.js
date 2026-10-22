@@ -167,6 +167,9 @@
             status: $('input[name="guideStatus"]:checked').val(),
             category_id: $('#guideCategory').val(),
             sort_order: $('#guideSort').val(),
+            is_feature: $('#guideIsFeature').is(':checked') ? 1 : 0,
+            feature_date: $('#guideFeatureDate').val(),
+            feature_label: $('#guideFeatureLabel').val(),
             blocks: JSON.stringify(collectBlocks())
         }, function (data, message) {
             dirty = false;
@@ -214,6 +217,15 @@
         $(document).on('input change', 'input, textarea, select', function () { dirty = true; });
 
         $('#btnSaveGuide').on('click', save);
+
+        // 새 기능 표시를 켰을 때만 출시일과 버전을 고친다.
+        function syncFeatureFields() {
+            var on = $('#guideIsFeature').is(':checked');
+            $('#featureFields').toggleClass('opacity-50', !on).find('input').prop('disabled', !on);
+        }
+
+        syncFeatureFields();
+        $('#guideIsFeature').on('change', syncFeatureFields);
 
         // Ctrl+S 로도 저장한다.
         $(document).on('keydown', function (event) {

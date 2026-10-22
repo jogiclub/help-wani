@@ -9,8 +9,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
 <main class="mx-auto max-w-3xl px-4 py-8">
 <?php $this->load->view('guide/_header'); ?>
+<?php $this->load->view('guide/_tabs'); ?>
 
-<?php if ($article !== NULL): ?>
+<?php if ($view !== 'list'): ?>
+  <div class="card mt-4"><div class="card-body"><?php $this->load->view('guide/_collection'); ?></div></div>
+
+<?php elseif ($article !== NULL): ?>
   <div class="mt-4 mb-2">
     <a class="text-sm text-brand-600 hover:underline" href="<?= html_escape($base) ?>">← <?= html_escape(lang_text('guide.back')) ?></a>
   </div>
@@ -38,7 +42,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
       <div class="card divide-y divide-slate-100">
         <?php foreach ($results as $item): ?>
         <a class="block px-5 py-3 hover:bg-slate-50" href="<?= html_escape($link($item)) ?>">
-          <div class="font-medium text-slate-800"><?= html_escape($item['title']) ?></div>
+          <div class="font-medium text-slate-800"><?= html_escape($item['title']) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item['id'])); ?></div>
           <?php if ( ! empty($item['subtitle'])): ?>
           <div class="mt-0.5 text-sm text-slate-500"><?= html_escape($item['subtitle']) ?></div>
           <?php endif; ?>
@@ -51,12 +55,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <div class="card mt-5"><div class="card-body text-center text-sm text-slate-500"><?= html_escape(lang_text('guide.empty')) ?></div></div>
 
   <?php else: ?>
+    <?php $this->load->view('guide/_feature_strip'); ?>
     <?php foreach ($groups as $group): ?>
     <h2 class="mt-6 mb-2 font-semibold text-slate-700"><?= html_escape($group['name']) ?></h2>
     <div class="card divide-y divide-slate-100">
       <?php foreach ($group['articles'] as $item): ?>
       <a class="block px-5 py-3 hover:bg-slate-50" href="<?= html_escape($link($item)) ?>">
-        <div class="font-medium text-slate-800"><?= html_escape($item->title) ?></div>
+        <div class="font-medium text-slate-800"><?= html_escape($item->title) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?></div>
         <?php if ( ! empty($item->subtitle)): ?>
         <div class="mt-0.5 text-sm text-slate-500"><?= html_escape($item->subtitle) ?></div>
         <?php endif; ?>

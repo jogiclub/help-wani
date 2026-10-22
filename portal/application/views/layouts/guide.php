@@ -12,12 +12,17 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 <html lang="<?= html_escape(isset($i18n) ? $i18n["locale"] : "ko") ?>">
 <head>
 <?php $this->load->view('layouts/_head'); ?>
-<link href="<?= base_url('assets/css/guide-themes.css') ?>?v=<?= (int) @filemtime(FCPATH.'assets/css/guide-themes.css') ?>" rel="stylesheet">
+<link href="<?= asset_url('assets/css/guide-themes.css') ?>" rel="stylesheet">
 </head>
 <body class="gt gt-<?= html_escape($theme) ?>" style="--gt-accent: <?= html_escape($accent) ?>;">
 <?php $this->load->view($content_view); ?>
 <?php $this->load->view('layouts/_partials'); ?>
-<script src="<?= base_url('assets/js/guide.js') ?>"></script>
+<?php if ($theme === 'docs'): ?>
+<!-- Split.js 1.6.5 (MIT). 문서형 테마의 목차/본문 사이 너비 조절. window.Split 을 만든다. -->
+<script src="https://cdn.jsdelivr.net/npm/split.js@1.6.5/dist/split.min.js"
+        integrity="sha384-q2ksSc8z6Q4ZUnxlfZj9AXZLpSdWmD3q/YrId1twTeNHh56fNh98YbJSpppzGUvL" crossorigin="anonymous"></script>
+<?php endif; ?>
+<script src="<?= asset_url('assets/js/guide.js') ?>"></script>
 <?php if ( ! empty($widget_key)): ?>
 <!-- 고객사 사이트에 붙이는 스니펫과 같은 형태다. 응대는 이 조직의 상담원이 한다. -->
 <script src="<?= base_url('widget.js') ?>" data-key="<?= html_escape($widget_key) ?>" defer></script>

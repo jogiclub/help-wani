@@ -293,8 +293,9 @@ class Console extends Agent_Controller {
      */
     public function chat()
     {
-        $this->load->model('chat_model');
-        $this->load->library('realtime');
+        $this->load->model(array('chat_model', 'chat_hours_model', 'macro_model'));
+        // chat_followup 은 설정 드로어가 이어 가기 주소 유효 기간(RESUME_TTL)을 보여 주려고 불러 둔다.
+        $this->load->library(array('realtime', 'chat_followup'));
 
         // 위젯 설정 드로어는 조직 관리자에게만 보인다(저장 API 는 Admin 이 권한을 다시 확인한다).
         $is_admin = $this->agent->role === 'admin';
@@ -312,8 +313,31 @@ class Console extends Agent_Controller {
             }
         }
 
+        $own_org = $org ?: $this->organization_model->get_by_id($this->agent->org_id);
+
         $this->render('console/chat', array(
             'page_title'    => '상담 대화',
+            // 매크로 편집 드로어와 변수 값(docs/macro-plan.md)
+            'macro_editor'  => $this->macro_model->editor_conf($this->agent),
+            'chat_macro'    => array(
+                'orgName'         => $own_org->name,
+                'visitorFallback' => lang_text('macro.visitor_fallback', array(), $own_org->locale),
+            ),
+            // 운영 상태(docs/chat-operation-plan.md F3). 목록 폴링이 이어서 갱신한다.
+            'availability'  => $this->chat_hours_model->console_view($own_org,
+                $this->chat_hours_model->availability($own_org)),
+            'my_status'     => $this->agent->chat_status,
+            'notify'        => (int) $this->agent->chat_notify === 1,
+            // 설정 드로어의 답변 속도(실제 기록) 미리보기. 위젯과 같은 기준(최근 7일, 운영 중 문의, 10건 이상)이다.
+            'reply_preview' => $org ? $this->chat_model->median_reply_seconds($org->id,
+                Chat_model::REPLY_WINDOW_DAYS, Chat_model::REPLY_MIN_SAMPLES) : NULL,
+            'me'            => $this->agent,
+            // 설정 드로어의 인사말 버튼과 팔로업 메일 안내(docs/widget-ops-plan.md)
+            'greeting_buttons' => $org ? $this->chat_greeting_buttons($org) : array(),
+            'mail_ready'    => (string) env('SMTP_HOST', '') !== '',
+            'hours'         => $org ? $this->chat_hours_model->get_hours($org->id) : array(),
+            'holidays'      => $org ? array_map(array($this->chat_hours_model, 'present_holiday'),
+                $this->chat_hours_model->list_holidays($org->id)) : array(),
             'use_grid'      => TRUE,
             'is_admin'      => $is_admin,
             'org'           => $org,
@@ -327,6 +351,13 @@ class Console extends Agent_Controller {
                 'org_id' => $this->agent->org_id,
             )),
         ));
+    }
+
+    protected function chat_greeting_buttons($org)
+    {
+        $this->load->library('chat_greeting');
+
+        return $this->chat_greeting->buttons($org);
     }
 
     /**
@@ -354,8 +385,11 @@ class Console extends Agent_Controller {
                 'id'           => (int) $row->id,
                 'visitor_name' => $row->visitor_name,
                 'visitor_email'=> $row->visitor_email,
+                'visitor_phone'=> $row->visitor_phone,
                 'page_url'     => $row->page_url,
+                'followup_sent_at' => $row->followup_sent_at,
                 'agent_name'   => $row->agent_name,
+                'assigned_agent_id' => $row->assigned_agent_id ? (int) $row->assigned_agent_id : NULL,
                 'status'       => $row->status,
                 'unread'       => (int) $row->unread_for_agent,
                 'last_body'    => $row->last_body,
@@ -365,9 +399,40 @@ class Console extends Agent_Controller {
             );
         }
 
+        $this->load->model('chat_hours_model');
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+
         api_response(TRUE, '', array(
             'conversations' => $out,
             'unread_total'  => $this->chat_model->count_unread($this->agent->org_id),
+            'availability'  => $this->chat_hours_model->console_view($org, $this->chat_hours_model->availability($org)),
+        ));
+    }
+
+    /**
+     * POST /console/api/chat/my_status  (status = available | away | off)
+     * 상담원 개인 응대 상태. '자리 비움' / '응대 종료' 이면 고객에게 응대 가능 인원으로 세지 않는다(F3).
+     */
+    public function api_chat_my_status()
+    {
+        $this->load->model(array('chat_model', 'chat_hours_model'));
+
+        $status = (string) $this->input->post('status', TRUE);
+
+        if ( ! in_array($status, array('available', 'away', 'off'), TRUE))
+        {
+            api_response(FALSE, '상태 값이 올바르지 않습니다.', array(), 400);
+            return;
+        }
+
+        $this->chat_model->set_agent_status($this->agent->id, $status);
+        $this->chat_model->touch_agent($this->agent->id);
+
+        $org = $this->organization_model->get_by_id($this->agent->org_id);
+        $labels = array('available' => '응대 가능', 'away' => '자리 비움', 'off' => '응대 종료');
+
+        api_response(TRUE, '내 상태: '.$labels[$status], array(
+            'availability' => $this->chat_hours_model->console_view($org, $this->chat_hours_model->availability($org)),
         ));
     }
 
@@ -393,18 +458,24 @@ class Console extends Agent_Controller {
                 'id'         => (int) $conversation->id,
                 'status'     => $conversation->status,
                 'session_id' => $conversation->session_id ? (int) $conversation->session_id : NULL,
+                'assigned_agent_id' => $conversation->assigned_agent_id ? (int) $conversation->assigned_agent_id : NULL,
             ),
             'messages' => $out,
         ));
     }
 
     /**
-     * POST /console/api/chat/send
+     * POST /console/api/chat/send  (mode = '' | join | take, macro_id = 매크로로 채운 글이면 그 id)
+     *
+     * 다른 상담원이 담당인 대화에 보내면 바로 보내지 않고 409 와 담당자 이름을 돌려준다(F7 중복 응대 방지).
+     * 화면이 묻고 다시 보낸다: join 은 담당을 그대로 두고 함께 답하기, take 는 담당을 가져와서 보내기.
      */
     public function api_chat_send()
     {
         $conversation = $this->require_own_conversation($this->input->post('conversation_id'));
         $body = trim((string) $this->input->post('body', TRUE));
+        $mode = (string) $this->input->post('mode', TRUE);
+        $mode = in_array($mode, array('join', 'take'), TRUE) ? $mode : '';
 
         if ($body === '')
         {
@@ -418,14 +489,163 @@ class Console extends Agent_Controller {
             return;
         }
 
-        $this->chat_model->assign($conversation->id, $this->agent->id);
+        $owner = $conversation->assigned_agent_id ? (int) $conversation->assigned_agent_id : NULL;
+
+        if ($owner !== NULL && $owner !== (int) $this->agent->id)
+        {
+            if ($mode === '')
+            {
+                $other = $this->agent_model->get_by_id($owner);
+                api_response(FALSE, '다른 상담원이 응대 중인 대화입니다.', array(
+                    'conflict'   => TRUE,
+                    'agent_name' => $other ? $other->name : '',
+                ), 409);
+                return;
+            }
+
+            if ($mode === 'take')
+            {
+                $this->take_conversation($conversation, $owner);
+            }
+        }
+        else
+        {
+            $this->chat_model->assign($conversation->id, $this->agent->id);
+        }
+
         $message_id = $this->chat_model->add_message($conversation->id, 'agent', $body, $this->agent->id);
         $this->chat_model->mark_read($conversation->id);
         $this->chat_model->touch_agent($this->agent->id);
 
-        $this->publish_new_messages($conversation, $message_id);
+        $followup = $this->publish_new_messages($conversation, $message_id);
+
+        // 매크로로 채운 글이면 사용 횟수를 올린다(docs/macro-plan.md M2). 쓸 수 없는 매크로면 조용히 넘긴다.
+        $macro_id = (int) $this->input->post('macro_id');
+
+        if ($macro_id > 0)
+        {
+            $this->load->model('macro_model');
+            $this->macro_model->record_use($this->agent, $macro_id, $conversation->id, $message_id);
+        }
+
+        api_response(TRUE, '', array('followup' => $followup));
+    }
+
+    /**
+     * POST /console/api/chat/assign  (action = take | release)
+     * take: 담당을 가져온다. release: 담당을 비워 대기 중으로 돌린다(담당자 본인이나 조직 관리자만).
+     */
+    public function api_chat_assign()
+    {
+        $conversation = $this->require_own_conversation($this->input->post('conversation_id'));
+        $action = (string) $this->input->post('action', TRUE);
+        $owner = $conversation->assigned_agent_id ? (int) $conversation->assigned_agent_id : NULL;
+
+        if ($action === 'take')
+        {
+            if ($owner === (int) $this->agent->id)
+            {
+                api_response(TRUE, '이미 내가 담당입니다.');
+                return;
+            }
+
+            $this->take_conversation($conversation, $owner);
+            api_response(TRUE, '담당을 가져왔습니다.');
+            return;
+        }
+
+        if ($action === 'release')
+        {
+            if ($owner !== (int) $this->agent->id && $this->agent->role !== 'admin')
+            {
+                api_response(FALSE, '담당자 본인이나 조직 관리자만 대기 중으로 돌릴 수 있습니다.', array(), 403);
+                return;
+            }
+
+            $this->chat_model->set_assignee($conversation->id, NULL);
+            $this->log_model->audit($this->agent->org_id, $this->agent->id, 'chat_release',
+                'conversation_id='.$conversation->id.' from='.($owner ?: '-'), client_ip());
+            $this->publish_assignment($conversation, NULL, $owner);
+
+            api_response(TRUE, '대기 중으로 돌렸습니다.');
+            return;
+        }
+
+        api_response(FALSE, '요청 값이 올바르지 않습니다.', array(), 400);
+    }
+
+    /**
+     * POST /console/api/chat/presence  (kind = viewing | typing | leave)
+     * 이 대화를 보고 있거나 입력 중임을 다른 상담원에게 알린다. 저장하지 않고 조직 방에만 발행한다(CLAUDE.md 3.11, 3.16).
+     */
+    public function api_chat_presence()
+    {
+        $conversation = $this->require_own_conversation($this->input->post('conversation_id'));
+        $kind = (string) $this->input->post('kind', TRUE);
+
+        if ( ! in_array($kind, array('viewing', 'typing', 'leave'), TRUE))
+        {
+            api_response(FALSE, '요청 값이 올바르지 않습니다.', array(), 400);
+            return;
+        }
+
+        $this->load->library('realtime');
+        $this->realtime->publish_org($this->agent->org_id, array(
+            'type'            => 'presence',
+            'conversation_id' => (int) $conversation->id,
+            'agent_id'        => (int) $this->agent->id,
+            'agent_name'      => $this->agent->name,
+            'kind'            => $kind,
+        ));
 
         api_response(TRUE, '');
+    }
+
+    /**
+     * POST /console/api/chat/notify  (enabled = 0 | 1)
+     * 새 문의 브라우저 알림을 받을지. 브라우저 권한은 화면이 따로 묻는다.
+     */
+    public function api_chat_notify()
+    {
+        $this->load->model('chat_model');
+        $enabled = $this->input->post('enabled') ? 1 : 0;
+
+        $this->chat_model->set_agent_notify($this->agent->id, $enabled);
+
+        api_response(TRUE, $enabled ? '새 문의 알림을 켰습니다.' : '새 문의 알림을 껐습니다.');
+    }
+
+    /**
+     * 담당을 로그인 상담원으로 바꾸고 이전 담당자에게 알린다. 다른 사람 것을 가져오면 감사 로그에 남긴다.
+     */
+    protected function take_conversation($conversation, $previous)
+    {
+        $this->chat_model->set_assignee($conversation->id, $this->agent->id);
+
+        if ($previous !== NULL)
+        {
+            $this->log_model->audit($this->agent->org_id, $this->agent->id, 'chat_take',
+                'conversation_id='.$conversation->id.' from='.$previous, client_ip());
+        }
+
+        $this->publish_assignment($conversation, (int) $this->agent->id, $previous);
+    }
+
+    /**
+     * 담당이 바뀌었음을 상담원들에게 알린다(조직 방만). 이전 담당자 화면은 이 이벤트로 안내를 띄운다.
+     */
+    protected function publish_assignment($conversation, $agent_id, $previous)
+    {
+        $this->load->library('realtime');
+        $this->realtime->publish_org($conversation->org_id, array(
+            'type'              => 'assignment',
+            'conversation_id'   => (int) $conversation->id,
+            'assigned_agent_id' => $agent_id,
+            'previous_agent_id' => $previous,
+            'agent_name'        => $agent_id === NULL ? '' : $this->agent->name,
+            'by_agent_id'       => (int) $this->agent->id,
+            'by_agent_name'     => $this->agent->name,
+        ));
     }
 
     /**
@@ -582,9 +802,9 @@ class Console extends Agent_Controller {
         $this->chat_model->touch_agent($this->agent->id);
 
         // 저장한 뒤 반드시 발행한다(CLAUDE.md 3.11). 빠지면 방문자 화면이 폴링 간격만큼 늦는다.
-        $this->publish_new_messages($conversation, $message_id);
+        $followup = $this->publish_new_messages($conversation, $message_id);
 
-        api_response(TRUE, '가이드를 보냈습니다.');
+        api_response(TRUE, '가이드를 보냈습니다.', array('followup' => $followup));
     }
 
     protected function present_guides($items, $sent)
@@ -615,11 +835,29 @@ class Console extends Agent_Controller {
     {
         $this->load->library('realtime');
 
+        $agent_body = NULL;
+
         foreach ($this->chat_model->list_messages($conversation->id, $from_message_id - 1) as $message)
         {
             $this->realtime->publish_message($conversation->org_id, $conversation->id,
                 $this->chat_model->present($message));
+
+            if ($message->sender_type === 'agent')
+            {
+                $agent_body = $message->body;
+            }
         }
+
+        // 고객이 대화창을 떠났으면 상담원 답장을 이메일로 알린다(docs/widget-ops-plan.md 3-4).
+        // 상담원 답장을 저장하는 곳은 모두 이 함수를 거치므로 여기서 한 번만 판단한다.
+        if ($agent_body === NULL)
+        {
+            return FALSE;
+        }
+
+        $this->load->library('chat_followup');
+
+        return $this->chat_followup->after_agent_message($conversation, $agent_body);
     }
 
     /**

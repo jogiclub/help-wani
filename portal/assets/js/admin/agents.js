@@ -22,32 +22,32 @@
 
     $(function () {
         RHGrid.create('agentGrid', {
-            columnDefs: [
-                { headerName: '이름', field: 'name', minWidth: 120, cellClass: 'font-medium text-slate-800' },
-                { headerName: '이메일', field: 'email', minWidth: 180 },
-                { headerName: '전화', field: 'phone', width: 140, flex: 0,
-                  valueFormatter: function (p) { return p.value || '-'; } },
+            columns: [
+                { title: '이름', key: 'name', width: 120, flex: 1, align: 'left', cellClass: 'font-medium text-slate-800' },
+                { title: '이메일', key: 'email', width: 180, flex: 1, align: 'left' },
+                { title: '전화', key: 'phone', width: 140,
+                  format: function (v) { return v || '-'; } },
                 {
-                    headerName: '권한', field: 'role', width: 110, flex: 0,
-                    cellRenderer: RHGrid.badgeRenderer(
+                    title: '권한', key: 'role', width: 110,
+                    render: RHGrid.badgeRenderer(
                         { admin: 'badge-blue', agent: 'badge-gray' },
                         { admin: '관리자', agent: '상담원' }),
-                    valueFormatter: function (p) { return p.value === 'admin' ? '관리자' : '상담원'; }
+                    format: function (v) { return v === 'admin' ? '관리자' : '상담원'; }
                 },
                 {
-                    headerName: '상태', field: 'is_active', width: 100, flex: 0,
-                    cellRenderer: RHGrid.badgeRenderer(
+                    title: '상태', key: 'is_active', width: 100,
+                    render: RHGrid.badgeRenderer(
                         { 1: 'badge-green', 0: 'badge-gray' },
                         { 1: '사용', 0: '중지' }),
-                    valueFormatter: function (p) { return p.value ? '사용' : '중지'; }
+                    format: function (v) { return Number(v) ? '사용' : '중지'; }
                 },
                 {
-                    headerName: '최근 로그인', field: 'last_login_at', width: 160, flex: 0,
-                    valueFormatter: RHGrid.dateTime
+                    title: '최근 로그인', key: 'last_login_at', width: 160,
+                    format: RHGrid.dateTime
                 },
                 {
-                    headerName: '관리', width: 150, flex: 0, sortable: false, filter: false, pinned: 'right',
-                    cellRenderer: RHGrid.buttonsRenderer([
+                    title: '관리', key: '_actions', width: 150, sortable: false, pinned: 'right',
+                    render: RHGrid.buttonsRenderer([
                         {
                             label: '수정', className: 'btn-secondary',
                             onClick: function (row) { openAgentModal(row); }
@@ -68,8 +68,9 @@
                     ])
                 }
             ],
-            rowData: AGENT_ROWS,
-            overlayNoRowsTemplate: '<span class="text-slate-400">등록된 상담원이 없습니다.</span>'
+            rows: AGENT_ROWS,
+            rowId: function (row) { return row.id; },
+            noRowsText: '등록된 상담원이 없습니다.'
         });
 
         $('#btnAdd').on('click', function () { openAgentModal(null); });

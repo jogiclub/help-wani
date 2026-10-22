@@ -1,7 +1,8 @@
 <?php
 /**
  * 파일 위치: application/views/console/chat.php
- * 역할: 상담 위젯 대화 목록(AG Grid)과 응답 패널, 관리자용 위젯 설정 드로어
+ * 역할: 상담 위젯 대화 목록(wgrid)과 응답 패널, 운영 상태(조직 전환·내 응대 상태), 담당/보는 중 표시와 중복 응대 확인,
+ *       새 문의 브라우저 알림 설정, 관리자용 위젯 설정 드로어, 매크로(입력창 / 목록, 보낸 메시지로 만들기)
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 ?>
@@ -13,19 +14,52 @@ defined('BASEPATH') OR exit('No direct script access allowed');
     <input type="checkbox" id="chatShowClosed" class="rounded border-slate-300">
     종료된 대화 포함
   </label>
+  <a class="btn btn-sm btn-secondary" href="<?= base_url('console/macro') ?>">매크로</a>
   <?php if ($is_admin): ?>
   <button type="button" class="btn btn-sm btn-secondary" id="btnChatSettings"
           aria-controls="widgetSettingsDrawer">설정</button>
   <?php endif; ?>
 </div>
 
+<!-- 운영 상태(docs/chat-operation-plan.md F3). 고객 위젯에 보이는 상태와 같다. 목록 폴링이 갱신한다. -->
+<div class="card mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm">
+  <span class="text-slate-500">고객에게 보이는 상태</span>
+  <span id="chatAvailability" class="badge badge-gray"></span>
+  <span id="chatAvailabilityNote" class="text-xs text-slate-500"></span>
+
+  <?php if ($is_admin): ?>
+  <label class="flex items-center gap-2 sm:ml-auto">
+    <span class="text-slate-500">조직 운영</span>
+    <select id="chatManualState" class="form-input w-auto py-1 text-sm">
+      <option value="auto">운영 시간대로</option>
+      <option value="open">지금 운영</option>
+      <option value="closed">지금 종료</option>
+    </select>
+  </label>
+  <?php endif; ?>
+
+  <label class="flex items-center gap-2 <?= $is_admin ? '' : 'sm:ml-auto' ?>">
+    <span class="text-slate-500">내 상태</span>
+    <select id="chatMyStatus" class="form-input w-auto py-1 text-sm">
+      <option value="available" <?= $my_status === 'available' ? 'selected' : '' ?>>응대 가능</option>
+      <option value="away" <?= $my_status === 'away' ? 'selected' : '' ?>>자리 비움</option>
+      <option value="off" <?= $my_status === 'off' ? 'selected' : '' ?>>응대 종료</option>
+    </select>
+  </label>
+
+  <label class="flex items-center gap-1.5 text-slate-600" title="새 문의가 오면 브라우저 알림을 띄웁니다. 담당이 있는 대화는 담당자에게만 알립니다.">
+    <input type="checkbox" id="chatNotify" class="rounded border-slate-300" <?= $notify ? 'checked' : '' ?>>
+    새 문의 알림
+  </label>
+</div>
+
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
 
   <div class="card overflow-hidden lg:col-span-3">
-    <div id="chatGrid" style="height: calc(100vh - 260px); min-height: 420px;"></div>
+    <div id="chatGrid" style="height: calc(100vh - 316px); min-height: 420px;"></div>
   </div>
 
-  <div class="card flex flex-col lg:col-span-2" style="height: calc(100vh - 260px); min-height: 420px;">
+  <div class="card flex flex-col lg:col-span-2" style="height: calc(100vh - 316px); min-height: 420px;">
 
     <div id="chatEmpty" class="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400">
       왼쪽 목록에서 대화를 선택하세요.
@@ -36,6 +70,12 @@ defined('BASEPATH') OR exit('No direct script access allowed');
         <div class="min-w-0">
           <p id="chatVisitor" class="truncate font-semibold text-slate-800"></p>
           <p id="chatMeta" class="truncate text-xs text-slate-500"></p>
+          <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
+            <span id="chatAssignee" class="badge badge-gray"></span>
+            <button type="button" id="chatTake" class="hidden text-brand-600 hover:underline">담당 가져오기</button>
+            <button type="button" id="chatRelease" class="hidden text-slate-500 hover:underline">대기 중으로 돌리기</button>
+            <span id="chatPresence" class="text-amber-700"></span>
+          </p>
         </div>
         <div class="ml-auto flex shrink-0 gap-2">
           <button type="button" id="chatViewer" class="btn btn-sm hidden border border-slate-300 text-slate-600">원격 화면</button>
@@ -55,9 +95,13 @@ defined('BASEPATH') OR exit('No direct script access allowed');
         <ul id="chatGuideList" class="mt-1 max-h-28 space-y-1 overflow-y-auto"></ul>
       </div>
 
-      <form id="chatForm" class="flex gap-2 border-t border-slate-200 px-4 py-3">
+      <form id="chatForm" class="relative flex gap-2 border-t border-slate-200 px-4 py-3">
+        <!-- 매크로 목록(docs/macro-plan.md M2). 입력창에서 / 를 치거나 왼쪽 버튼으로 연다. -->
+        <div id="chatMacroPicker" class="absolute bottom-full left-4 right-4 z-20 mb-1 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"></div>
+        <button type="button" id="chatMacroButton" class="btn btn-sm btn-secondary shrink-0 self-stretch px-2.5 font-mono"
+                title="매크로 (입력창에서 / 를 쳐도 열립니다)">/</button>
         <textarea id="chatInput" rows="2" class="form-input flex-1 resize-none"
-                  placeholder="답변을 입력하고 Enter 로 보냅니다. 줄바꿈은 Shift+Enter."></textarea>
+                  placeholder="답변을 입력하고 Enter 로 보냅니다. 줄바꿈은 Shift+Enter, / 를 치면 매크로."></textarea>
         <button class="btn btn-primary shrink-0" type="submit">보내기</button>
       </form>
     </div>
@@ -65,14 +109,32 @@ defined('BASEPATH') OR exit('No direct script access allowed');
   </div>
 </div>
 
+<!-- 다른 상담원이 담당인 대화에 보낼 때 묻는다(docs/chat-operation-plan.md F7) -->
+<div id="chatConflictModal" data-modal-backdrop
+     class="modal-root fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
+  <div class="w-full max-w-md rounded-lg bg-white shadow-xl">
+    <div class="px-5 py-4 text-base font-semibold text-slate-800">다른 상담원이 응대 중입니다</div>
+    <div class="px-5 pb-5 text-sm text-slate-600" id="chatConflictBody"></div>
+    <div class="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-3">
+      <button type="button" class="btn btn-secondary" data-modal-close="chatConflictModal">취소</button>
+      <button type="button" class="btn btn-secondary" id="chatConflictJoin">함께 답하기</button>
+      <button type="button" class="btn btn-primary" id="chatConflictTake">담당 가져오고 보내기</button>
+    </div>
+  </div>
+</div>
+
 <script>
+var CHAT_ME = <?= json_encode(array('id' => (int) $me->id, 'name' => $me->name, 'role' => $me->role), JSON_UNESCAPED_UNICODE) ?>;
 var CHAT_ROWS = <?= json_encode(array_map(function ($c) {
     return array(
         'id'              => (int) $c->id,
         'visitor_name'    => $c->visitor_name,
         'visitor_email'   => $c->visitor_email,
+        'visitor_phone'   => $c->visitor_phone,
+        'followup_sent_at'=> $c->followup_sent_at,
         'page_url'        => $c->page_url,
         'agent_name'      => $c->agent_name,
+        'assigned_agent_id' => $c->assigned_agent_id ? (int) $c->assigned_agent_id : null,
         'status'          => $c->status,
         'unread'          => (int) $c->unread_for_agent,
         'last_body'       => $c->last_body,
@@ -82,18 +144,31 @@ var CHAT_ROWS = <?= json_encode(array_map(function ($c) {
     );
 }, $conversations), JSON_UNESCAPED_UNICODE) ?>;
 var CHAT_REALTIME = <?= json_encode($realtime, JSON_UNESCAPED_UNICODE) ?>;
+var CHAT_AVAILABILITY = <?= json_encode($availability, JSON_UNESCAPED_UNICODE) ?>;
 var CHAT_URLS = {
     list:     '<?= base_url('console/api/chat/list') ?>',
     messages: '<?= base_url('console/api/chat/messages/') ?>',
     send:     '<?= base_url('console/api/chat/send') ?>',
     close:    '<?= base_url('console/api/chat/close') ?>',
     remote:   '<?= base_url('console/api/chat/remote') ?>',
+    myStatus: '<?= base_url('console/api/chat/my_status') ?>',
+    assign:   '<?= base_url('console/api/chat/assign') ?>',
+    presence: '<?= base_url('console/api/chat/presence') ?>',
+    notify:   '<?= base_url('console/api/chat/notify') ?>',
+    chatState:'<?= $is_admin ? base_url('admin/api/chat_state') : '' ?>',
     sendGuide:    '<?= base_url('console/api/chat/send_guide') ?>',
     guideSuggest: '<?= base_url('console/api/guide/suggest/') ?>',
     guideSearch:  '<?= base_url('console/api/guide/search') ?>',
     guideAdmin:   '<?= $is_admin ? base_url('admin/guide') : '' ?>',
+    macroList:    '<?= base_url('console/api/macro/list') ?>',
+    macroSuggest: '<?= base_url('console/api/macro/suggest/') ?>',
+    macroAdmin:   '<?= base_url('console/macro') ?>',
     viewer:   '<?= base_url('console/session/') ?>'
 };
+// 매크로 변수 값. 고객 이름이 없을 때의 문구는 고객이 읽으므로 조직 언어로 만든다(CLAUDE.md 3.2).
+var CHAT_MACRO = <?= json_encode($chat_macro, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>;
 </script>
-<script src="<?= base_url('assets/js/console/chat.js') ?>"></script>
+<?php $this->load->view('console/_macro_edit'); ?>
+<script src="<?= asset_url('assets/js/console/macro-picker.js') ?>"></script>
+<script src="<?= asset_url('assets/js/console/chat.js') ?>"></script>
 <?php if ($is_admin) { $this->load->view('console/_widget_settings'); } ?>

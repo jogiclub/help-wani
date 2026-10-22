@@ -1,7 +1,8 @@
 <?php
 /**
  * 파일 위치: application/controllers/Admin_guide.php
- * 역할: 조직 관리 > 가이드 관리 (목록, 편집, 이미지 업로드, 분류/동의어, guide.json 내려받기/올리기, 매칭 시험)
+ * 역할: 조직 관리 > 가이드 관리 (목록, 편집, 이미지 업로드, 외부 이미지 저장, 분류/동의어, guide.json 내려받기/올리기, 매칭 시험,
+ *       공개 페이지 테마와 구성(새 기능 모음, 동영상 모음))
  *
  * 조직 관리자만 쓴다(Admin_Controller). 상담원은 콘솔에서 검색하고 보내기만 한다. (docs/guide-plan.md)
  */
@@ -47,6 +48,10 @@ class Admin_guide extends Admin_Controller {
                 'subtitle'      => $a->subtitle,
                 'keywords'      => $a->keywords,
                 'status'        => $a->status,
+                'is_feature'    => (int) $a->is_feature === 1,
+                'feature_label' => (string) $a->feature_label,
+                // 출시일은 조직 시간대 날짜로 바꿔 내려준다(CLAUDE.md 3.4).
+                'feature_date'  => Guide_model::feature_date($a) ? to_timezone(Guide_model::feature_date($a), $org->timezone, 'Y-m-d') : '',
                 'view_count'    => (int) $a->view_count,
                 'updated_at'    => $a->updated_at,
                 'public_url'    => $this->public_url($org, $a),
@@ -72,6 +77,11 @@ class Admin_guide extends Admin_Controller {
             'guide_url'    => customer_url($org->org_code.'/guide'),
             'themes'       => Guide_model::themes(),
             'theme'        => Guide_model::theme_of($org),
+            'page_options' => Guide_model::page_options($org),
+            'new_days'     => Guide_model::new_days_options(),
+            'video_sorts'  => Guide_model::video_sorts(),
+            'feature_count'=> $this->guide_model->count_features($org->id),
+            'video_count'  => count($this->guide_model->public_videos($org->id)),
             // 미리보기는 지금 연 주소로 연다(관리자 로그인 세션이 있어야 ?theme= 를 받는다).
             'preview_base' => base_url($org->org_code.'/guide'),
         ));
@@ -103,6 +113,10 @@ class Admin_guide extends Admin_Controller {
             'article'      => $article,
             'categories'   => $this->guide_model->list_categories($org->id),
             'guide_base'   => customer_url($org->org_code.'/guide/'),
+            // 새 기능 출시일 입력값(조직 시간대 날짜). 지정하지 않은 글은 비워 두고 첫 공개 날짜를 안내한다.
+            'feature_date' => $article && $article->feature_at ? to_timezone($article->feature_at, $org->timezone, 'Y-m-d') : '',
+            'published_on' => $article && $article->published_at ? to_timezone($article->published_at, $org->timezone, 'Y-m-d') : '',
+            'timezone'     => $org->timezone,
             'public_url'   => $article ? $this->public_url($org, $article) : '',
         ));
     }
@@ -188,6 +202,9 @@ class Admin_guide extends Admin_Controller {
             'sort_order'  => $this->input->post('sort_order'),
             'category_id' => $this->input->post('category_id'),
             'blocks'      => (string) $this->input->post('blocks'),
+            'is_feature'    => $this->input->post('is_feature'),
+            'feature_date'  => $this->input->post('feature_date'),
+            'feature_label' => $this->input->post('feature_label'),
         ), $warnings);
 
         if (is_string($clean))
@@ -286,6 +303,47 @@ class Admin_guide extends Admin_Controller {
         api_response(TRUE, '이미지를 올렸습니다.', array('src' => $src, 'url' => base_url($src)));
     }
 
+    /**
+     * POST /admin/guide/api/localize_images
+     * 글에 들어 있는 외부 https 이미지를 받아 조직 폴더에 저장하고 블록 주소를 바꾼다.
+     * 받지 못한 이미지는 외부 주소 그대로 두고 사유를 돌려준다.
+     */
+    public function api_localize_images()
+    {
+        // 이미지가 많으면 오래 걸린다. 한 장에 최대 15초.
+        @set_time_limit(600);
+
+        $org_id = $this->agent->org_id;
+        $result = $this->guide_model->localize_external_images($org_id, $this->agent->id);
+
+        $this->log_model->audit($org_id, $this->agent->id, 'guide_localize_images',
+            'saved='.$result['saved'].' articles='.$result['articles'].' failed='.count($result['failed']), client_ip());
+
+        $failed = array();
+
+        foreach (array_slice($result['failed'], 0, 20) as $item)
+        {
+            $failed[] = array('url' => $item[0], 'reason' => $item[1]);
+        }
+
+        if ($result['saved'] === 0 && empty($result['failed']))
+        {
+            $message = '외부 이미지가 없습니다.';
+        }
+        else
+        {
+            $message = '외부 이미지 '.$result['saved'].'개를 저장했습니다(가이드 '.$result['articles'].'건).'
+                     . (empty($result['failed']) ? '' : ' '.count($result['failed']).'개는 받지 못해 외부 주소로 남겼습니다.');
+        }
+
+        api_response(TRUE, $message, array(
+            'saved'        => $result['saved'],
+            'articles'     => $result['articles'],
+            'failed_count' => count($result['failed']),
+            'failed'       => $failed,
+        ));
+    }
+
     // ------------------------------------------------------------------
     // 분류, 동의어, 색인
     // ------------------------------------------------------------------
@@ -370,6 +428,39 @@ class Admin_guide extends Admin_Controller {
 
         $themes = Guide_model::themes();
         api_response(TRUE, '공개 페이지 테마를 "'.$themes[$theme]['name'].'" 으로 바꿨습니다.', array('theme' => $theme));
+    }
+
+    /**
+     * POST /admin/guide/api/page_options_save
+     * 공개 페이지 구성(새 기능 모음, 동영상 모음). 값은 Guide_model::set_page_options 가 허용 목록으로 검사한다.
+     */
+    public function api_page_options_save()
+    {
+        $saved = $this->guide_model->set_page_options($this->agent->org_id, array(
+            'feature_enabled'  => $this->input->post('feature_enabled'),
+            'feature_new_days' => $this->input->post('feature_new_days'),
+            'feature_banner'   => $this->input->post('feature_banner'),
+            'video_enabled'    => $this->input->post('video_enabled'),
+            'video_sort'       => $this->input->post('video_sort'),
+            'video_filter'     => $this->input->post('video_filter'),
+        ));
+
+        if (is_string($saved))
+        {
+            api_response(FALSE, $saved, array(), 400);
+            return;
+        }
+
+        $detail = array();
+
+        foreach ($saved as $key => $value)
+        {
+            $detail[] = $key.'='.(is_bool($value) ? (int) $value : $value);
+        }
+
+        $this->log_model->audit($this->agent->org_id, $this->agent->id, 'guide_page_options', implode(' ', $detail), client_ip());
+
+        api_response(TRUE, '공개 페이지 구성을 저장했습니다.', array('options' => $saved));
     }
 
     /**

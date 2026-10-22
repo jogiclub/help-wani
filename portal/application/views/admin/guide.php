@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/admin/guide.php
- * 역할: 가이드 관리 목록(AG Grid), 공개 페이지 테마, 매칭 시험, 분류/동의어 관리, guide.json 내려받기/올리기
+ * 역할: 가이드 관리 목록(wgrid), 외부 이미지 저장, 공개 페이지 테마와 구성(새 기능/동영상 모음), 매칭 시험, 분류/동의어 관리, guide.json 내려받기/올리기
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -13,12 +13,13 @@ foreach ($categories as $c)
 }
 ?>
 <div class="mb-4 flex flex-wrap items-center gap-2">
-  <h1 class="mr-auto text-xl font-bold text-slate-800">가이드 관리</h1>
+  <h1 class="mr-auto text-xl font-bold text-slate-800">가이드</h1>
   <a class="btn btn-sm btn-secondary" href="<?= html_escape($guide_url) ?>" target="_blank" rel="noopener">공개 페이지</a>
   <button type="button" class="btn btn-sm btn-secondary" id="btnCategories">분류</button>
   <button type="button" class="btn btn-sm btn-secondary" id="btnSynonyms">동의어</button>
   <button type="button" class="btn btn-sm btn-secondary" id="btnImport">guide.json 올리기</button>
   <a class="btn btn-sm btn-secondary" href="<?= base_url('admin/guide/export') ?>">guide.json 내려받기</a>
+  <button type="button" class="btn btn-sm btn-secondary" id="btnLocalizeImages">외부 이미지를 본 서버로 저장</button>
   <a class="btn btn-sm btn-primary" href="<?= base_url('admin/guide/new') ?>">새 가이드</a>
 </div>
 
@@ -31,8 +32,16 @@ foreach ($categories as $c)
 <?php endif; ?>
 
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-  <div class="card overflow-hidden lg:col-span-2">
-    <div id="guideGrid" style="height: calc(100vh - 240px); min-height: 380px;"></div>
+  <!-- 높이를 주지 않는다. 그리드는 한 쪽 개수(20/50/100...)만큼의 행 높이로 늘어난다. -->
+  <div class="lg:col-span-2">
+    <div class="mb-2 flex items-center gap-3 text-sm text-slate-600">
+      <label class="flex items-center gap-2">
+        <input type="checkbox" id="filterFeature"> 새 기능만
+      </label>
+    </div>
+    <div class="card overflow-hidden">
+      <div id="guideGrid"></div>
+    </div>
   </div>
 
   <div class="space-y-4">
@@ -56,6 +65,63 @@ foreach ($categories as $c)
         </label>
         <?php endforeach; ?>
         <div class="form-help">미리보기는 이 조직 관리자로 로그인한 브라우저에서만 보입니다. 강조색은 상담 위젯 색을 따릅니다.</div>
+      </div>
+    </div>
+
+    <div class="card" id="pageOptions">
+      <div class="card-header flex items-center justify-between">
+        <span>공개 페이지 구성</span>
+        <button type="button" class="btn btn-sm btn-primary" id="btnSavePageOptions">저장</button>
+      </div>
+      <div class="card-body space-y-4 text-sm">
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 font-semibold text-slate-800">
+            <input type="checkbox" id="optFeatureEnabled" <?= $page_options['feature_enabled'] ? 'checked' : '' ?>> 새 기능 모음 보이기
+          </label>
+          <div class="space-y-2 pl-6" data-option-group="feature">
+            <label class="flex items-center gap-2">
+              <span class="w-24 shrink-0 text-slate-500">NEW 배지 기간</span>
+              <select class="form-input" id="optFeatureNewDays">
+                <?php foreach ($new_days as $days): ?>
+                <option value="<?= (int) $days ?>" <?= $days === $page_options['feature_new_days'] ? 'selected' : '' ?>><?= $days === 0 ? '끔' : (int) $days.'일' ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" id="optFeatureBanner" <?= $page_options['feature_banner'] ? 'checked' : '' ?>> 가이드 첫 화면에 최근 새 기능 3건 보이기
+            </label>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 font-semibold text-slate-800">
+            <input type="checkbox" id="optVideoEnabled" <?= $page_options['video_enabled'] ? 'checked' : '' ?>> 동영상 모음 보이기
+          </label>
+          <div class="space-y-2 pl-6" data-option-group="video">
+            <label class="flex items-center gap-2">
+              <span class="w-24 shrink-0 text-slate-500">정렬</span>
+              <select class="form-input" id="optVideoSort">
+                <?php foreach ($video_sorts as $key => $label): ?>
+                <option value="<?= html_escape($key) ?>" <?= $key === $page_options['video_sort'] ? 'selected' : '' ?>><?= html_escape($label) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label class="flex items-center gap-2">
+              <input type="checkbox" id="optVideoFilter" <?= $page_options['video_filter'] ? 'checked' : '' ?>> 분류로 거르기
+            </label>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 pt-3 text-xs text-slate-500">
+          새 기능 표시된 공개 가이드 <b id="featureCount"><?= (int) $feature_count ?></b>건 ·
+          공개 가이드의 동영상 <b id="videoCount"><?= (int) $video_count ?></b>개
+        </div>
+        <div class="flex flex-wrap gap-3 text-xs">
+          <a class="text-brand-600 hover:underline" target="_blank" rel="noopener" href="<?= html_escape($preview_base.'/features') ?>">미리보기: 새 기능</a>
+          <a class="text-brand-600 hover:underline" target="_blank" rel="noopener" href="<?= html_escape($preview_base.'/videos') ?>">미리보기: 동영상</a>
+        </div>
+        <div class="form-help">새 기능은 가이드 편집에서 글마다 "새 기능으로 표시" 합니다. 동영상은 공개한 가이드 본문의 유튜브 동영상을 모읍니다.
+          꺼 둔 모음도 이 조직 관리자로 로그인한 브라우저에서는 미리 볼 수 있습니다.</div>
       </div>
     </div>
 
@@ -172,7 +238,9 @@ var GUIDE_URLS = {
     synonymsSave:   '<?= base_url('admin/guide/api/synonyms_save') ?>',
     reindex:        '<?= base_url('admin/guide/api/reindex') ?>',
     matchTest:      '<?= base_url('admin/guide/api/match_test') ?>',
-    themeSave:      '<?= base_url('admin/guide/api/theme_save') ?>'
+    themeSave:      '<?= base_url('admin/guide/api/theme_save') ?>',
+    pageOptionsSave:'<?= base_url('admin/guide/api/page_options_save') ?>',
+    localizeImages: '<?= base_url('admin/guide/api/localize_images') ?>'
 };
 </script>
-<script src="<?= base_url('assets/js/admin/guide.js') ?>"></script>
+<script src="<?= asset_url('assets/js/admin/guide.js') ?>"></script>

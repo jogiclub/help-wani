@@ -33,6 +33,33 @@ CREATE TABLE IF NOT EXISTS organizations (
   guide_autosuggest    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '위젯에서 가이드 자동 추천',
   guide_seeded_at      DATETIME     DEFAULT NULL COMMENT '가이드 샘플을 만든(또는 건너뛴) 시각, UTC',
   guide_theme          VARCHAR(20)  NOT NULL DEFAULT 'card' COMMENT '공개 가이드 테마',
+  guide_feature_enabled  TINYINT(1)       NOT NULL DEFAULT 0     COMMENT '공개 가이드 새 기능 모음 보이기',
+  guide_feature_new_days TINYINT UNSIGNED NOT NULL DEFAULT 30    COMMENT 'NEW 배지 기간(일), 0 이면 끔',
+  guide_feature_banner   TINYINT(1)       NOT NULL DEFAULT 0     COMMENT '가이드 첫 화면에 최근 새 기능 띠',
+  guide_video_enabled    TINYINT(1)       NOT NULL DEFAULT 0     COMMENT '공개 가이드 동영상 모음 보이기',
+  guide_video_sort       VARCHAR(10)      NOT NULL DEFAULT 'toc' COMMENT '동영상 정렬: toc | updated',
+  guide_video_filter     TINYINT(1)       NOT NULL DEFAULT 0     COMMENT '동영상 모음 분류 거르기',
+  chat_hours_enabled   TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '운영 시간 사용. 끄면 상담원 접속 여부로만 판단',
+  chat_manual_state    ENUM('auto','open','closed') NOT NULL DEFAULT 'auto' COMMENT '조직 운영 상태 수동 전환',
+  chat_manual_until    DATETIME     DEFAULT NULL COMMENT '수동 상태가 자동으로 돌아가는 시각(UTC). NULL 이면 직접 바꿀 때까지',
+  chat_offhours_mode   ENUM('accept','info','hide') NOT NULL DEFAULT 'accept' COMMENT '운영 시간 외 위젯: 받기/안내만/숨기기',
+  chat_msg_closed      VARCHAR(500) DEFAULT NULL COMMENT '운영 시간 외 자동 응답. 비우면 기본 문구',
+  chat_msg_holiday     VARCHAR(500) DEFAULT NULL COMMENT '휴일 자동 응답. 비우면 기본 문구',
+  chat_msg_away        VARCHAR(500) DEFAULT NULL COMMENT '상담원 부재 자동 응답. 비우면 기본 문구',
+  chat_reply_mode      ENUM('off','manual','auto') NOT NULL DEFAULT 'off' COMMENT '위젯 답변 속도 안내: 끔/직접 지정/실제 기록',
+  chat_reply_minutes   SMALLINT UNSIGNED DEFAULT NULL COMMENT '직접 지정한 답변 속도(분)',
+  chat_reply_auto_min  SMALLINT UNSIGNED DEFAULT NULL COMMENT '실제 기록 계산값(분, 최근 7일 중앙값). 표본이 적으면 NULL',
+  chat_reply_calc_at   DATETIME     DEFAULT NULL COMMENT '실제 기록 계산 시각(UTC)',
+  chat_phone_button    TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '위젯 전화 상담 버튼 표시',
+  chat_phone_hours_only TINYINT(1)  NOT NULL DEFAULT 1 COMMENT '전화 버튼을 운영 시간에만 표시',
+  chat_greeting         TEXT         DEFAULT NULL COMMENT '위젯 인사말. 비우면 보이지 않음. {visitor_name} {org_name} 변수',
+  chat_greeting_buttons VARCHAR(1000) DEFAULT NULL COMMENT '인사말 바로가기 버튼 JSON [{label,url}] 최대 3개, https 만',
+  chat_ask_name         TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '연락처 카드에서 이름을 묻는다',
+  chat_ask_email        TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '연락처 카드에서 이메일을 묻는다',
+  chat_ask_phone        TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '연락처 카드에서 휴대폰을 묻는다',
+  chat_contact_required TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '연락처를 남긴 고객에게만 문의받기',
+  chat_contact_notice   VARCHAR(500) DEFAULT NULL COMMENT '연락처 카드 안내 문구. 비우면 기본 문구',
+  chat_followup_email   TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '고객이 자리를 비웠을 때 상담원 답장을 이메일로 알림',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -55,6 +82,8 @@ CREATE TABLE IF NOT EXISTS agents (
   is_active     TINYINT(1)   NOT NULL DEFAULT 1,
   last_login_at DATETIME     DEFAULT NULL,
   last_seen_at  DATETIME     DEFAULT NULL COMMENT '마지막 콘솔 활동 시각(온라인 판별)',
+  chat_status   ENUM('available','away','off') NOT NULL DEFAULT 'available' COMMENT '상담 응대 상태(로그인하면 available)',
+  chat_notify   TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '새 상담 문의 브라우저 알림',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
@@ -185,6 +214,8 @@ CREATE TABLE IF NOT EXISTS visitors (
   visitor_key   CHAR(64)     NOT NULL COMMENT '서버가 발급해 브라우저에 저장하는 식별자',
   name          VARCHAR(60)  DEFAULT NULL,
   email         VARCHAR(190) DEFAULT NULL,
+  phone              VARCHAR(20) DEFAULT NULL COMMENT '휴대폰(E.164, 예: +821012345678)',
+  contact_consent_at DATETIME    DEFAULT NULL COMMENT '수집 안내를 보고 연락처를 낸 시각',
   ip            VARCHAR(45)  DEFAULT NULL,
   user_agent    VARCHAR(255) DEFAULT NULL,
   page_url      VARCHAR(500) DEFAULT NULL COMMENT '위젯이 떠 있던 마지막 페이지',
@@ -207,11 +238,20 @@ CREATE TABLE IF NOT EXISTS conversations (
   last_message_at     DATETIME     DEFAULT NULL,
   unread_for_agent    INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '상담원이 아직 못 본 방문자 메시지 수',
   offline_notified_at DATETIME     DEFAULT NULL COMMENT '오프라인 이메일을 보낸 시각(대화당 1회)',
+  auto_reply_at       DATETIME     DEFAULT NULL COMMENT '마지막 부재중 자동 응답 시각',
+  auto_reply_kind     VARCHAR(10)  DEFAULT NULL COMMENT '마지막 자동 응답 종류(closed/holiday/away)',
+  first_visitor_at    DATETIME     DEFAULT NULL COMMENT '방문자 첫 메시지 시각(답변 속도 계산)',
+  first_reply_at      DATETIME     DEFAULT NULL COMMENT '그 뒤 상담원 첫 답변 시각',
+  received_in_hours   TINYINT(1)   DEFAULT NULL COMMENT '첫 메시지가 운영 중(closed 아님)에 들어왔는지',
+  visitor_seen_at     DATETIME     DEFAULT NULL COMMENT '방문자가 대화창을 펼쳐 보고 있던 마지막 시각(위젯 폴링)',
+  contact_asked_at    DATETIME     DEFAULT NULL COMMENT '연락처 카드를 내거나 건너뛴 시각. 있으면 다시 묻지 않음',
+  followup_sent_at    DATETIME     DEFAULT NULL COMMENT '마지막 답장 알림 메일 시각',
   created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   closed_at           DATETIME     DEFAULT NULL,
   PRIMARY KEY (id),
   KEY idx_conv_org_status_last (org_id, status, last_message_at),
   KEY idx_conv_visitor (visitor_id),
+  KEY idx_conv_org_first (org_id, first_visitor_at),
   CONSTRAINT fk_conv_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE,
   CONSTRAINT fk_conv_visitor FOREIGN KEY (visitor_id) REFERENCES visitors (id) ON DELETE CASCADE,
   CONSTRAINT fk_conv_agent FOREIGN KEY (assigned_agent_id) REFERENCES agents (id) ON DELETE SET NULL,
@@ -233,6 +273,38 @@ CREATE TABLE IF NOT EXISTS messages (
   KEY idx_msg_conv (conversation_id, id),
   CONSTRAINT fk_msg_conv FOREIGN KEY (conversation_id) REFERENCES conversations (id) ON DELETE CASCADE,
   CONSTRAINT fk_msg_agent FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------- 상담 운영 (docs/chat-operation-plan.md)
+-- 날짜와 시각은 UTC 가 아니라 조직 시간대의 벽시계 값이다(CLAUDE.md 3.4 의 예외).
+
+-- 요일별 운영 구간. 하루 최대 3개, 자정을 넘는 구간은 다음 날 00:00 구간으로 나눠 저장한다.
+CREATE TABLE IF NOT EXISTS chat_hours (
+  id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  org_id      INT UNSIGNED NOT NULL,
+  weekday     TINYINT UNSIGNED NOT NULL COMMENT '0=일 ... 6=토',
+  start_min   SMALLINT UNSIGNED NOT NULL COMMENT '시작(자정부터 분, 조직 로컬)',
+  end_min     SMALLINT UNSIGNED NOT NULL COMMENT '끝(자정부터 분, 최대 1440, 조직 로컬)',
+  PRIMARY KEY (id),
+  KEY idx_chat_hours_org (org_id, weekday),
+  CONSTRAINT fk_chat_hours_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 휴일. 휴일이 요일별 운영 시간보다 우선한다.
+CREATE TABLE IF NOT EXISTS chat_holidays (
+  id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  org_id        INT UNSIGNED NOT NULL,
+  start_date    DATE         NOT NULL COMMENT '조직 로컬 날짜',
+  end_date      DATE         NOT NULL COMMENT '조직 로컬 날짜(포함)',
+  name          VARCHAR(60)  NOT NULL,
+  mode          ENUM('closed','short') NOT NULL DEFAULT 'closed' COMMENT '종일 휴무 / 단축 운영',
+  start_min     SMALLINT UNSIGNED DEFAULT NULL COMMENT '단축 운영 시작(분)',
+  end_min       SMALLINT UNSIGNED DEFAULT NULL COMMENT '단축 운영 끝(분)',
+  repeat_yearly TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '매년 같은 양력 날짜에 반복',
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_chat_holidays_org (org_id, start_date),
+  CONSTRAINT fk_chat_holidays_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------- 가이드 (docs/guide-plan.md)
@@ -260,6 +332,10 @@ CREATE TABLE IF NOT EXISTS guide_articles (
   keywords     VARCHAR(500) DEFAULT NULL COMMENT '쉼표 구분 원문',
   blocks       JSON         NOT NULL COMMENT '본문 블록 배열 [{type:text|image|video,...}]',
   status       ENUM('draft','published') NOT NULL DEFAULT 'draft',
+  is_feature    TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '새 기능 모음에 보임',
+  feature_at    DATETIME    DEFAULT NULL COMMENT '출시일(조직 시간대 그날 00:00 의 UTC). NULL 이면 published_at',
+  feature_label VARCHAR(30) DEFAULT NULL COMMENT '버전 등 짧은 표시',
+  published_at  DATETIME    DEFAULT NULL COMMENT '처음 공개한 시각, UTC',
   sort_order   INT          NOT NULL DEFAULT 0,
   view_count   INT UNSIGNED NOT NULL DEFAULT 0,
   updated_by   INT UNSIGNED DEFAULT NULL,
@@ -268,6 +344,7 @@ CREATE TABLE IF NOT EXISTS guide_articles (
   PRIMARY KEY (id),
   UNIQUE KEY uk_garticle_slug (org_id, slug),
   KEY idx_garticle_org (org_id, status, category_id, sort_order),
+  KEY idx_garticle_feature (org_id, status, is_feature, feature_at),
   CONSTRAINT fk_garticle_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE,
   CONSTRAINT fk_garticle_cat FOREIGN KEY (category_id) REFERENCES guide_categories (id) ON DELETE SET NULL,
   CONSTRAINT fk_garticle_agent FOREIGN KEY (updated_by) REFERENCES agents (id) ON DELETE SET NULL
@@ -293,4 +370,73 @@ CREATE TABLE IF NOT EXISTS guide_synonyms (
   PRIMARY KEY (id),
   KEY idx_gsyn_org (org_id),
   CONSTRAINT fk_gsyn_org FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------------------------------------------------------------- 매크로 (docs/macro-plan.md)
+
+-- 매크로(자주 쓰는 답변). owner_agent_id 가 NULL 이면 조직 공용, 값이 있으면 그 상담원의 개인 매크로.
+-- owner_key 는 이름 중복 검사용이다(UNIQUE 는 NULL 끼리 겹침을 검사하지 않는다). Macro_model 이 IFNULL(owner_agent_id, 0) 으로 채운다.
+-- 생성 컬럼으로 두지 않는 이유: CASCADE 외래 키가 걸린 컬럼은 STORED 생성 컬럼의 원본이 될 수 없다(MySQL 제약).
+CREATE TABLE IF NOT EXISTS macros (
+  id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  org_id          INT UNSIGNED NOT NULL,
+  owner_agent_id  INT UNSIGNED DEFAULT NULL COMMENT 'NULL 이면 공용, 값이 있으면 그 상담원의 개인 매크로',
+  owner_key       INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '이름 중복 검사용. 공용 0, 개인은 owner_agent_id',
+  name            VARCHAR(40)  NOT NULL,
+  body            TEXT         NOT NULL,
+  keywords        VARCHAR(300) DEFAULT NULL COMMENT '쉼표 구분 원문(추천용)',
+  use_count       INT UNSIGNED NOT NULL DEFAULT 0,
+  last_used_at    DATETIME     DEFAULT NULL,
+  created_by      INT UNSIGNED DEFAULT NULL,
+  updated_by      INT UNSIGNED DEFAULT NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_macro_name (org_id, owner_key, name),
+  KEY idx_macro_org (org_id, owner_agent_id, last_used_at),
+  CONSTRAINT fk_macro_org   FOREIGN KEY (org_id)         REFERENCES organizations (id) ON DELETE CASCADE,
+  CONSTRAINT fk_macro_owner FOREIGN KEY (owner_agent_id) REFERENCES agents (id)        ON DELETE CASCADE,
+  CONSTRAINT fk_macro_cby   FOREIGN KEY (created_by)     REFERENCES agents (id)        ON DELETE SET NULL,
+  CONSTRAINT fk_macro_uby   FOREIGN KEY (updated_by)     REFERENCES agents (id)        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 즐겨찾기 (상담원별, 순서 포함)
+CREATE TABLE IF NOT EXISTS macro_favorites (
+  agent_id    INT UNSIGNED NOT NULL,
+  macro_id    INT UNSIGNED NOT NULL,
+  sort_order  INT          NOT NULL DEFAULT 0,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (agent_id, macro_id),
+  KEY idx_mfav_order (agent_id, sort_order),
+  KEY idx_mfav_macro (macro_id),
+  CONSTRAINT fk_mfav_agent FOREIGN KEY (agent_id) REFERENCES agents (id) ON DELETE CASCADE,
+  CONSTRAINT fk_mfav_macro FOREIGN KEY (macro_id) REFERENCES macros (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 사용 기록 (통계용). 매크로로 채운 글을 보낼 때 한 줄씩 남긴다.
+CREATE TABLE IF NOT EXISTS macro_uses (
+  id               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  org_id           INT UNSIGNED    NOT NULL,
+  macro_id         INT UNSIGNED    DEFAULT NULL,
+  agent_id         INT UNSIGNED    DEFAULT NULL,
+  conversation_id  BIGINT UNSIGNED DEFAULT NULL,
+  message_id       BIGINT UNSIGNED DEFAULT NULL,
+  created_at       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_muse_org (org_id, created_at),
+  KEY idx_muse_macro (macro_id, created_at),
+  CONSTRAINT fk_muse_org   FOREIGN KEY (org_id)   REFERENCES organizations (id) ON DELETE CASCADE,
+  CONSTRAINT fk_muse_macro FOREIGN KEY (macro_id) REFERENCES macros (id)        ON DELETE SET NULL,
+  CONSTRAINT fk_muse_agent FOREIGN KEY (agent_id) REFERENCES agents (id)        ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 추천 색인 (guide_terms 와 같은 구조). 매크로를 저장할 때마다 그 매크로의 행을 지우고 다시 만든다.
+CREATE TABLE IF NOT EXISTS macro_terms (
+  org_id    INT UNSIGNED NOT NULL,
+  term      VARCHAR(40) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  macro_id  INT UNSIGNED NOT NULL,
+  weight    SMALLINT UNSIGNED NOT NULL,
+  PRIMARY KEY (org_id, term, macro_id),
+  KEY idx_mterm_macro (macro_id),
+  CONSTRAINT fk_mterm_macro FOREIGN KEY (macro_id) REFERENCES macros (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

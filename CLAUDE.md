@@ -68,6 +68,8 @@
 - 입력 `portal/assets/css/tailwind.src.css`, 출력 `portal/assets/css/app.css`(저장소에 포함)
 - 새 색상 단계가 필요하면 `@theme` 에 먼저 추가합니다. 없는 단계를 `@apply` 하면 빌드가 실패합니다.
 - 공통 컴포넌트는 `.btn` `.card` `.form-input` `.badge` `.table` `.icon-tile` 을 조합해 씁니다.
+- 뷰에서 JS/CSS 를 넣을 때는 **`asset_url('assets/...')`** 를 씁니다(파일 수정 시각을 `?v=` 로 붙임). `base_url()` 로 넣으면
+  Cloudflare 가 예전 파일을 몇 시간 동안 내주어, 고친 화면이 반영되지 않습니다(검사가 잡습니다).
 
 ### 3.2 다국어 — 세 사전을 함께 고친다
 
@@ -104,18 +106,27 @@ PHP    date.timezone = UTC
 - 새 화면에서 날짜를 그릴 때 **원본을 그대로 출력하지 않습니다.** 반드시 변환 함수를 거칩니다.
 - 운영 서버에서 두 설정이 어긋나면 시각이 통째로 밀립니다.
 
-### 3.5 목록은 AG Grid, 기본 100개
+### 3.5 목록은 wgrid, 기본 20개
 
-- 공통 설정은 `portal/assets/js/grid.js` 의 `RHGrid.create()` 를 씁니다.
+- 그리드는 **wgrid 0.1.0 코어(MIT)** 입니다. npm 배포 전이라 `portal/assets/vendor/wgrid/0.1.0/` 에
+  `wgrid.global.js`(window.wgrid), `wgrid.css` 를 둡니다. wgrid 저장소에서 `npm run build` 한 `dist/` 의 같은 파일을 복사합니다.
+- 공통 설정은 `portal/assets/js/grid.js` 의 `RHGrid.create()` 를 씁니다. 돌려주는 값은 `{ grid, setRows, removeRow, refresh }` 이며,
+  주기 갱신은 `setRows()`(페이지·스크롤 유지)로 합니다. wgrid 의 `grid.setRows` 를 바로 부르면 1쪽 맨 위로 돌아갑니다.
+- 컬럼은 wgrid 형식(`key`, `title`, `width`, `format(value,row)`, `render(row,value)`, `pinned`)입니다. `key` 는 유일해야 하므로
+  버튼 칸에도 `_actions` 같은 key 를 줍니다. `grid.js` 가 더하는 키: `flex: 1`(남는 너비 채우기), `tooltip: true`, `cellClass`.
 - 컨트롤러에서 `'use_grid' => TRUE` 를 넘겨야 그리드 라이브러리를 불러옵니다.
-- 날짜 열은 `RHGrid.dateTime` / `RHGrid.shortDateTime` 을 씁니다(조직 시간대 적용).
-- Enterprise 기능(`agSetColumnFilter` 등)은 쓰지 않습니다. Community 판입니다.
+- 한 쪽 개수는 기본 20개, 고를 수 있는 값은 20 / 50 / 100 / 200 / 500 / 1000 입니다(`grid.js` 의 `PAGE_SIZE_OPTIONS`).
+  고른 값은 그리드 컨테이너 id 별로 localStorage(`rh-grid-page-size:{id}`)에 기억합니다. 컨테이너에 id 가 있어야 합니다.
+- 그리드 컨테이너에 높이를 주지 않으면 wgrid 가 한 쪽 행 수만큼 늘어납니다(가이드 관리가 이 방식). 화면 안에서 스크롤시키려면 `height` 를 줍니다.
+- 날짜 열은 `format: RHGrid.dateTime` / `RHGrid.shortDateTime` 을 씁니다(조직 시간대 적용).
+- **Pro 모듈(`wgridPro`)은 쓰지 않습니다.** 운영 도메인에서 라이선스 키가 필요합니다. 포털 색은 `tailwind.src.css` 끝의 `body .wgrid` 변수로 맞춥니다
+  (wgrid.css 는 레이어 밖 스타일이라 `@layer` 안에서 덮어쓰면 집니다).
 
 ### 3.6 메뉴와 권한 — 사용자와 운영자는 분리
 
 | 레이아웃 | 대상 | 메뉴 |
 |---|---|---|
-| `layouts/main.php` | 조직 소속 사용자 | 원격지원(대기열+이력 통합) / 상담 대화 / (관리자) 상담원 관리 · 조직 정보 · 가이드 관리. 조직 관리 통계(`/admin`)는 왼쪽 위 서비스 이름, 상담 위젯 설정은 상담 대화의 설정 드로어 |
+| `layouts/main.php` | 조직 소속 사용자 | (관리자) 가이드 / 상담 대화 / 원격지원(대기열+이력 통합) / (관리자) 상담원 관리 · 조직 정보. 조직 관리 통계(`/admin`)는 왼쪽 위 서비스 이름, 상담 위젯 설정은 상담 대화의 설정 드로어, 매크로(`/console/macro`)는 상담 대화의 [매크로] 버튼 |
 | `layouts/operator.php` | 플랫폼 운영자 | 조직 가입 관리 / 감사 로그 |
 | `layouts/public.php` | 방문자 | 소개 페이지 |
 | `layouts/customer.php` | 고객 | 접속 안내, 만족도 조사, 공개 가이드(`/{조직코드}/guide`) |
@@ -240,7 +251,7 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
 
 ### 3.15 가이드 — 원본은 DB, guide.json 은 주고받는 형식
 
-조직 관리자가 `가이드 관리`(`/admin/guide`)에서 만들고 고객은 `/{조직코드}/guide` 에서 봅니다.
+조직 관리자가 `가이드`(`/admin/guide`)에서 만들고 고객은 `/{조직코드}/guide` 에서 봅니다.
 상담 중에는 **AI 없이 키워드 매칭**(`Guide_matcher`, 색인 `guide_terms`)으로 추천합니다. 설계는 `docs/guide-plan.md`.
 
 - **원본은 DB 입니다.** guide.json 은 내려받기/올리기(백업, 이관, 일괄 편집) 형식이며 서버에 파일로 두지 않습니다.
@@ -249,12 +260,17 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
   DB 를 직접 고치면 추천에 반영되지 않습니다(관리 화면의 [색인 다시 만들기] 로 복구).
 - 본문은 블록(`text` / `image` / `video`)이며 **HTML 을 받지 않습니다.** 공개 뷰(`views/guide/`)는 모든 값을
   `html_escape()` 로, 글 블록은 `guide_text_html()` 로 내보냅니다.
-- 유튜브는 영상 id(11자)만 저장하고 **`youtube-nocookie.com/embed/{id}`** 로만 그립니다. 누르기 전에는 유튜브에
-  요청하지 않고, iframe 에 `referrerpolicy="strict-origin-when-cross-origin"` 을 둡니다(유튜브가 Referer 를 요구).
+- 유튜브는 영상 id(11자)만 저장하고 **`youtube-nocookie.com/embed/{id}`** 로만 그립니다. 공개 화면에서 처음부터
+  iframe 으로 보입니다(`loading="lazy"`). iframe 에 `referrerpolicy="strict-origin-when-cross-origin"` 을 둡니다(유튜브가 Referer 를 요구).
+  **iframe 은 `views/guide/_video.php` 한 곳에서만 만듭니다**(본문과 동영상 모음이 함께 씀, 검사가 잡습니다).
 - 이미지는 `assets/uploads/guides/{org_id}/` 에 둡니다. 블록에는 이 조직 폴더에 실제로 있는 파일이나
   **외부 https 주소**(다른 사이트 가이드를 guide.json 으로 옮겨 올 때)만 받고, http·`data:`·`javascript:` 는 막습니다.
   화면 주소는 `guide_image_url()` 로 만들며 외부 이미지에는 Referer 를 보내지 않습니다(`referrerpolicy="no-referrer"`).
   업로드 폴더는 웹 서버(www-data)가 쓸 수 있어야 하고 git 에 넣지 않습니다.
+- 가이드 화면의 [외부 이미지를 본 서버로 저장] 은 글의 외부 https 이미지를 받아 조직 폴더에 저장하고 블록 주소를 바꿉니다
+  (`Guide_model::localize_external_images()`). 서버가 대신 요청하므로 **`fetch_external_image()` 만 거칩니다**:
+  https 만, 공인 IPv4 만(사설·예약 대역 거부), 확인한 IP 로 고정 접속(`CURLOPT_RESOLVE`), 리다이렉트는 3번까지 직접 따라가며 매번 다시 검사,
+  2MB 상한, 내용 검사는 올린 이미지와 같은 `image_file_ext()`. 받지 못한 이미지는 외부 주소 그대로 둡니다.
 - 주소(slug)는 영문 소문자, 숫자, 하이픈, 밑줄 60자까지이며 숫자만으로는 만들 수 없습니다(번호 접속과 겹침).
 - 가이드 카드는 `messages.meta`(`{type:'guide', article_id, title, subtitle, url}`)에 담고, 본문에도 제목과 주소를 넣습니다.
   **카드를 저장하면 발행도 합니다(3.11).** 주소는 `Guide_model::public_url()`(= `customer_url`) 로 만듭니다(3.13).
@@ -267,6 +283,87 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
 - 가이드 관리를 처음 열 때 글이 없으면 샘플 10개(`config/guide_samples.php`, 이미지 `assets/img/guide-samples/`)를
   **임시 상태로** 만듭니다. 조직마다 한 번이며(`organizations.guide_seeded_at`), 다 지워도 다시 생기지 않습니다.
   샘플 동영상을 바꿀 때는 유튜브 oEmbed 로 존재와 퍼가기 허용을 확인합니다.
+- 공개 가이드의 **새 기능 모음**(`/{조직코드}/guide/features`)과 **동영상 모음**(`/guide/videos`)은 가이드 관리의
+  "공개 페이지 구성" 으로 켤 때만 보입니다(기본 꺼짐, 꺼져 있으면 404, 그 조직 관리자 세션은 미리보기 가능). 설계는 `docs/guide-collections-plan.md`.
+  - 옵션 목록과 허용값은 `Guide_model::page_options()` 한 곳입니다(`organizations.guide_feature_*`, `guide_video_*`).
+  - 모음 주소는 `(:any)/guide/(:any)` 보다 위에 두고 **`Guide_model::RESERVED_SLUGS` 에도 넣어** 글 주소로 쓸 수 없게 합니다(검사가 잡습니다).
+  - 새 기능은 글마다 표시합니다(`is_feature`, 출시일 `feature_at` 은 조직 시간대 그날 00:00 의 UTC, 비우면 첫 공개 시각 `published_at`).
+    `published_at` 은 `save_article()` / `set_status()` 가 처음 공개할 때만 찍습니다.
+  - 동영상 모음은 따로 저장하지 않고 공개 글의 video 블록에서 그때그때 모읍니다(`Guide_model::public_videos()`).
+  - 테마 뷰는 모두 `_tabs`(탭)와 `_collection`(모음 본문)을 부릅니다(검사가 잡습니다). 모음 모양은 `guide-themes.css` 의 `guide-*` 규칙입니다.
+
+
+### 3.16 상담 운영 상태 — availability() 한 곳에서 판단
+
+고객에게 "상담 가능 / 자리 비움 / 운영 시간 외" 를 보여 주는 판단은 **`Chat_hours_model::availability($org)` 하나**로 합니다.
+위젯 상태 표시, 부재중 자동 응답, 부재 알림 메일, 콘솔 상단 배지가 모두 이 값을 씁니다. 설계는 `docs/chat-operation-plan.md`.
+
+```
+운영 중?   = 조직 수동 상태(지금 운영/지금 종료)가 있으면 그 값, 없으면 (휴일 아님 AND 운영 시간 안)
+state      = 운영 중이 아니면 closed / 운영 중이고 응대 가능 상담원이 있으면 open / 없으면 away
+응대 가능  = agents.chat_status = 'available' AND 최근 콘솔 접속(last_seen_at)
+```
+
+- `has_available_agent()` 를 컨트롤러에서 바로 부르지 않습니다(검사가 잡습니다).
+- **운영 시간(`chat_hours`)과 휴일(`chat_holidays`)은 UTC 가 아니라 조직 시간대의 벽시계 값**(자정부터 분, 로컬 날짜)입니다.
+  3.4 의 유일한 예외이며, 판정할 때만 지금 시각을 조직 시간대로 바꿔 비교합니다. 밖으로 내보내는 시각(`next_open_at`, `chat_manual_until`)은 UTC 입니다.
+- 수동 상태는 자동 판정이 같은 값이 되는 시각(`chat_manual_until`)에 '자동' 으로 돌아갑니다. 되돌리는 것을 잊어도 다음 날 닫힌 채로 남지 않습니다.
+- 부재중 자동 응답(`Widget::auto_reply`)은 시스템 메시지(`meta.type = 'auto_reply'`)로 저장하며, `send()` 가 발행할 메시지를 읽기 전에 넣어 함께 발행합니다(3.11).
+  같은 상황에서는 대화당 한 번(`conversations.auto_reply_at/kind`)입니다.
+- 운영 시간 외 '안내만' / '숨기기' 는 **서버도 새 문의를 막습니다**(409). 이미 대화 중인 방문자는 계속 쓸 수 있습니다.
+- 공휴일 후보는 `portal/application/config/holidays.php`(국가별, 매년 직접 갱신)이며 자동으로 넣지 않고 관리자가 고릅니다.
+- **담당 변경(`assignment`)과 보는 중/입력 중(`presence`) 이벤트는 `Realtime::publish_org()` 로 조직 방에만** 보냅니다.
+  상담원 이름이 들어 있어 `publish_conversation()` 으로 보내면 방문자 방(`conv:`)을 거쳐 고객 위젯으로 샙니다(검사가 잡습니다).
+  보는 중/입력 중은 저장하지 않으며 실시간 연결이 있을 때만 주고받습니다.
+- 다른 상담원이 담당인 대화에 보내면 `api_chat_send` 가 409(`conflict`)를 돌려주고 화면이 [함께 답하기 / 담당 가져오고 보내기] 를 묻습니다.
+  담당을 가져오면 `audit_logs`(`chat_take`)에 남깁니다.
+- 답변 속도(실제 기록)는 `conversations.first_visitor_at` ~ `first_reply_at` 중 **운영 중에 들어온 문의(`received_in_hours = 1`)만**으로 계산합니다.
+  대화는 위젯을 열 때 만들어지므로 `created_at` 을 쓰지 않습니다. 계산값은 한 시간 동안 `organizations.chat_reply_auto_min` 에 둡니다.
+
+### 3.17 매크로 — 고르면 채울 뿐, 보내기는 기존 API
+
+상담 대화 입력창에서 `/` 를 치면 자주 쓰는 답변(매크로) 목록이 열리고, 고르면 **입력창에 채울 뿐 보내지 않습니다.**
+전송은 기존 `POST /console/api/chat/send` 로만 합니다(저장·발행 경로를 하나로, 3.11). 설계는 `docs/macro-plan.md`.
+
+| 범위 | 저장 | 고치는 사람 | 쓰는 사람 |
+|---|---|---|---|
+| 공용 | `macros.owner_agent_id IS NULL` | 조직 관리자 | 조직의 모든 상담원 |
+| 개인 | `macros.owner_agent_id = 상담원` | 본인 | 본인만(관리자도 볼 수 없음) |
+
+- **`macros` 는 `Macro_model` 만 고칩니다**(`save()` / `delete()` / `import()`). 같은 검사(`clean_macro`), 이름 중복(`owner_key`),
+  추천 색인(`macro_terms`)을 함께 처리합니다(검사가 잡습니다). `owner_key` 는 생성 컬럼이 아니라 모델이 채웁니다
+  (CASCADE 외래 키가 걸린 컬럼은 STORED 생성 컬럼의 원본이 될 수 없는 MySQL 제약).
+- 매크로로 채운 글을 보내면 `api_chat_send` 에 `macro_id` 를 함께 넘기고 서버가 `record_use()` 로 사용 횟수를 올립니다.
+  쓸 수 없는 매크로(다른 사람의 개인 매크로)면 기록만 건너뛰고 전송은 그대로 합니다. 고객에게는 매크로 사용 여부가 보이지 않으며 `messages.meta` 에 넣지 않습니다.
+- 변수는 `{visitor_name}` `{agent_name}` `{org_name}` 영문 토큰으로 저장하고, **콘솔이 입력창에 채울 때** 바꿉니다. 목록은 `config/macro.php` 의 `variables`.
+  고객 이름이 없을 때 문구는 고객이 읽으므로 **조직 언어**의 `macro.visitor_fallback` 입니다(3.2).
+- 추천은 가이드와 같은 낱말 처리(`Guide_matcher::words()/grams()/query_terms()`, 가이드 동의어 포함)로 마지막 고객 메시지에 맞춥니다. AI 를 쓰지 않습니다.
+  가중치·기준 점수·개수 제한은 `config/macro.php` 한 곳입니다.
+- 파일 등록은 **CSV(UTF-8, 엑셀 CP949 도 받음)** 이며 Dropzone(`RHImageDrop`, 3.14)으로 받습니다. 한 행이라도 오류가 있으면 **아무것도 저장하지 않고** 오류 행을 돌려줍니다.
+  내려받을 때 `= + - @` 로 시작하는 칸은 엑셀 수식 실행을 막으려고 앞에 `'` 를 붙이고, 가져올 때 뗍니다.
+  XLSX 는 PHP `zip` 확장이 없어(`docker/web/Dockerfile`) 받지 않습니다.
+- 매크로 이름·내용은 상담원이 쓴 글이므로 화면은 `textContent` 로 그립니다(`macro*.js` 에서 `innerHTML` 에 값을 넣으면 검사가 잡습니다).
+- 공용 매크로의 만들기·고치기·지우기·파일 등록·내려받기는 `audit_logs`(`macro_*`)에 남깁니다. 개인 매크로는 남기지 않습니다.
+
+### 3.18 상담 위젯 인사말·연락처·팔로업 — 답장은 한 길로, 고객이 떠났으면 메일로
+
+위젯 인사말, 대화 안 연락처 카드, 고객이 자리를 비웠을 때의 답장 알림 메일입니다. 설계는 `docs/widget-ops-plan.md` 2~3장.
+
+- **인사말은 위젯을 열 때 화면에만 그리고**, 방문자가 첫 메시지를 보낼 때 그 앞에 시스템 메시지(`meta.type = 'greeting'`, 버튼 포함)로 한 번 저장합니다.
+  `Widget::send` 가 발행할 메시지를 읽기 전에 넣어 함께 발행합니다(3.11, 검사가 잡습니다). 열기만 한 방문자 수만큼 메시지가 쌓이지 않게 하려는 것입니다.
+- 인사말 변수는 매크로와 같은 `{visitor_name}` `{org_name}` 이고 **서버가 채워** 글자로 내려보냅니다. 위젯은 `textContent` 로만 그립니다.
+  바로가기 버튼은 3개, `https://` 만 받습니다(`Chat_greeting::clean_buttons`). 이름 없는 고객의 호칭은 조직 언어의 `macro.visitor_fallback`.
+- 위쪽에 늘 떠 있던 이름/이메일 칸은 없앴습니다. 연락처는 **대화 안 카드**로 첫 메시지 뒤 한 번 묻습니다(`conversations.contact_asked_at`).
+  "연락처를 남긴 고객에게만" 이면 카드를 먼저 띄우고 **서버도 새 문의를 409 로 막습니다**(이미 대화 중이면 막지 않음).
+- **`visitors` 는 `Visitor_model` 만 고칩니다.** 입력 검사는 `clean_contact()` 하나이며 휴대폰은 국가번호 허용 목록(`country_dial_codes()`)으로 E.164 로 저장합니다(검사가 잡습니다).
+- **상담원 답장을 저장하는 곳은 모두 `Console::publish_new_messages()` 를 거칩니다.** 그 안에서 `Chat_followup::after_agent_message()` 가
+  메일 여부를 정합니다. 새 답장 경로를 만들 때 이 함수를 빼면 자리를 비운 고객이 답을 영영 못 봅니다(검사가 잡습니다).
+- "자리를 비움" 은 `conversations.visitor_seen_at` 이 75초보다 오래된 것입니다. 이 값은 **위젯 폴링(창을 펼치고 탭이 보일 때만 돈다)과 전송·연락처 제출만** 갱신합니다.
+  `init` 에서 갱신하면 창을 닫아 둔 방문자도 보고 있는 것으로 셉니다. 같은 대화에는 고객이 다시 볼 때까지 한 통만 보냅니다(`followup_sent_at`, UPDATE 한 번으로 판단).
+- 예약 작업(cron)이 없으므로 메일은 상담원 답장 요청 안에서 보냅니다(SMTP 시간 제한 10초). 실패하면 기록을 되돌려 다음 답장 때 다시 시도합니다.
+- 메일의 이어 가기 주소는 `customer_url('{조직코드}/chat/{토큰}')`(3.13)이며 토큰은 대화·방문자·만료(14일)를 HMAC 서명한 값입니다.
+  키는 `.env` 의 `CHAT_RESUME_SECRET`, 비면 `REALTIME_TOKEN_SECRET` 에서 용도를 나눠 만듭니다. `visitor_key` 는 메일에 넣지 않습니다.
+- 메일 문구는 고객이 읽으므로 **조직 언어**입니다(`widget.followup.*`, 3.2). 보낸 사람 이름은 조직 이름, 회신 주소는 `widget_offline_email`.
 
 ---
 
@@ -331,7 +428,10 @@ docker compose up -d --build
 | 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
-| 가이드 | **DB 저장 + guide.json 내려받기/올리기.** 편집은 조직 관리자만, 상담원은 콘솔에서 검색·보내기. 추천은 키워드 매칭(AI 토큰 없음). 조직당 한 언어 (`docs/guide-plan.md`) |
+| 상담 운영 시간 | **1차: 요일별 운영 시간(하루 3구간), 휴일(공휴일 후보는 KR 만), 조직 수동 전환, 상담원 개인 상태, 부재중 자동 응답, 운영 시간 외 위젯(받기/안내만/숨기기). 2차: 답변 속도 안내(직접 지정/실제 기록), 중복 응대 방지(담당 표시·가져오기, 보는 중/입력 중, 새 문의 브라우저 알림 1회), 위젯 전화 버튼, 조직 관리 통계의 상담 숫자.** 모두 조직이 켤 때만 동작(기본 꺼짐) (`docs/chat-operation-plan.md`) |
+| 위젯 인사말·연락처·팔로업 | **인사말 1개(조직 언어) + 변수 + 바로가기 버튼 3개. 연락처 카드(이름/이메일/휴대폰 선택, 필수 모드). 고객이 떠났으면 상담원 답장을 이메일로 알림(기본 켜짐, SMTP 필요)과 14일 이어 가기 주소.** 휴대폰은 저장만 하고 문자/알림톡은 발송 수단이 정해진 뒤. 언어별 인사말과 여러 운영 설정(창구)은 보류 (`docs/widget-ops-plan.md`) |
+| 매크로 | **공용(관리자 편집) + 개인(본인), 입력창 `/` 로 불러와 고쳐 보내기.** 즐겨찾기 100개, 추천은 키워드 매칭(AI 없음), 파일 등록은 CSV(XLSX 는 PHP zip 확장 추가 후). 공용 2,000 / 개인 300 (`docs/macro-plan.md`) |
+| 가이드 | **DB 저장 + guide.json 내려받기/올리기.** 편집은 조직 관리자만, 상담원은 콘솔에서 검색·보내기. 추천은 키워드 매칭(AI 토큰 없음). 조직당 한 언어 (`docs/guide-plan.md`). 공개 화면의 새 기능 모음·동영상 모음은 조직이 켤 때만 (`docs/guide-collections-plan.md`) |
 
 ---
 

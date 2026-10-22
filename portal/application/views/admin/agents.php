@@ -1,7 +1,7 @@
 <?php
 /**
  * 파일 위치: application/views/admin/agents.php
- * 역할: 상담원 목록(AG Grid)과 추가/수정
+ * 역할: 상담원 목록(wgrid)과 추가/수정
  */
 defined('BASEPATH') OR exit('No direct script access allowed');
 
@@ -68,4 +68,4 @@ var AGENT_URLS = {
     toggle: '<?= base_url('admin/api/agent_toggle') ?>'
 };
 </script>
-<script src="<?= base_url('assets/js/admin/agents.js') ?>"></script>
+<script src="<?= asset_url('assets/js/admin/agents.js') ?>"></script>

@@ -42,8 +42,12 @@ if ($article !== NULL)
 </section>
 
 <main class="gt-portal-main">
+<?php $this->load->view('guide/_tabs'); ?>
 
-<?php if ($results !== NULL): ?>
+<?php if ($view !== 'list'): ?>
+  <div class="gt-portal-panel gt-portal-collection"><?php $this->load->view('guide/_collection'); ?></div>
+
+<?php elseif ($results !== NULL): ?>
   <div class="gt-portal-bar">
     <h2><?= html_escape(lang_text('guide.results', array('q' => $q))) ?></h2>
     <a href="<?= html_escape($base) ?>"><?= html_escape(lang_text('guide.reset')) ?></a>
@@ -54,7 +58,7 @@ if ($article !== NULL)
     <div class="gt-portal-panel gt-portal-list">
       <?php foreach ($results as $item): ?>
       <a href="<?= html_escape($link($item)) ?>">
-        <strong><?= html_escape($item['title']) ?></strong>
+        <strong><?= html_escape($item['title']) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item['id'])); ?></strong>
         <?php if ( ! empty($item['subtitle'])): ?><span><?= html_escape($item['subtitle']) ?></span><?php endif; ?>
       </a>
       <?php endforeach; ?>
@@ -84,6 +88,7 @@ if ($article !== NULL)
   <div class="gt-portal-panel gt-portal-empty"><?= html_escape(lang_text('guide.empty')) ?></div>
 
 <?php else: ?>
+  <?php $this->load->view('guide/_feature_strip'); ?>
   <div class="gt-portal-grid">
     <?php foreach ($groups as $group): ?>
     <section class="gt-portal-panel gt-portal-category">
@@ -91,7 +96,7 @@ if ($article !== NULL)
       <p class="gt-portal-count"><?= html_escape(lang_text('guide.count', array('n' => count($group['articles'])))) ?></p>
       <ul>
         <?php foreach (array_slice($group['articles'], 0, 5) as $item): ?>
-        <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?></a></li>
+        <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?></a></li>
         <?php endforeach; ?>
       </ul>
       <?php if (count($group['articles']) > 5): ?>
@@ -99,7 +104,7 @@ if ($article !== NULL)
         <summary><?= html_escape(lang_text('guide.more', array('n' => count($group['articles']) - 5))) ?></summary>
         <ul>
           <?php foreach (array_slice($group['articles'], 5) as $item): ?>
-          <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?></a></li>
+          <li><a href="<?= html_escape($link($item)) ?>"><?= html_escape($item->title) ?> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?></a></li>
           <?php endforeach; ?>
         </ul>
       </details>

@@ -22,8 +22,12 @@ $number = 0;
   </header>
 
   <main class="gt-dark-main">
+  <?php $this->load->view('guide/_tabs'); ?>
 
-  <?php if ($results !== NULL): ?>
+  <?php if ($view !== 'list'): ?>
+    <?php $this->load->view('guide/_collection'); ?>
+
+  <?php elseif ($results !== NULL): ?>
     <div class="gt-dark-bar">
       <h1><?= html_escape(lang_text('guide.results', array('q' => $q))) ?></h1>
       <a href="<?= html_escape($base) ?>"><?= html_escape(lang_text('guide.reset')) ?></a>
@@ -35,7 +39,7 @@ $number = 0;
         <?php foreach ($results as $item): ?>
         <a class="gt-dark-row" href="<?= html_escape($link($item)) ?>">
           <span class="gt-dark-num">→</span>
-          <span><strong><?= html_escape($item['title']) ?></strong>
+          <span><strong><?= html_escape($item['title']) ?></strong> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item['id'])); ?>
           <?php if ( ! empty($item['subtitle'])): ?><small><?= html_escape($item['subtitle']) ?></small><?php endif; ?></span>
         </a>
         <?php endforeach; ?>
@@ -65,6 +69,7 @@ $number = 0;
   <?php else: ?>
     <h1 class="gt-dark-headline"><?= html_escape(lang_text('guide.hero')) ?></h1>
     <p class="gt-dark-muted"><?= html_escape(lang_text('guide.subtitle')) ?></p>
+    <?php $this->load->view('guide/_feature_strip'); ?>
     <?php foreach ($groups as $group): ?>
     <section class="gt-dark-group">
       <h2><?= html_escape($group['name']) ?></h2>
@@ -72,7 +77,7 @@ $number = 0;
         <?php foreach ($group['articles'] as $item): $number++; ?>
         <a class="gt-dark-row" href="<?= html_escape($link($item)) ?>">
           <span class="gt-dark-num"><?= html_escape(sprintf('%02d', $number)) ?></span>
-          <span><strong><?= html_escape($item->title) ?></strong>
+          <span><strong><?= html_escape($item->title) ?></strong> <?php $this->load->view('guide/_new_badge', array('badge_id' => $item->id)); ?>
           <?php if ( ! empty($item->subtitle)): ?><small><?= html_escape($item->subtitle) ?></small><?php endif; ?></span>
         </a>
         <?php endforeach; ?>

@@ -6,7 +6,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 $is_super = (bool) $this->session->userdata('is_super');
 
-// 상단 메뉴. 조직 관리 하위 화면(상담원 관리, 조직 정보)도 관리자에게는 여기 바로 둔다.
+// 상단 메뉴. 순서는 가이드, 상담 대화, 원격지원. 조직 관리 하위 화면(상담원 관리, 조직 정보)도 관리자에게는 여기 바로 둔다.
 // 상담 위젯 설정은 상담 대화 화면의 설정 드로어에 있다.
 // 조직 관리(/admin 통계) 자체는 메뉴에 두지 않고 왼쪽 위 서비스 이름을 누르면 열린다.
 // [주소, 이름, 현재 화면 여부]. '|' 는 구분선.
@@ -17,17 +17,20 @@ $here = function ($path, $exact = FALSE) use ($uri) {
 $is_admin = $this->session->userdata('agent_role') === 'admin';
 // 상담원은 /admin 에 들어갈 수 없으므로 원격지원으로 보낸다.
 $home_url = $is_admin ? 'admin' : 'console';
-$menu = array(
-    // console/session/{id} (원격 화면)은 원격지원에서 들어가므로 원격지원에 불을 켠다.
-    array('console', '원격지원', $uri === 'console' || strpos($uri, 'console/session') === 0),
-    array('console/chat', '상담 대화', $here('console/chat')),
-);
+$menu = array();
+// 가이드는 관리자만 고칠 수 있으므로 관리자에게만 맨 앞에 둔다.
+if ($is_admin)
+{
+    $menu[] = array('admin/guide', '가이드', $here('admin/guide'));
+}
+$menu[] = array('console/chat', '상담 대화', $here('console/chat'));
+// console/session/{id} (원격 화면)은 원격지원에서 들어가므로 원격지원에 불을 켠다.
+$menu[] = array('console', '원격지원', $uri === 'console' || strpos($uri, 'console/session') === 0);
 if ($is_admin)
 {
     $menu[] = '|';
     $menu[] = array('admin/agents', '상담원 관리', $here('admin/agents'));
     $menu[] = array('admin/organization', '조직 정보', $here('admin/organization'));
-    $menu[] = array('admin/guide', '가이드 관리', $here('admin/guide'));
 }
 ?>
 <!doctype html>

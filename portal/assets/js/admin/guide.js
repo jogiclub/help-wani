@@ -1,6 +1,7 @@
 /**
  * 파일 위치: assets/js/admin/guide.js
- * 역할: 가이드 관리 목록(AG Grid), 매칭 시험, 분류/동의어 관리, guide.json 올리기
+ * 역할: 가이드 관리 목록(wgrid, 새 기능만 거르기), 외부 이미지 저장, 매칭 시험, 분류/동의어 관리, guide.json 올리기,
+ *       공개 페이지 테마와 구성(새 기능 모음, 동영상 모음)
  */
 (function ($) {
     'use strict';
@@ -9,13 +10,6 @@
     var STATUS_LABEL = { published: '공개', draft: '임시' };
 
     var grid = null;
-
-    /**
-     * 행 높이를 부제목에 맞춰 키웠으므로 한 줄짜리 칸은 세로 가운데에 둔다.
-     * Tailwind 유틸리티는 레이어 안에 있어 AG Grid 기본 스타일을 이기지 못하므로 인라인 스타일로 준다.
-     * flex 로 맞추면 말줄임(…)이 사라지므로 줄 높이로 맞춘다(행 52px - 테두리).
-     */
-    var CENTER = { lineHeight: '50px' };
 
     /** 가져오기가 끝났으면 모달을 닫을 때 새 목록을 불러온다 */
     var importDone = false;
@@ -28,24 +22,53 @@
     // 목록
     // ------------------------------------------------------------------
 
-    function titleRenderer(params) {
+    function titleRenderer(row, value) {
         var wrap = document.createElement('div');
-        wrap.className = 'flex h-full flex-col justify-center leading-tight';
+        wrap.className = 'flex min-w-0 flex-col justify-center leading-tight';
 
         var link = document.createElement('a');
         link.className = 'truncate font-medium text-slate-800 hover:text-brand-600 hover:underline';
-        link.href = GUIDE_URLS.edit + params.data.id;
-        link.textContent = params.value;
+        link.href = GUIDE_URLS.edit + row.id;
+        link.textContent = value;
         wrap.appendChild(link);
 
-        if (params.data.subtitle) {
+        if (row.subtitle) {
             var sub = document.createElement('span');
             sub.className = 'truncate text-xs text-slate-400';
-            sub.textContent = params.data.subtitle;
+            sub.textContent = row.subtitle;
             wrap.appendChild(sub);
         }
 
         return wrap;
+    }
+
+    /** 새 기능 칸: 배지 + 출시일(조직 시간대 날짜) + 버전 */
+    function featureRenderer(row) {
+        if (!row.is_feature) {
+            return '-';
+        }
+
+        var wrap = document.createElement('div');
+        wrap.className = 'flex min-w-0 flex-col justify-center leading-tight';
+
+        var badge = document.createElement('span');
+        badge.className = 'badge badge-blue w-fit';
+        badge.textContent = '새 기능' + (row.feature_label ? ' ' + row.feature_label : '');
+        wrap.appendChild(badge);
+
+        var date = document.createElement('span');
+        date.className = 'mt-0.5 text-xs text-slate-400';
+        date.textContent = row.feature_date || '공개 전';
+        wrap.appendChild(date);
+
+        return wrap;
+    }
+
+    /** 위쪽 "새 기능만" 거르기를 반영한 행 */
+    function visibleRows() {
+        return $('#filterFeature').is(':checked')
+            ? GUIDE_ROWS.filter(function (row) { return row.is_feature; })
+            : GUIDE_ROWS;
     }
 
     function removeArticle(row) {
@@ -54,7 +77,8 @@
             function () {
                 apiPost(GUIDE_URLS.remove, { id: row.id }, function (data, message) {
                     showToast(message, 'success');
-                    grid.applyTransaction({ remove: [row] });
+                    GUIDE_ROWS = GUIDE_ROWS.filter(function (r) { return r !== row; });
+                    grid.removeRow(row);
                 });
             });
     }
@@ -65,30 +89,32 @@
         apiPost(GUIDE_URLS.status, { id: row.id, status: next }, function (data, message) {
             showToast(message, 'success');
             row.status = data.status;
-            grid.applyTransaction({ update: [row] });
+            grid.refresh();
         });
     }
 
     function createGrid() {
+        // 행 높이를 부제목에 맞춰 키웠다. wgrid 셀은 세로 가운데 정렬이라 한 줄짜리 칸도 그대로 맞는다.
         grid = RHGrid.create('guideGrid', {
-            columnDefs: [
-                { headerName: '분류', field: 'category_name', width: 120, flex: 0, cellStyle: CENTER,
-                  valueFormatter: function (p) { return p.value || '분류 없음'; } },
-                { headerName: '제목', field: 'title', minWidth: 220, cellRenderer: titleRenderer },
-                { headerName: '키워드', field: 'keywords', minWidth: 140, cellStyle: CENTER,
-                  valueFormatter: function (p) { return p.value || '-'; } },
+            columns: [
+                { title: '분류', key: 'category_name', width: 120,
+                  format: function (v) { return v || '분류 없음'; } },
+                { title: '제목', key: 'title', width: 220, flex: 1, align: 'left', render: titleRenderer },
+                { title: '키워드', key: 'keywords', width: 140, flex: 1,
+                  format: function (v) { return v || '-'; } },
                 {
-                    headerName: '상태', field: 'status', width: 90, flex: 0, cellStyle: CENTER,
-                    cellRenderer: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
-                    valueFormatter: function (p) { return STATUS_LABEL[p.value] || p.value; }
+                    title: '상태', key: 'status', width: 90,
+                    render: RHGrid.badgeRenderer(STATUS_CLASS, STATUS_LABEL),
+                    format: function (v) { return STATUS_LABEL[v] || v; }
                 },
-                { headerName: '조회', field: 'view_count', width: 80, flex: 0, cellStyle: CENTER,
-                  filter: 'agNumberColumnFilter' },
-                { headerName: '수정', field: 'updated_at', width: 120, flex: 0, cellStyle: CENTER,
-                  valueFormatter: RHGrid.shortDateTime },
+                { title: '새 기능', key: 'feature_date', width: 120, render: featureRenderer,
+                  format: function (v, row) { return row.is_feature ? '새 기능 ' + (v || '') : ''; } },
+                { title: '조회', key: 'view_count', width: 80, type: 'number', align: 'center' },
+                { title: '수정', key: 'updated_at', width: 120,
+                  format: RHGrid.shortDateTime },
                 {
-                    headerName: '관리', width: 230, minWidth: 230, flex: 0, sortable: false, filter: false, pinned: 'right',
-                    cellRenderer: RHGrid.buttonsRenderer([
+                    title: '관리', key: '_actions', width: 230, sortable: false, pinned: 'right',
+                    render: RHGrid.buttonsRenderer([
                         {
                             label: '보기', className: 'btn-secondary',
                             show: function (row) { return row.status === 'published'; },
@@ -105,10 +131,10 @@
                     ])
                 }
             ],
-            rowData: GUIDE_ROWS,
+            rows: visibleRows(),
             rowHeight: 52,
-            getRowId: function (p) { return String(p.data.id); },
-            overlayNoRowsTemplate: '<span class="text-slate-400">아직 가이드가 없습니다. [새 가이드] 로 만들거나 guide.json 을 올려 주세요.</span>'
+            rowId: function (row) { return row.id; },
+            noRowsText: '아직 가이드가 없습니다. [새 가이드] 로 만들거나 guide.json 을 올려 주세요.'
         });
     }
 
@@ -240,6 +266,60 @@
     }
 
     // ------------------------------------------------------------------
+    // 공개 페이지 구성 (새 기능 모음, 동영상 모음)
+    // ------------------------------------------------------------------
+
+    /** 상위 옵션이 꺼져 있으면 하위 항목을 흐리게 하고 고를 수 없게 한다 */
+    function syncOptionGroups() {
+        [['feature', '#optFeatureEnabled'], ['video', '#optVideoEnabled']].forEach(function (pair) {
+            var on = $(pair[1]).is(':checked');
+            $('[data-option-group="' + pair[0] + '"]').toggleClass('opacity-50', !on)
+                .find('input, select').prop('disabled', !on);
+        });
+    }
+
+    function savePageOptions() {
+        var $btn = $('#btnSavePageOptions').prop('disabled', true);
+
+        apiPost(GUIDE_URLS.pageOptionsSave, {
+            feature_enabled: $('#optFeatureEnabled').is(':checked') ? 1 : 0,
+            feature_new_days: $('#optFeatureNewDays').val(),
+            feature_banner: $('#optFeatureBanner').is(':checked') ? 1 : 0,
+            video_enabled: $('#optVideoEnabled').is(':checked') ? 1 : 0,
+            video_sort: $('#optVideoSort').val(),
+            video_filter: $('#optVideoFilter').is(':checked') ? 1 : 0
+        }, function (data, message) {
+            showToast(message, 'success');
+        }).always(function () { $btn.prop('disabled', false); });
+    }
+
+    function setupPageOptions() {
+        syncOptionGroups();
+        $('#optFeatureEnabled, #optVideoEnabled').on('change', syncOptionGroups);
+
+        $('#btnSavePageOptions').on('click', function () {
+            // 켰는데 모을 것이 없으면 고객 화면에 빈 페이지가 보이므로 한 번 묻는다.
+            var empty = [];
+
+            if ($('#optFeatureEnabled').is(':checked') && Number($('#featureCount').text()) === 0) {
+                empty.push('새 기능 모음(새 기능으로 표시된 공개 가이드 0건)');
+            }
+            if ($('#optVideoEnabled').is(':checked') && Number($('#videoCount').text()) === 0) {
+                empty.push('동영상 모음(공개 가이드의 동영상 0개)');
+            }
+
+            if (!empty.length) {
+                savePageOptions();
+                return;
+            }
+
+            showConfirmModal('빈 모음 페이지',
+                empty.join(', ') + ' 은 고객 화면에 빈 페이지로 보입니다. 그래도 저장할까요?',
+                savePageOptions);
+        });
+    }
+
+    // ------------------------------------------------------------------
 
     $(function () {
         createGrid();
@@ -276,6 +356,29 @@
             openModal('importModal');
         });
 
+        $('#btnLocalizeImages').on('click', function () {
+            var $btn = $(this);
+
+            showConfirmModal('외부 이미지를 본 서버로 저장',
+                '가이드에 들어 있는 외부 이미지(https 주소)를 받아 우리 조직 폴더에 저장하고 글의 주소를 바꿉니다. '
+                + '이미지가 많으면 시간이 걸릴 수 있습니다. 진행할까요?',
+                function () {
+                    var label = $btn.text();
+                    $btn.prop('disabled', true).text('저장하는 중...');
+
+                    apiPost(GUIDE_URLS.localizeImages, {}, function (data, message) {
+                        if (data.failed_count > 0) {
+                            // 실패 사유는 앞의 몇 개만 알림에 붙이고 전체(최대 20개)는 콘솔에 남긴다.
+                            var reasons = data.failed.slice(0, 3).map(function (f) { return f.reason; }).join(' / ');
+                            showToast(message + ' (' + reasons + ')', 'warning');
+                            if (window.console) { console.warn('받지 못한 외부 이미지', data.failed); }
+                        } else {
+                            showToast(message, 'success');
+                        }
+                    }).always(function () { $btn.prop('disabled', false).text(label); });
+                });
+        });
+
         $('#btnSaveTheme').on('click', function () {
             var $btn = $(this).prop('disabled', true);
             var theme = $('input[name="guideTheme"]:checked').val();
@@ -288,6 +391,10 @@
                     .append(' <span class="badge badge-green ml-1" data-theme-current>사용 중</span>');
             }).always(function () { $btn.prop('disabled', false); });
         });
+
+        $('#filterFeature').on('change', function () { grid.setRows(visibleRows()); });
+
+        setupPageOptions();
 
         $('#btnReindex').on('click', function () {
             apiPost(GUIDE_URLS.reindex, {}, function (data, message) {
