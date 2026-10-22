@@ -1,15 +1,17 @@
 /**
  * 파일 위치: assets/js/operator/organizations.js
  * 역할: 조직 가입 관리 그리드와 승인/반려/중지 처리
+ *
+ * Bootstrap 6 화면(layouts/operator.html). 조직 수정은 드로어(openDrawer), 사유 입력은 다이얼로그(openModal).
  */
 (function ($) {
     'use strict';
 
     var STATUS_CLASS = {
-        pending: 'badge-amber',
-        active: 'badge-green',
-        rejected: 'badge-red',
-        suspended: 'badge-dark'
+        pending: 'amber',
+        active: 'green',
+        rejected: 'red',
+        suspended: 'dark'
     };
 
     var STATUS_LABEL = {
@@ -49,7 +51,7 @@
     }
 
     /**
-     * 행을 클릭하면 조직 정보를 모달에 채워 연다.
+     * 행을 클릭하면 조직 정보를 드로어에 채워 연다.
      */
     function openOrgModal(row) {
         $('#orgModalId').val(row.id);
@@ -63,8 +65,7 @@
         $('#orgModalTimezone').val(row.timezone || 'Asia/Seoul');
 
         $('#orgModalStatus')
-            .removeClass()
-            .addClass('badge ' + (STATUS_CLASS[row.status] || 'badge-gray'))
+            .attr('class', RHUi.badge(STATUS_CLASS[row.status] || 'gray'))
             .text(STATUS_LABEL[row.status] || row.status);
 
         $('#orgModalOwner').text(row.owner_name ? (row.owner_name + ' <' + row.owner_email + '>') : '-');
@@ -76,7 +77,7 @@
         $('#orgModalVisit').attr('href', ORG_BASE_URL + row.org_code);
 
         updateModalTzPreview();
-        openModal('orgModal');
+        openDrawer('orgDrawer');
     }
 
     /** 선택한 시간대의 현재 시각 미리보기 */
@@ -102,7 +103,7 @@
             locale:   $('#orgModalLocale').val(),
             timezone: $('#orgModalTimezone').val()
         }, function (data, message) {
-            closeModal('orgModal');
+            closeDrawer('orgDrawer');
             showToast(message, 'success');
             setTimeout(function () { window.location.reload(); }, 800);
         });
@@ -125,14 +126,14 @@
                 title: '조직명', key: 'name', width: 160, flex: 1, align: 'left',
                 render: function (row, value) {
                     var wrap = document.createElement('div');
-                    wrap.className = 'min-w-0 leading-tight';
+                    wrap.className = 'rh-cell-stack';
 
                     var name = document.createElement('div');
-                    name.className = 'truncate font-medium text-slate-800';
+                    name.className = 'text-truncate fw-medium';
                     name.textContent = value;
 
                     var code = document.createElement('div');
-                    code.className = 'truncate font-mono text-xs text-slate-400';
+                    code.className = 'text-truncate font-monospace rh-cell-sub';
                     code.textContent = ORG_BASE_URL + row.org_code;
 
                     wrap.appendChild(name);
@@ -151,14 +152,14 @@
                     if (!value) { return '-'; }
 
                     var wrap = document.createElement('div');
-                    wrap.className = 'min-w-0 leading-tight';
+                    wrap.className = 'rh-cell-stack';
 
                     var name = document.createElement('div');
-                    name.className = 'truncate';
+                    name.className = 'text-truncate';
                     name.textContent = value;
 
                     var email = document.createElement('div');
-                    email.className = 'truncate text-xs text-slate-400';
+                    email.className = 'text-truncate rh-cell-sub';
                     email.textContent = row.owner_email;
 
                     wrap.appendChild(name);
@@ -180,7 +181,7 @@
                 title: '처리', key: '_actions', width: 170, sortable: false, pinned: 'right',
                 render: RHGrid.buttonsRenderer([
                     {
-                        label: '승인', className: 'btn-primary',
+                        label: '승인', className: 'primary',
                         show: function (row) { return row.status === 'pending'; },
                         onClick: function (row) {
                             showConfirmModal('조직 승인',
@@ -189,7 +190,7 @@
                         }
                     },
                     {
-                        label: '반려', className: 'btn-secondary',
+                        label: '반려', className: 'secondary',
                         show: function (row) { return row.status === 'pending'; },
                         onClick: function (row) {
                             askReason('가입 반려',
@@ -198,7 +199,7 @@
                         }
                     },
                     {
-                        label: '이용 중지', className: 'btn-secondary',
+                        label: '이용 중지', className: 'secondary',
                         show: function (row) { return row.status === 'active' && row.org_code !== 'system'; },
                         onClick: function (row) {
                             askReason('이용 중지',
@@ -207,7 +208,7 @@
                         }
                     },
                     {
-                        label: '다시 활성화', className: 'btn-primary',
+                        label: '다시 활성화', className: 'primary',
                         show: function (row) { return row.status === 'rejected' || row.status === 'suspended'; },
                         onClick: function (row) {
                             showConfirmModal('다시 활성화', row.name + ' 조직을 다시 활성화할까요?',
@@ -222,7 +223,7 @@
             columns: columns,
             rows: ORG_ROWS,
             rowId: function (row) { return row.id; },
-            rowClass: function () { return 'cursor-pointer'; },
+            rowClass: function () { return 'rh-clickable'; },
             onRowClicked: function (row) {
                 openOrgModal(row);
             }

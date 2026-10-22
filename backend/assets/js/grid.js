@@ -254,7 +254,7 @@
 
     /**
      * 배지 형태로 보여주는 render 함수를 만든다.
-     * classMap: { 값: 'badge-green' }
+     * classMap: { 값: 'badge-green' } (또는 톤 이름 'green')
      * labelMap: { 값: '표시문구' }
      */
     function badgeRenderer(classMap, labelMap) {
@@ -267,7 +267,8 @@
             var label = (labelMap && labelMap[value]) || value;
             var span = document.createElement('span');
 
-            span.className = 'badge ' + cls;
+            // 화면 방식(Tailwind / Bootstrap 6)에 맞는 클래스는 common.js 의 RHUi 가 고른다.
+            span.className = window.RHUi ? window.RHUi.badge(cls) : 'badge ' + cls;
             span.textContent = label;
             return span;
         };
@@ -280,7 +281,7 @@
     function buttonsRenderer(buttons) {
         return function (row) {
             var wrapEl = document.createElement('div');
-            wrapEl.className = 'flex h-full items-center gap-1';
+            wrapEl.className = window.RHUi ? window.RHUi.actions() : 'flex h-full items-center gap-1';
 
             buttons.forEach(function (def) {
                 if (def.show && !def.show(row)) {
@@ -289,7 +290,8 @@
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = 'btn btn-sm ' + (def.className || 'btn-secondary');
+                btn.className = window.RHUi ? window.RHUi.button(def.className || 'btn-secondary')
+                                            : 'btn btn-sm ' + (def.className || 'btn-secondary');
                 btn.textContent = def.label;
                 btn.addEventListener('click', function (event) {
                     // 행 클릭(상세 모달 열기)까지 번지지 않게 막는다.

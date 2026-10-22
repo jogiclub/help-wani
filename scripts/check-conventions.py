@@ -173,6 +173,113 @@ def check_tailwind():
         ok('Tailwind CSS 수정 시각 확인')
 
 
+# ------------------------------------------------- 3.1 Bootstrap 6 + 왔니 (전환 중)
+BOOTSTRAP_DIR = 'backend/assets/vendor/bootstrap/6.0.0-alpha.1'
+# 공식 설치 문서(getbootstrap.com/docs/6.0/getting-started/install)의 무결성 값
+BOOTSTRAP_SHA384 = {
+    'bootstrap.min.css': 'B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe',
+    'bootstrap.bundle.min.js': '1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL',
+}
+# Bootstrap 화면에 남으면 안 되는 5.3 이름과 예전 Tailwind 화면 전용 이름(조용히 모양이 사라진다)
+BOOTSTRAP_LEGACY = re.compile(
+    r"""data-bs-(?:toggle|dismiss)=["'](?:modal|offcanvas|dropdown)["']"""
+    r"""|(?<![\w-])(?:offcanvas(?:-[a-z]+)?|dropdown-(?:menu|item|toggle)|form-select|text-muted"""
+    r"""|modal-(?:root|dialog|content|header|body|footer))\b"""
+    r"""|(?<![\w-])btn-(?:primary|secondary|success|danger|warning|info|ghost|outline-[a-z]+)\b"""
+    r"""|(?<![\w-])badge-(?:gray|blue|amber|green|red|dark)\b|(?<![\w-])form-(?:input|help|error)\b"""
+    r"""|data-(?:modal|drawer)-(?:close|backdrop)""")
+# Tailwind 에만 있는 클래스. Bootstrap 화면에서는 아무 모양도 내지 않는다.
+TAILWIND_ONLY = re.compile(
+    r"""(?<![\w-])(?:bg|text|border|ring)-(?:slate|gray|zinc|neutral|stone|red|amber|emerald|blue|brand)-\d{2,3}\b"""
+    r"""|(?<![\w-])(?:space-[xy]|divide-[xy])-\d\b|(?<![\w-])(?:sm|md|lg|xl):(?:flex|grid|hidden|inline|block|grid-cols-\d)\b"""
+    r"""|(?<![\w-])max-w-(?:xs|sm|md|lg|xl|[2-7]xl)\b|(?<![\w-])text-(?:xs|sm|base|lg|xl|[2-9]xl)\b"""
+    r"""|(?<![\w-])font-(?:mono|medium|semibold|bold)\b"""
+    r"""|(?<![\w-])(?:truncate|leading-[a-z]+|tracking-[a-z]+|rounded-(?:md|lg|xl|full)|shadow-(?:md|xl))\b""")
+
+
+def bootstrap_layouts():
+    """ui_kit 을 'bootstrap' 으로 정한 레이아웃 이름(layouts/xxx)."""
+    names = []
+    for rel, full in walk(f'{TEMPLATES}/layouts', ('.html',)):
+        if re.search(r"""\{%-?\s*set\s+ui_kit\s*=\s*['"]bootstrap['"]""", open(full, encoding='utf-8').read()):
+            names.append('layouts/' + os.path.basename(rel)[:-len('.html')])
+    return sorted(names)
+
+
+def bootstrap_files(layouts):
+    """Bootstrap 레이아웃과 그 레이아웃으로 그리는 화면, 화면이 include 하는 템플릿, 화면이 싣는 JS."""
+    files = {f'{TEMPLATES}/{layout}.html' for layout in layouts}
+    constants = {}
+    for view, call, where in render_calls():
+        rel = where.rsplit(':', 1)[0]
+        if rel not in constants:
+            # _LAYOUT = 'layouts/operator' 처럼 모듈 상수로 넘기는 라우터도 있다.
+            constants[rel] = dict(re.findall(r"""^(\w+)\s*=\s*['"](layouts/[a-z_]+)['"]""", read(rel), re.M))
+        match = re.search(r"""['"](layouts/[a-z_]+)['"]""", call)
+        layout = match.group(1) if match else 'layouts/main'
+        for name, value in constants[rel].items():
+            if re.search(r'[,(]\s*' + name + r'\s*\)\s*$', call):
+                layout = value
+        if layout not in layouts:
+            continue
+        files.add(f'{TEMPLATES}/{view}.html')
+        text = read(f'{TEMPLATES}/{view}.html')
+        for inc in re.findall(r"""\{%-?\s*include\s+['"]([^'"]+)['"]""", text):
+            if not inc.startswith('layouts/'):
+                files.add(f'{TEMPLATES}/{inc}')
+        for js in re.findall(r"""asset_url\(\s*['"]assets/(js/[^'"]+\.js)['"]""", text):
+            files.add('backend/assets/' + js)
+    return sorted(f for f in files if exists(f))
+
+
+def check_bootstrap():
+    """Bootstrap 6 벤더 파일 무결성, bs.js 와 _head.html 의 버전 일치, Bootstrap 화면에 5.3·Tailwind 이름이 없는지."""
+    import base64
+    import hashlib
+
+    problems = []
+
+    for name, digest in BOOTSTRAP_SHA384.items():
+        path = os.path.join(ROOT, BOOTSTRAP_DIR, name)
+        if not os.path.isfile(path):
+            problems.append(f'{BOOTSTRAP_DIR}/{name} 이 없음')
+            continue
+        actual = base64.b64encode(hashlib.sha384(open(path, 'rb').read()).digest()).decode()
+        if actual != digest:
+            problems.append(f'{BOOTSTRAP_DIR}/{name} 의 sha384 가 공식 값과 다름')
+
+    head = read(f'{TEMPLATES}/layouts/_head.html')
+    bs_js = read(f'{JS}/bs.js') if exists(f'{JS}/bs.js') else ''
+    css_ver = set(re.findall(r'vendor/bootstrap/([^/]+)/bootstrap\.min\.css', head))
+    js_ver = set(re.findall(r'vendor/bootstrap/([^/]+)/bootstrap\.bundle\.min\.js', bs_js))
+    if not css_ver or css_ver != js_ver:
+        problems.append(f'Bootstrap 버전이 어긋남: _head.html {sorted(css_ver)} / bs.js {sorted(js_ver)}')
+
+    for rel, full in walk(JS, ('.js',), ('vendor',)):
+        if re.search(r'window\.bootstrap\b|\bbootstrap\.(?:Dialog|Drawer|Toast|Tooltip|Menu|Tab)\b', open(full, encoding='utf-8').read()):
+            problems.append(f'{rel} 가 bootstrap 전역을 씀(Bootstrap 6 은 전역이 없음, withBootstrap() 을 씁니다)')
+
+    excluded = [os.path.normpath(os.path.join('backend/assets/css', target))
+                for target in re.findall(r'@source\s+not\s+"([^"]+)"', read('backend/assets/css/tailwind.src.css'))]
+
+    layouts = bootstrap_layouts()
+    files = bootstrap_files(layouts)
+    for rel in files:
+        for number, line in lines_of(os.path.join(ROOT, rel)):
+            for pattern, label in ((BOOTSTRAP_LEGACY, '5.3·예전 이름'), (TAILWIND_ONLY, 'Tailwind 전용 클래스')):
+                found = pattern.search(line)
+                if found:
+                    problems.append(f'{rel}:{number} {label} "{found.group(0)}"')
+        norm = os.path.normpath(rel)
+        if not any(norm == e or norm.startswith(e + os.sep) for e in excluded):
+            problems.append(f'{rel} 가 Tailwind 추출 대상에 남아 있음(tailwind.src.css 에 @source not 을 더합니다)')
+
+    if problems:
+        fail('Bootstrap 6 규칙 위반 (docs/frontend-bootstrap6-plan.md)', '\n    '.join(problems[:15]))
+    else:
+        ok(f'Bootstrap 6 확인 (무결성, 버전 일치, 레이아웃 {len(layouts)}개·파일 {len(files)}개에 5.3·Tailwind 이름 없음)')
+
+
 # ---------------------------------------------------------------- 3.1 자산 주소에 버전
 def check_asset_version():
     """템플릿의 포털 JS/CSS 는 asset_url() 로 버전을 붙인다. base_url() 로 바로 쓰면 Cloudflare 가 예전 파일을 내준다."""
@@ -844,6 +951,7 @@ def check_live():
 
 def main():
     check_tailwind()
+    check_bootstrap()
     check_asset_version()
     check_locales()
     check_icons()

@@ -1,45 +1,65 @@
 {#-
   파일 위치: backend/app/templates/layouts/operator.html
   역할: 플랫폼 운영자 콘솔 레이아웃 (조직 소속 사용자 메뉴와 분리)
+
+  Bootstrap 6 + 왔니 앱 셸(docs/frontend-bootstrap6-plan.md 3.2). 헤더 60px, 사이드바 200px.
+  1280px(Bootstrap 6 xl) 미만에서는 사이드바가 왼쪽 드로어(.xl:drawer)가 되고 헤더의 메뉴 버튼으로 연다.
+  메뉴는 [주소, 이름, 아이콘, 현재 화면 여부].
 -#}
+{%- set ui_kit = 'bootstrap' -%}
 {%- set current = uri_string() -%}
 {%- set on_audit = 'operator/audit' in current -%}
+{%- set menu = [
+  ['operator', '조직 가입 관리', 'building-check', not on_audit],
+  ['operator/audit', '감사 로그', 'journal-text', on_audit],
+] -%}
 <!doctype html>
-<html lang="{{ i18n.locale }}">
+<html lang="{{ i18n.locale }}" data-bs-theme="light">
 <head>
 {% include 'layouts/_head.html' %}
 </head>
-<body class="min-h-screen">
+<body class="rh-app">
 
-<header class="border-b-2 border-amber-400 bg-slate-800 text-white">
-  <div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-    <a class="flex items-center gap-2" href="{{ base_url('operator') }}">
-      <span class="text-lg font-bold">{{ app_name }}</span>
-      <span class="badge badge-amber">운영자</span>
+<header class="rh-header">
+  <button type="button" class="btn-icon xl:d-none" data-bs-toggle="drawer" data-bs-target="#rhSidebar"
+          aria-controls="rhSidebar" aria-label="메뉴 열기">
+    <i class="bi bi-list fs-xl" aria-hidden="true"></i>
+  </button>
+  <a class="rh-brand" href="{{ base_url('operator') }}">{{ app_name }}</a>
+  <span class="badge rh-badge-dark">운영자</span>
+
+  <div class="rh-header-end">
+    <span class="rh-header-user d-none md:d-inline">{{ session.get('agent_name', '') }}</span>
+    <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('console') }}">
+      <i class="bi bi-headset" aria-hidden="true"></i><span class="d-none sm:d-inline">상담 콘솔</span>
     </a>
-
-    <nav class="hidden gap-1 sm:flex">
-      <a class="rounded px-3 py-1.5 text-sm {{ 'bg-slate-700 text-white' if not on_audit else 'text-slate-300 hover:bg-slate-700 hover:text-white' }}"
-         href="{{ base_url('operator') }}">조직 가입 관리</a>
-      <a class="rounded px-3 py-1.5 text-sm {{ 'bg-slate-700 text-white' if on_audit else 'text-slate-300 hover:bg-slate-700 hover:text-white' }}"
-         href="{{ base_url('operator/audit') }}">감사 로그</a>
-    </nav>
-
-    <div class="ml-auto flex items-center gap-3">
-      <span class="hidden text-sm text-slate-300 md:inline">
-        {{ session.get('agent_name', '') }}
-      </span>
-      <a class="btn btn-sm border border-slate-600 text-slate-200 hover:bg-slate-700"
-         href="{{ base_url('console') }}">상담 콘솔</a>
-      <a class="btn btn-sm border border-slate-600 text-slate-200 hover:bg-slate-700"
-         href="{{ base_url('logout') }}">로그아웃</a>
-    </div>
+    <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('logout') }}">
+      <i class="bi bi-box-arrow-right" aria-hidden="true"></i><span class="d-none sm:d-inline">로그아웃</span>
+    </a>
   </div>
 </header>
 
-<main class="mx-auto max-w-7xl px-4 py-6">
+<div class="rh-body">
+  <dialog class="xl:drawer drawer-start rh-sidebar" id="rhSidebar" tabindex="-1" aria-labelledby="rhSidebarTitle">
+    <div class="drawer-header">
+      <h2 class="drawer-title" id="rhSidebarTitle">메뉴</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="닫기"></button>
+    </div>
+    <nav class="drawer-body" aria-label="주 메뉴">
+      <div class="rh-menu-section">OPERATOR</div>
+      {% for item in menu %}
+        <a class="rh-menu-link{{ ' is-active' if item[3] else '' }}" href="{{ base_url(item[0]) }}"
+           {{- ' aria-current="page"'|safe if item[3] else '' }}>
+          <i class="bi bi-{{ item[2] }}" aria-hidden="true"></i>{{ item[1] }}
+        </a>
+      {% endfor %}
+    </nav>
+  </dialog>
+
+  <main class="rh-main" id="main">
 {% include content_view %}
-</main>
+  </main>
+</div>
 
 {% include 'layouts/_partials.html' %}
 </body>

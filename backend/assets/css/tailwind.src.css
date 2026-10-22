@@ -10,6 +10,11 @@
 @source "../../../backend/app";
 @source not "../../../backend/app/core/data";
 @source "../js";
+/* Bootstrap 6 로 옮긴 화면은 이 CSS 를 싣지 않으므로 뺀다(docs/frontend-bootstrap6-plan.md 5장). 단계마다 늘린다. */
+@source not "../../../backend/app/templates/layouts/operator.html";
+@source not "../../../backend/app/templates/operator";
+@source not "../js/operator";
+@source not "../js/bs.js";
 
 @theme {
     --color-brand-50:  #eef5ff;

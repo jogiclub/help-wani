@@ -2,14 +2,26 @@
   파일 위치: backend/app/templates/operator/audit.html
   역할: 전체 조직의 관리 행위 감사 로그 (wgrid)
 -#}
-<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-  <h1 class="text-xl font-bold text-slate-800">감사 로그</h1>
-  <span class="text-sm text-slate-500">최근 {{ rows|length }}건</span>
+<div class="rh-page-header">
+  <div>
+    <nav aria-label="현재 위치">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><span class="breadcrumb-link">OPERATOR</span></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item" aria-current="page"><span class="breadcrumb-link active">감사 로그</span></li>
+      </ol>
+    </nav>
+    <h1 class="page-title">감사 로그</h1>
+  </div>
 </div>
 
-<div class="card overflow-hidden">
-  <div id="auditGrid" style="height: calc(100vh - 230px); min-height: 420px;"></div>
-</div>
+<section class="card overflow-hidden">
+  <div class="card-header">
+    <h2 class="card-title">관리 행위</h2>
+    <span class="fs-sm fg-3 tabular-nums">최근 {{ rows|length }}건</span>
+  </div>
+  <div id="auditGrid" style="height: calc(100dvh - 290px); min-height: 420px;"></div>
+</section>
 
 <script>
 var AUDIT_ROWS = {{ rows|js }};

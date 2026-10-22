@@ -1,0 +1,433 @@
+/**
+ * 파일 위치: backend/assets/css/wani.css
+ * 역할: 왔니 디자인 시스템 토큰 + Bootstrap 6 연결 + 앱 셸(헤더·사이드바·패널) 모양
+ *
+ * Bootstrap 6(assets/vendor/bootstrap/6.0.0-alpha.1) 뒤에 불러온다. 빌드 없이 그대로 쓰는 일반 CSS 이다.
+ * 색·글꼴·간격 값은 왔니 디자인 시스템 tokens.json 의 값을 그대로 옮겼다(손으로 바꾸지 않는다).
+ * Bootstrap 6 은 --bs-blue-* 를 primary 정의 밖에서 쓰지 않으므로 primary 토큰만 바꾸면 된다(docs/frontend-bootstrap6-plan.md 2장).
+ */
+
+/* ------------------------------------------------------------------ 왔니 토큰 */
+:root, :host {
+    --wani-primary: #003a7f;
+    --wani-primary-text-emphasis: #00234c;
+    --wani-primary-bg-subtle: #e6ebf2;
+    --wani-primary-border-subtle: #a6bad2;
+    --wani-primary-focus-border: #809dbf;
+    --wani-focus-ring: rgba(0, 58, 127, 0.25);
+    --wani-secondary: #878d9e;
+    --wani-secondary-utility: #3a3f4b;
+    --wani-success: #1c8716;
+    --wani-danger: #cb1414;
+    --wani-warning: #ecaf3b;
+    --wani-info: #7413ea;
+    --wani-surface: #ffffff;
+    --wani-surface-muted: #f8f9fa;
+    --wani-border: #dee2e6;
+    --wani-ink: #212529;
+    --wani-ink-strong: #181d1f;
+    --wani-ink-subtle: #495057;
+    --wani-ink-muted: #6c757d;
+    --wani-sidebar-hover: #e7f7ff;
+    --wani-backdrop: rgba(110, 118, 130, 0.45);
+    --wani-offcanvas-header: #f9f9f9;
+    --wani-folder: #e09529;
+
+    --wani-font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    --wani-font-mono: Consolas, Menlo, D2Coding, ui-monospace, monospace;
+
+    --wani-radius-sm: 4px;
+    --wani-radius-md: 6px;
+    --wani-radius-lg: 8px;
+    --wani-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --wani-shadow-panel: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --wani-shadow-popover: 0 2px 8px rgba(0, 0, 0, 0.12);
+    --wani-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+
+    --wani-header-height: 60px;
+    --wani-sidebar-width: 200px;
+    --wani-sidebar-collapsed-width: 70px;
+    --wani-sidebar-offcanvas-width: 240px;
+    --wani-offcanvas-width: 700px;
+    --wani-z-sidebar: 2;
+    --wani-z-card-header: 30;
+
+    /* ------------------------------------------------ Bootstrap 6 연결 (라이트 전용) */
+    --bs-primary-base: var(--wani-primary);
+    --bs-primary-bg: var(--wani-primary);
+    --bs-primary-fg: var(--wani-primary);
+    --bs-primary-fg-emphasis: var(--wani-primary-text-emphasis);
+    --bs-primary-bg-subtle: var(--wani-primary-bg-subtle);
+    --bs-primary-bg-muted: var(--wani-primary-border-subtle);
+    --bs-primary-border: var(--wani-primary);
+    --bs-primary-contrast: #ffffff;
+    --bs-primary-focus-ring: var(--wani-focus-ring);
+
+    /* 상태 색은 상태에만 쓴다. 글자색(fg)은 흰 바탕 4.5:1 을 넘는 값만 왔니 값으로 바꾼다. */
+    --bs-success-base: var(--wani-success);
+    --bs-success-bg: var(--wani-success);
+    --bs-success-fg: var(--wani-success);
+    --bs-danger-base: var(--wani-danger);
+    --bs-danger-bg: var(--wani-danger);
+    --bs-danger-fg: var(--wani-danger);
+    --bs-warning-base: var(--wani-warning);
+    --bs-warning-bg: var(--wani-warning);
+    --bs-warning-contrast: var(--wani-ink);
+    --bs-info-base: var(--wani-info);
+    --bs-info-bg: var(--wani-info);
+    --bs-info-fg: var(--wani-info);
+
+    /* 연한 배경·테두리·진한 글자. Bootstrap 6.0.0-alpha.1 은 color-mix(in oklch, 흰색, 색) 으로 만드는데
+       Chromium 에서 색상각이 틀어져 초록 배지가 주황으로 보인다(2026-10-22 확인). 라이트 전용이라 sRGB 로 직접 정한다. */
+    --bs-success-bg-subtle: color-mix(in srgb, var(--wani-success) 12%, #ffffff);
+    --bs-success-bg-muted: color-mix(in srgb, var(--wani-success) 30%, #ffffff);
+    --bs-success-border: color-mix(in srgb, var(--wani-success) 45%, #ffffff);
+    --bs-success-fg-emphasis: color-mix(in srgb, var(--wani-success) 70%, #000000);
+    --bs-danger-bg-subtle: color-mix(in srgb, var(--wani-danger) 10%, #ffffff);
+    --bs-danger-bg-muted: color-mix(in srgb, var(--wani-danger) 28%, #ffffff);
+    --bs-danger-border: color-mix(in srgb, var(--wani-danger) 45%, #ffffff);
+    --bs-danger-fg-emphasis: color-mix(in srgb, var(--wani-danger) 70%, #000000);
+    --bs-warning-bg-subtle: color-mix(in srgb, var(--wani-warning) 18%, #ffffff);
+    --bs-warning-bg-muted: color-mix(in srgb, var(--wani-warning) 40%, #ffffff);
+    --bs-warning-border: color-mix(in srgb, var(--wani-warning) 60%, #ffffff);
+    --bs-warning-fg: #8a5a00;
+    --bs-warning-fg-emphasis: #5c3d00;
+    --bs-info-bg-subtle: color-mix(in srgb, var(--wani-info) 10%, #ffffff);
+    --bs-info-bg-muted: color-mix(in srgb, var(--wani-info) 28%, #ffffff);
+    --bs-info-border: color-mix(in srgb, var(--wani-info) 45%, #ffffff);
+    --bs-info-fg-emphasis: color-mix(in srgb, var(--wani-info) 70%, #000000);
+    --bs-secondary-base: var(--wani-border);
+    --bs-secondary-bg: #f1f3f5;
+    --bs-secondary-bg-subtle: #f1f3f5;
+    --bs-secondary-bg-muted: #e9ecef;
+    --bs-secondary-border: var(--wani-border);
+    --bs-secondary-fg: var(--wani-ink-subtle);
+    --bs-secondary-fg-emphasis: var(--wani-ink);
+    --bs-secondary-contrast: var(--wani-ink);
+
+    --bs-body-font-family: var(--wani-font-sans);
+    --bs-fg-body: var(--wani-ink);
+    --bs-bg-body: var(--wani-surface);
+    --bs-fg-1: var(--wani-ink);
+    --bs-fg-2: var(--wani-ink-subtle);
+    --bs-fg-3: var(--wani-ink-muted);
+    --bs-bg-1: var(--wani-surface-muted);
+    --bs-border-color: var(--wani-border);
+    --bs-link-color: var(--wani-primary);
+    --bs-link-hover-color: var(--wani-primary-text-emphasis);
+
+    --bs-btn-input-border-radius: var(--wani-radius-md);
+    --bs-btn-input-sm-border-radius: var(--wani-radius-sm);
+    --bs-btn-input-xs-border-radius: var(--wani-radius-sm);
+}
+
+body {
+    font-variant-numeric: normal;
+}
+
+.tabular-nums { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ 패널(카드) */
+/* 왔니 Panel: radius-lg, border 1px, shadow-panel, 머리 테두리 없음, 제목 20px/700 */
+.card {
+    --bs-card-border-radius: var(--wani-radius-lg);
+    --bs-card-box-shadow: var(--wani-shadow-panel);
+    --bs-card-cap-bg: var(--wani-surface);
+    box-shadow: var(--bs-card-box-shadow);
+}
+.card > .card-header {
+    position: relative;
+    z-index: var(--wani-z-card-header);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 15px 20px;
+    border-bottom: 0;
+}
+.card-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--wani-ink-strong);
+}
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-inline-start: auto;
+}
+/* 768px 미만에서 패널 머리 버튼은 아이콘만 남긴다(왔니). 그래서 머리 버튼에는 아이콘을 꼭 넣는다. */
+@media (width < 768px) {
+    .card > .card-header { padding: 10px 12px; }
+    .card-actions .btn-label { display: none; }
+}
+
+/* ------------------------------------------------------------------ 앱 셸 */
+/* 왔니 AppShell: 헤더 60px, 사이드바 200px. 1280px(Bootstrap 6 xl) 미만에서는 사이드바가 왼쪽 드로어가 된다. */
+.rh-app {
+    min-height: 100dvh;
+    background:
+        radial-gradient(circle at 0% 0%, rgba(0, 60, 255, 0.1), transparent 45%),
+        radial-gradient(circle at 100% 100%, rgba(135, 2, 244, 0.1), transparent 45%),
+        var(--wani-surface);
+    background-attachment: fixed;
+}
+
+.rh-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: var(--wani-header-height);
+    padding: 0 24px;
+    background: var(--wani-surface);
+    border-bottom: 1px solid var(--wani-border);
+}
+.rh-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--wani-primary);
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.rh-brand:hover { color: var(--wani-primary-text-emphasis); }
+.rh-header-org {
+    padding-inline-start: 16px;
+    border-inline-start: 1px solid var(--wani-border);
+    color: var(--wani-ink-muted);
+    font-size: 14px;
+    white-space: nowrap;
+}
+.rh-header-end {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-inline-start: auto;
+}
+.rh-header-user { color: var(--wani-ink-subtle); font-size: 14px; white-space: nowrap; }
+
+.rh-body {
+    display: flex;
+    align-items: stretch;
+    min-height: calc(100dvh - var(--wani-header-height));
+}
+
+.rh-sidebar {
+    --bs-drawer-width: var(--wani-sidebar-offcanvas-width);
+    --bs-drawer-bg: var(--wani-surface);
+    --bs-drawer-inset: 0;
+    --bs-drawer-border-radius: 0;
+}
+.rh-sidebar .drawer-body {
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 0;
+}
+@media (width >= 1280px) {
+    .rh-sidebar.xl\:drawer {
+        flex: 0 0 var(--wani-sidebar-width);
+        width: var(--wani-sidebar-width) !important;
+        z-index: var(--wani-z-sidebar);
+        background-color: var(--wani-surface) !important;
+        border-inline-end: 1px solid var(--wani-border) !important;
+    }
+    .rh-sidebar.xl\:drawer .drawer-body {
+        flex-direction: column;
+        position: sticky;
+        top: var(--wani-header-height);
+        padding: 16px 0;
+    }
+}
+
+.rh-menu-section {
+    padding: 16px 20px 4px;
+    color: var(--wani-ink-muted);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+.rh-menu-section:first-child { padding-top: 8px; }
+.rh-menu-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 2px 8px;
+    padding: 5px 12px;
+    border-radius: var(--wani-radius-md);
+    color: var(--wani-ink-subtle);
+    font-size: 14px;
+    line-height: 30px;
+    text-decoration: none;
+}
+.rh-menu-link .bi { font-size: 18px; }
+.rh-menu-link:hover { background: var(--wani-sidebar-hover); color: var(--wani-primary); }
+.rh-menu-link.is-active,
+.rh-menu-link.is-active:hover { background: var(--wani-primary); color: #ffffff; }
+
+.rh-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+@media (width < 768px) {
+    .rh-header { padding: 0 12px; gap: 8px; }
+    .rh-main { padding: 16px 12px; }
+}
+
+/* 페이지 머리 (왔니 PageHeader) */
+.rh-page-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 16px;
+}
+.rh-page-header .breadcrumb {
+    --bs-breadcrumb-font-size: 12px;
+    margin: 0 0 4px;
+    color: var(--wani-ink-muted);
+    font-size: 12px;
+}
+.rh-page-header .breadcrumb-item[aria-current="page"] { color: var(--wani-primary); }
+.page-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--wani-ink-strong);
+}
+.rh-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-inline-start: auto;
+}
+
+/* ------------------------------------------------------------------ 다이얼로그·드로어 */
+/* 왔니 Modal: 머리와 바닥 테두리 없음, 제목 600·자간 -1px, 뒤 배경은 backdrop 색 + 4px 블러 */
+.dialog {
+    --bs-dialog-header-border-width: 0;
+    --bs-dialog-footer-border-width: 0;
+    --bs-dialog-border-radius: var(--wani-radius-lg);
+}
+.dialog::backdrop,
+.drawer::backdrop {
+    background: var(--wani-backdrop);
+    backdrop-filter: blur(4px);
+}
+.dialog-title,
+.drawer-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -1px;
+}
+
+/* 왔니 Offcanvas: 오른쪽 700px, 왼쪽 2px primary, 머리 배경 offcanvas-header, 바닥 취소·저장 반반 */
+.drawer.rh-drawer {
+    --bs-drawer-width: var(--wani-offcanvas-width);
+    --bs-drawer-inset: 0;
+    --bs-drawer-border-radius: 0;
+    border-inline-start: 2px solid var(--wani-primary);
+}
+.rh-drawer .drawer-header {
+    position: relative;
+    align-items: flex-start;
+    background: var(--wani-offcanvas-header);
+    border-bottom: 1px solid var(--wani-border);
+}
+.rh-drawer .drawer-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--wani-border);
+}
+
+/* ------------------------------------------------------------------ 토스트 */
+.rh-toasts {
+    position: fixed;
+    top: 16px;
+    inset-inline-end: 16px;
+    z-index: 1090;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+}
+.rh-toasts .toast { pointer-events: auto; width: 100%; }
+
+/* ------------------------------------------------------------------ 배지 보조 */
+/* 이용 중지처럼 어두운 배지. 왔니 secondary-utility(#3a3f4b) 위 흰 글자. */
+.badge.rh-badge-dark {
+    --bs-badge-bg: var(--wani-secondary-utility);
+    --bs-badge-color: #ffffff;
+}
+
+/* ------------------------------------------------------------------ 표 보조 */
+.rh-clickable { cursor: pointer; }
+.rh-cell-stack { min-width: 0; line-height: 1.25; }
+.rh-cell-sub { color: var(--wani-ink-muted); font-size: 12px; }
+
+/* 정의 목록(조회 정보 등) */
+.rh-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 4px 24px;
+    margin: 0;
+    font-size: 14px;
+}
+.rh-info > div { display: flex; gap: 8px; min-width: 0; }
+.rh-info dt { flex-shrink: 0; color: var(--wani-ink-muted); font-weight: 400; }
+.rh-info dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.rh-info .rh-info-wide { grid-column: 1 / -1; }
+
+/* ------------------------------------------------------------------ wgrid 색 */
+/* wgrid.css 는 레이어 밖 스타일이라 한 단계 구체적인 선택자로 덮어쓴다(CLAUDE.md 3.5). */
+body .wgrid {
+    --wgrid-font: var(--wani-font-sans);
+    --wgrid-fg: var(--wani-ink);
+    --wgrid-header-fg: var(--wani-ink-subtle);
+    --wgrid-header-bg: var(--wani-surface-muted);
+    --wgrid-border: var(--wani-border);
+    --wgrid-accent: var(--wani-primary);
+    --wgrid-primary: var(--wani-primary);
+    --wgrid-focus-border: var(--wani-primary-focus-border);
+    --wgrid-focus-ring: var(--wani-focus-ring);
+    --wgrid-cell-padding: 0 12px;
+    border: 0;
+    border-top: 1px solid var(--wani-border);
+}
+.rh-grid-actions { display: flex; align-items: center; gap: 4px; height: 100%; }
+
+/* ------------------------------------------------------------------ 이미지 선택 (Dropzone.js, image-drop.js) */
+.image-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    min-height: 80px;
+    padding: 12px 16px;
+    border: 2px dashed var(--wani-border);
+    border-radius: var(--wani-radius-lg);
+    background: var(--wani-surface-muted);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+}
+.image-drop:hover,
+.image-drop.dz-drag-hover { border-color: var(--wani-primary); background: var(--wani-primary-bg-subtle); }
+.image-drop.is-uploading { pointer-events: none; opacity: .6; }
+.image-drop-hint { color: var(--wani-ink-muted); font-size: 12px; }

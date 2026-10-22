@@ -1,7 +1,30 @@
 {#-
   파일 위치: backend/app/templates/layouts/_partials.html
   역할: 모든 레이아웃이 공유하는 토스트 영역과 확인 모달
+
+  ui_kit 은 레이아웃이 정한 값(_head.html 과 같음). Bootstrap 화면은 네이티브 <dialog class="dialog"> 를 쓴다.
 -#}
+{%- set ui_kit = ui_kit|default('tailwind') -%}
+{% if ui_kit == 'bootstrap' %}
+<!-- 토스트 (common.js 의 showToast 가 .toast 를 만들어 넣는다) -->
+<div id="toastContainer" class="rh-toasts" aria-live="polite" aria-atomic="false"></div>
+
+<!-- 확인 다이얼로그 (common.js 의 showConfirmModal) -->
+<dialog class="dialog dialog-sm" id="confirmModal" aria-labelledby="confirmModalTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="confirmModalTitle"></h2>
+  </div>
+  <div class="dialog-body fg-2" id="confirmModalBody"></div>
+  <div class="dialog-footer">
+    <button type="button" class="btn-outline theme-secondary" id="confirmModalCancel">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>취소
+    </button>
+    <button type="button" class="btn-solid theme-primary" id="confirmModalOk">
+      <i class="bi bi-check-lg" aria-hidden="true"></i>확인
+    </button>
+  </div>
+</dialog>
+{% else %}
 <!-- 토스트 -->
 <div id="toastContainer"
      class="pointer-events-none fixed top-4 right-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2"></div>
@@ -18,3 +41,4 @@
     </div>
   </div>
 </div>
+{% endif %}

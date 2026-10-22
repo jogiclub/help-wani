@@ -27,13 +27,13 @@
     };
 
     var ACTION_CLASS = {
-        org_approved: 'badge-green',
-        org_restored: 'badge-green',
-        org_rejected: 'badge-red',
-        org_suspended: 'badge-dark',
-        login_failed: 'badge-red',
-        operator_access_denied: 'badge-red',
-        org_signup: 'badge-amber'
+        org_approved: 'green',
+        org_restored: 'green',
+        org_rejected: 'red',
+        org_suspended: 'dark',
+        login_failed: 'red',
+        operator_access_denied: 'red',
+        org_signup: 'amber'
     };
 
     $(function () {
@@ -55,14 +55,14 @@
                         if (!value || value === '-') { return '-'; }
 
                         var wrap = document.createElement('div');
-                        wrap.className = 'min-w-0 leading-tight';
+                        wrap.className = 'rh-cell-stack';
 
                         var name = document.createElement('div');
-                        name.className = 'truncate';
+                        name.className = 'text-truncate';
                         name.textContent = value;
 
                         var email = document.createElement('div');
-                        email.className = 'truncate text-xs text-slate-400';
+                        email.className = 'text-truncate rh-cell-sub';
                         email.textContent = row.agent_email;
 
                         wrap.appendChild(name);

@@ -3,16 +3,30 @@
   역할: 모든 레이아웃이 공유하는 head 구성 (메타, 스타일, 공통 스크립트)
 
   각 화면의 인라인 스크립트가 본문에서 바로 실행되므로 라이브러리를 먼저 불러온다.
+
+  ui_kit: 레이아웃이 include 전에 정한다. 'tailwind'(기본, 아직 바꾸지 않은 레이아웃) / 'bootstrap'(Bootstrap 6 + 왔니).
+  Tailwind 의 .btn .card 와 Bootstrap 의 같은 이름이 부딪히므로 한 화면에는 하나만 싣는다(docs/frontend-bootstrap6-plan.md 5장).
+  Bootstrap 6 은 ESM 전용이라 bs.js(type=module)가 불러와 window.RHBootstrap 에 넘긴다.
 -#}
 {%- set use_grid = use_grid|default(false) -%}
 {%- set use_dropzone = use_dropzone|default(false) -%}
 {%- set icon_names = icon_names|default([]) -%}
+{%- set ui_kit = ui_kit|default('tailwind') -%}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-name" content="{{ csrf_token_name }}">
 <meta name="csrf-hash" content="{{ csrf_hash }}">
 <title>{{ page_title|default(app_name) }} · {{ app_name }}</title>
+{% if ui_kit == 'bootstrap' %}
+<!-- Bootstrap 6.0.0-alpha.1 (MIT), Bootstrap Icons 1.13.2 (MIT), Pretendard 1.3.9 (OFL). 버전 폴더째 저장소에 고정한다. -->
+<link href="{{ asset_url('assets/vendor/pretendard/1.3.9/pretendardvariable-dynamic-subset.css') }}" rel="stylesheet">
+<link href="{{ asset_url('assets/vendor/bootstrap/6.0.0-alpha.1/bootstrap.min.css') }}" rel="stylesheet">
+<link href="{{ asset_url('assets/vendor/bootstrap-icons/1.13.2/bootstrap-icons.min.css') }}" rel="stylesheet">
+<link href="{{ asset_url('assets/css/wani.css') }}" rel="stylesheet">
+<script type="module" src="{{ asset_url('assets/js/bs.js') }}"></script>
+{% else %}
 <link href="{{ asset_url('assets/css/app.css') }}" rel="stylesheet">
+{% endif %}
 {% if icon_names %}
 <!--
   Material Symbols (https://fonts.google.com/icons)
@@ -26,13 +40,14 @@
 {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>
+    var RH_UI_KIT = {{ ui_kit|js }};
     // 서버가 정한 조직 언어/타임존을 그대로 넘겨 추가 요청 없이 번역과 날짜 표시를 처리한다.
     var RH_I18N = {{ i18n|js }};
 </script>
 <script src="{{ asset_url('assets/js/i18n.js') }}"></script>
 {% if use_grid %}
 <!-- wgrid 0.1.0 코어(MIT). npm 배포 전이라 assets/vendor/wgrid/ 에 둔다. window.wgrid 를 만든다.
-     포털 색은 tailwind.src.css 끝의 .wgrid 변수 덮어쓰기로 맞춘다. -->
+     포털 색은 tailwind.src.css 끝(Bootstrap 화면은 wani.css)의 .wgrid 변수 덮어쓰기로 맞춘다. -->
 <link href="{{ asset_url('assets/vendor/wgrid/0.1.0/wgrid.css') }}" rel="stylesheet">
 <script src="{{ asset_url('assets/vendor/wgrid/0.1.0/wgrid.global.js') }}"></script>
 <script src="{{ asset_url('assets/js/grid.js') }}"></script>
