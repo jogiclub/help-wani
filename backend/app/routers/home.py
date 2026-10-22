@@ -19,57 +19,53 @@ LOCALE_COOKIE = 'rh_locale'
 
 
 def landing_icons():
-    """소개 페이지에서 쓰는 Material Symbols 아이콘.
+    """소개 페이지에서 쓰는 Bootstrap Icons 이름(bi-*). 앞의 'bi-' 는 템플릿이 붙인다.
 
-    여기에 적은 이름으로 폰트 서브셋을 요청하므로, 아이콘을 추가하면 반드시 이 목록에도 넣어야 화면에 나온다(CLAUDE.md 3.3).
+    아이콘 글꼴(assets/vendor/bootstrap-icons/1.13.2)에 있는 이름만 쓴다. 없는 이름이면 빈칸이 되므로
+    check-conventions 가 글꼴 CSS 와 대조한다(CLAUDE.md 3.3).
     """
     return {
         'value': {
-            1: 'cleaning_services',   # 설치 부담 없음
-            2: 'web',                 # 브라우저로 제어
-            3: 'vpn_lock',            # 443 포트 하나
-            4: 'language',            # 다양한 언어 지원
-            5: 'schedule',            # 시간대 지원
-            6: 'how_to_reg',          # 동의 없이는 시작 안 함
+            1: 'magic',               # 설치 부담 없음
+            2: 'window',              # 브라우저로 제어
+            3: 'shield-lock',         # 443 포트 하나
+            4: 'globe2',              # 다양한 언어 지원
+            5: 'clock',               # 시간대 지원
+            6: 'person-check',        # 동의 없이는 시작 안 함
         },
         'how': {
-            1: 'link',                # 전용 페이지 접속
+            1: 'link-45deg',          # 전용 페이지 접속
             2: 'download',            # 앱 실행
-            3: 'dialpad',             # 코드 입력 후 허용
+            3: 'grid-3x3-gap',        # 코드 입력 후 허용
         },
         'flow': {
-            1: 'confirmation_number',  # 코드 발급
-            2: 'keyboard',             # 코드 입력
-            3: 'check_circle',         # 허용 후 연결
+            1: 'ticket-perforated',   # 코드 발급
+            2: 'keyboard',            # 코드 입력
+            3: 'check-circle',        # 허용 후 연결
         },
         'features': {
-            1: 'screen_share', 2: 'dashboard', 3: 'storefront', 4: 'content_paste', 5: 'edit_note',
-            6: 'sentiment_satisfied', 7: 'tune', 8: 'devices', 9: 'translate',
+            1: 'display', 2: 'speedometer2', 3: 'shop', 4: 'clipboard', 5: 'pencil-square',
+            6: 'emoji-smile', 7: 'sliders', 8: 'laptop', 9: 'translate',
         },
         'security': {
             1: 'lock',                # 전 구간 암호화
             2: 'key',                 # 1회용 코드와 토큰
-            3: 'touch_app',           # 명시적 동의
-            4: 'visibility',          # 상시 표시와 즉시 종료
-            5: 'delete_forever',      # 잔류 없음
-            6: 'receipt_long',        # 기록
+            3: 'hand-index',          # 명시적 동의
+            4: 'eye',                 # 상시 표시와 즉시 종료
+            5: 'trash3',              # 잔류 없음
+            6: 'journal-text',        # 기록
         },
         # 채팅 상담 + 원격지원 섹션
         'dual': {
-            1: 'forum',               # 웹사이트 채팅 상담
-            2: 'screen_share',        # 필요할 때 원격지원
-            3: 'history',             # 기록은 한곳에
+            1: 'chat-dots',           # 웹사이트 채팅 상담
+            2: 'display',             # 필요할 때 원격지원
+            3: 'clock-history',       # 기록은 한곳에
         },
         'misc': {
-            'brand': 'support_agent', 'phishing': 'gpp_maybe', 'check': 'check_circle', 'arrow': 'arrow_forward',
-            'expand': 'expand_more', 'mail': 'mail', 'call': 'call', 'language': 'language',
+            'brand': 'headset', 'phishing': 'shield-exclamation', 'check': 'check-circle-fill', 'arrow': 'arrow-right',
+            'expand': 'chevron-down', 'mail': 'envelope', 'call': 'telephone', 'language': 'globe2',
         },
     }
-
-
-def flatten_icons(icons):
-    """폰트 서브셋 요청에 쓸 아이콘 이름 목록(중복 제거, 정렬)."""
-    return sorted({name for group in icons.values() for name in group.values()})
 
 
 @router.get('/lang/{locale}')
@@ -105,7 +101,6 @@ def index(request: Request):
     return render(request, 'home/landing', {
         'locales': supported_locales(),
         'icons': icons,
-        'icon_names': flatten_icons(icons),
         'page_title': '기업용 원격지원 서비스',
         'pricing': pricing,
         'widget_key': widget_key,

@@ -1,14 +1,19 @@
 {#-
   파일 위치: backend/app/templates/layouts/blank.html
   역할: 로그인/가입 등 단독 화면 레이아웃
+
+  Bootstrap 6 + 왔니 색·글꼴(docs/frontend-bootstrap6-plan.md 1장). 셸 없이 왔니 배경 위에 서비스 이름과 카드 하나.
+  카드 폭은 화면이 정한다(.rh-auth-card, .rh-auth-card-wide).
 -#}
+{%- set ui_kit = 'bootstrap' -%}
 <!doctype html>
-<html lang="{{ i18n.locale }}">
+<html lang="{{ i18n.locale }}" data-bs-theme="light">
 <head>
 {% include 'layouts/_head.html' %}
 </head>
-<body class="min-h-screen">
-<main class="mx-auto max-w-4xl px-4 py-10">
+<body class="rh-app">
+<main class="rh-auth">
+  <a class="rh-brand rh-auth-brand" href="{{ base_url() }}">{{ app_name }}</a>
 {% include content_view %}
 </main>
 {% include 'layouts/_partials.html' %}

@@ -1,0 +1,258 @@
+/**
+ * 파일 위치: backend/assets/css/customer.css
+ * 역할: 고객 화면(접속 안내, 만족도 조사, 다운로드 불가 안내) 모양. Bootstrap·Tailwind 없이 이 파일 하나만 싣는다.
+ *
+ * 고객은 어떤 기기·브라우저로 올지 고를 수 없으므로(docs/frontend-bootstrap6-plan.md 4.4) 오래된 브라우저에서도 되는 문법만 쓴다.
+ *   - 색은 16진/rgba 값(oklch, color-mix, light-dark 금지)
+ *   - 미디어 쿼리는 min-width/max-width(범위식 width>= 금지), :has() 금지, dvh 대신 vh
+ * 색·글꼴 값은 왔니 디자인 시스템 tokens.json 과 같다(wani.css 와 같은 값).
+ */
+:root {
+    --rhc-primary: #003a7f;
+    --rhc-primary-dark: #00234c;
+    --rhc-primary-subtle: #e6ebf2;
+    --rhc-success: #1c8716;
+    --rhc-danger: #cb1414;
+    --rhc-danger-subtle: #fbe8e8;
+    --rhc-danger-text: #8f0e0e;
+    --rhc-warning: #ecaf3b;
+    --rhc-surface: #ffffff;
+    --rhc-surface-muted: #f8f9fa;
+    --rhc-border: #dee2e6;
+    --rhc-ink: #212529;
+    --rhc-ink-strong: #181d1f;
+    --rhc-ink-subtle: #495057;
+    --rhc-ink-muted: #6c757d;
+    --rhc-radius: 8px;
+    --rhc-radius-md: 6px;
+    --rhc-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --rhc-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui,
+                "Malgun Gothic", "맑은 고딕", Roboto, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #f4f6fb;
+    background-image:
+        radial-gradient(circle at 0% 0%, rgba(0, 60, 255, 0.08), rgba(0, 60, 255, 0) 45%),
+        radial-gradient(circle at 100% 100%, rgba(135, 2, 244, 0.08), rgba(135, 2, 244, 0) 45%);
+    background-attachment: fixed;
+    color: var(--rhc-ink);
+    font-family: var(--rhc-font);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+}
+
+a { color: var(--rhc-primary); }
+a:hover { color: var(--rhc-primary-dark); }
+img { max-width: 100%; }
+h1, h2, h3, p { margin: 0; }
+
+.rhc-main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 16px 48px;
+}
+.rhc-narrow { max-width: 448px; margin: 0 auto; }
+
+/* 쌓기 간격(flex gap 대신 margin: 오래된 Safari 대비) */
+.rhc-stack > * + * { margin-top: 16px; }
+.rhc-stack-sm > * + * { margin-top: 12px; }
+
+/* 패널 */
+.rhc-card {
+    display: block;
+    background: var(--rhc-surface);
+    border: 1px solid var(--rhc-border);
+    border-radius: var(--rhc-radius);
+    box-shadow: var(--rhc-shadow);
+    padding: 24px;
+    color: inherit;
+    text-decoration: none;
+}
+.rhc-center { text-align: center; }
+
+/* 조직 소개 */
+.rhc-logo { display: block; max-height: 64px; margin: 0 auto; }
+.rhc-logo-letter {
+    display: block;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto;
+    border-radius: 16px;
+    background: var(--rhc-primary);
+    color: #ffffff;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 56px;
+    text-align: center;
+}
+.rhc-title {
+    margin-top: 12px;
+    color: var(--rhc-ink-strong);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
+}
+.rhc-intro {
+    max-width: 36rem;
+    margin: 8px auto 0;
+    color: var(--rhc-ink-subtle);
+    font-size: 14px;
+    line-height: 1.7;
+    white-space: pre-line;
+}
+.rhc-muted { color: var(--rhc-ink-muted); font-size: 14px; }
+.rhc-small { font-size: 12px; }
+.rhc-contact { margin-top: 12px; }
+.rhc-contact a { font-weight: 600; text-decoration: none; }
+.rhc-subtitle { margin: 16px 0; text-align: center; }
+
+/* 가이드 바로가기 */
+.rhc-link-card { display: table; width: 100%; padding: 14px 20px; }
+.rhc-link-card:hover { background: var(--rhc-surface-muted); }
+.rhc-link-card > span { display: table-cell; vertical-align: middle; }
+.rhc-link-card strong { display: block; color: var(--rhc-ink-strong); }
+.rhc-link-arrow { width: 24px; color: var(--rhc-primary); font-size: 20px; text-align: right; }
+
+/* 경고 */
+.rhc-alert {
+    padding: 16px;
+    border: 1px solid #f2b8b8;
+    border-radius: var(--rhc-radius);
+    background: var(--rhc-danger-subtle);
+    color: var(--rhc-danger-text);
+    font-size: 14px;
+    line-height: 1.7;
+}
+.rhc-alert strong { display: block; margin-bottom: 4px; }
+.rhc-alert-info {
+    border-color: #a6bad2;
+    background: var(--rhc-primary-subtle);
+    color: var(--rhc-primary-dark);
+}
+
+/* 단계 */
+.rhc-step { display: table; width: 100%; }
+.rhc-step > div { display: table-cell; vertical-align: top; }
+.rhc-step-num {
+    display: block;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--rhc-primary);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 36px;
+    text-align: center;
+}
+.rhc-step-num-cell { width: 52px; }
+.rhc-step-title { color: var(--rhc-ink-strong); font-weight: 600; }
+.rhc-step-body { margin-top: 4px; color: var(--rhc-ink-muted); font-size: 14px; line-height: 1.6; }
+
+/* 버튼: 손가락으로 누르기 쉽게 44px 이상 */
+.rhc-btn {
+    display: inline-block;
+    min-height: 44px;
+    padding: 10px 20px;
+    border: 1px solid transparent;
+    border-radius: var(--rhc-radius-md);
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 22px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+.rhc-btn-primary { background: var(--rhc-primary); border-color: var(--rhc-primary); color: #ffffff; }
+.rhc-btn-primary:hover { background: var(--rhc-primary-dark); border-color: var(--rhc-primary-dark); color: #ffffff; }
+.rhc-btn-success { background: var(--rhc-success); border-color: var(--rhc-success); color: #ffffff; }
+.rhc-btn-success:hover { background: #146010; border-color: #146010; color: #ffffff; }
+.rhc-btn-secondary { background: var(--rhc-surface); border-color: var(--rhc-border); color: var(--rhc-ink-subtle); }
+.rhc-btn-secondary:hover { background: var(--rhc-surface-muted); color: var(--rhc-ink); }
+.rhc-btn:disabled { opacity: .55; cursor: not-allowed; }
+.rhc-btn:focus-visible, .rhc-input:focus { outline: 2px solid var(--rhc-primary); outline-offset: 2px; }
+.rhc-btn-block { display: block; width: 100%; }
+.rhc-mt { margin-top: 12px; }
+.rhc-mt-lg { margin-top: 20px; }
+
+.rhc-meta { margin-top: 6px; color: var(--rhc-ink-muted); font-size: 12px; }
+.rhc-details { margin-top: 8px; color: var(--rhc-ink-muted); font-size: 12px; }
+.rhc-details summary { cursor: pointer; }
+.rhc-details code { display: block; margin-top: 4px; word-break: break-all; }
+.rhc-divider { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rhc-border); }
+
+.rhc-notice-title { margin-bottom: 8px; color: var(--rhc-ink-subtle); font-weight: 600; font-size: 14px; }
+.rhc-list { margin: 0; padding-left: 20px; color: var(--rhc-ink-muted); font-size: 14px; line-height: 1.7; }
+
+/* 만족도 */
+.rhc-stars { margin: 20px 0; font-size: 0; }
+.rhc-star {
+    display: inline-block;
+    width: 48px;
+    height: 48px;
+    margin: 0 2px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #ced4da;
+    font-size: 40px;
+    line-height: 48px;
+    cursor: pointer;
+}
+.rhc-star.is-on { color: var(--rhc-warning); }
+.rhc-input {
+    display: block;
+    width: 100%;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--rhc-border);
+    border-radius: var(--rhc-radius-md);
+    font: inherit;
+    font-size: 16px;
+    color: var(--rhc-ink);
+    resize: vertical;
+}
+
+/* 토스트 (common.js 의 plain 방식) */
+.rhc-toasts {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    left: 16px;
+    z-index: 1090;
+    max-width: 320px;
+    margin-left: auto;
+}
+.rhc-toast {
+    margin-bottom: 8px;
+    padding: 12px 16px;
+    border-radius: var(--rhc-radius);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    color: #ffffff;
+    font-size: 14px;
+    background: #3a3f4b;
+    transition: opacity .2s;
+}
+.rhc-toast-success { background: var(--rhc-success); }
+.rhc-toast-danger { background: var(--rhc-danger); }
+.rhc-toast-warning { background: var(--rhc-warning); color: var(--rhc-ink); }
+.rhc-toast.is-hiding { opacity: 0; }
+
+.rhc-hidden { display: none; }
+
+@media (min-width: 640px) {
+    .rhc-btn-auto { display: inline-block; width: auto; }
+}
+@media (max-width: 639px) {
+    .rhc-main { padding-top: 20px; }
+    .rhc-card { padding: 20px 16px; }
+    .rhc-btn-auto { display: block; width: 100%; }
+}

@@ -1,15 +1,18 @@
 {#-
   파일 위치: backend/app/templates/layouts/customer.html
   역할: 고객 화면 레이아웃 (조직이 상담 위젯을 켜 두면 그 조직의 상담 버블을 함께 띄운다. 팔로업 메일로 왔으면 대화를 펼친다)
-        — PHP views/layouts/customer.php 대응
+
+  ui_kit 'plain': Bootstrap 6 을 싣지 않고 customer.css 하나만 쓴다(오래된 브라우저 대비, docs/frontend-bootstrap6-plan.md 4.4).
+  모양은 왔니 색·글꼴과 같은 값이다.
 -#}
+{%- set ui_kit = 'plain' -%}
 <!doctype html>
 <html lang="{{ i18n.locale }}">
 <head>
 {% include 'layouts/_head.html' %}
 </head>
-<body class="min-h-screen">
-<main class="mx-auto max-w-3xl px-4 py-8">
+<body>
+<main class="rhc-main">
 {% include content_view %}
 </main>
 {% include 'layouts/_partials.html' %}

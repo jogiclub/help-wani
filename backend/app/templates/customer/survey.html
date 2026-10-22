@@ -1,28 +1,27 @@
 {#-
   파일 위치: backend/app/templates/customer/survey.html
-  역할: 원격지원 만족도 조사
+  역할: 원격지원 만족도 조사 (customer.css, Bootstrap 을 싣지 않는 화면)
 -#}
-<div class="mx-auto max-w-md">
-  <div class="card">
-    <div class="card-body text-center">
-      <h1 class="text-xl font-bold text-slate-800">{{ lang_text('survey.title') }}</h1>
-      <p class="mt-1 text-xs text-slate-500">
-        {{ org.name }} · {{ to_timezone(session_row.created_at, i18n.timezone) }}
-      </p>
+<div class="rhc-narrow">
+  <div class="rhc-card rhc-center">
+    <h1 class="rhc-title">{{ lang_text('survey.title') }}</h1>
+    <p class="rhc-muted rhc-small rhc-mt">
+      {{ org.name }} · {{ to_timezone(session_row.created_at, i18n.timezone) }}
+    </p>
 
-      {% if existing %}
-        <div class="alert alert-info mt-5">{{ lang_text('survey.already') }}</div>
-      {% else %}
-        <div class="my-5 flex justify-center gap-1 text-4xl" id="stars">
-          {% for i in range(1, 6) %}
-            <span class="star cursor-pointer text-slate-300 transition-colors" data-score="{{ i }}">★</span>
-          {% endfor %}
-        </div>
-        <textarea class="form-input mb-3" id="comment" rows="4"
-                  data-i18n-placeholder="survey.comment_placeholder"></textarea>
-        <button class="btn btn-primary w-full" id="btnSubmit" data-i18n="survey.submit"></button>
-      {% endif %}
-    </div>
+    {% if existing %}
+      <div class="rhc-alert rhc-alert-info rhc-mt-lg">{{ lang_text('survey.already') }}</div>
+    {% else %}
+      <div class="rhc-stars" id="stars" role="radiogroup" aria-label="{{ lang_text('survey.title') }}">
+        {% for i in range(1, 6) %}
+          <button type="button" class="rhc-star" data-score="{{ i }}" role="radio" aria-checked="false"
+                  aria-label="{{ i }} / 5">&#9733;</button>
+        {% endfor %}
+      </div>
+      <textarea class="rhc-input" id="comment" rows="4"
+                data-i18n-placeholder="survey.comment_placeholder"></textarea>
+      <button class="rhc-btn rhc-btn-primary rhc-btn-block" id="btnSubmit" data-i18n="survey.submit"></button>
+    {% endif %}
   </div>
 </div>
 
@@ -30,11 +29,11 @@
 $(function () {
     var score = 0;
 
-    $('#stars .star').on('click', function () {
+    $('#stars .rhc-star').on('click', function () {
         score = parseInt($(this).data('score'), 10);
-        $('#stars .star').each(function () {
+        $('#stars .rhc-star').each(function () {
             var active = parseInt($(this).data('score'), 10) <= score;
-            $(this).toggleClass('text-amber-400', active).toggleClass('text-slate-300', !active);
+            $(this).toggleClass('is-on', active).attr('aria-checked', String(parseInt($(this).data('score'), 10) === score));
         });
     });
 

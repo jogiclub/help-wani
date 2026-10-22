@@ -1,61 +1,53 @@
 {#-
   파일 위치: backend/app/templates/layouts/public.html
   역할: 로그인하지 않은 방문자용 홍보 페이지 레이아웃
+
+  Bootstrap 6 + 왔니 색·글꼴. 앱 셸(사이드바) 없이 상단 메뉴와 바닥글만 둔다. 모양은 wani-public.css.
+  언어 선택은 Bootstrap 6 Menu(data-bs-toggle="menu"). 고른 언어는 쿠키(rh_locale)에 1년간 기억한다.
 -#}
+{%- set ui_kit = 'bootstrap' -%}
 {%- set logged_in = session.get('agent_id')|default(false, true) -%}
 <!doctype html>
-<html lang="{{ i18n.locale }}">
+<html lang="{{ i18n.locale }}" data-bs-theme="light">
 <head>
 {% include 'layouts/_head.html' %}
 <meta name="description" content="{{ lang_text('home.meta.description') }}">
 </head>
-<body class="min-h-screen bg-white">
+<body class="rh-public">
 
-<header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-  <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-    <a class="flex items-center gap-2 text-lg font-bold text-slate-900" href="{{ base_url() }}">
-      <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white">
-        <span class="material-symbols-outlined icon-lg">support_agent</span>
-      </span>
+<header class="rh-public-header">
+  <div class="rh-public-wrap rh-public-header-row">
+    <a class="rh-brand" href="{{ base_url() }}">
+      <span class="rh-public-logo" aria-hidden="true"><i class="bi bi-headset"></i></span>
       {{ app_name }}
     </a>
 
-    <nav class="hidden gap-1 md:flex">
-      <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#how">{{ lang_text('nav.how') }}</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#features">{{ lang_text('nav.features') }}</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#security">{{ lang_text('nav.security') }}</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#pricing">{{ lang_text('nav.pricing') }}</a>
-      <a class="rounded px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100" href="#faq">{{ lang_text('nav.faq') }}</a>
+    <nav class="rh-public-nav d-none md:d-flex" aria-label="{{ lang_text('nav.features') }}">
+      <a href="#how">{{ lang_text('nav.how') }}</a>
+      <a href="#features">{{ lang_text('nav.features') }}</a>
+      <a href="#security">{{ lang_text('nav.security') }}</a>
+      <a href="#pricing">{{ lang_text('nav.pricing') }}</a>
+      <a href="#faq">{{ lang_text('nav.faq') }}</a>
     </nav>
 
-    <div class="ml-auto flex items-center gap-2">
+    <div class="d-flex align-items-center gap-3 ms-auto">
       {% if logged_in %}
-        <a class="btn btn-primary btn-sm" href="{{ base_url('console') }}">{{ lang_text('nav.console') }}</a>
+        <a class="btn-solid theme-primary btn-sm" href="{{ base_url('console') }}">{{ lang_text('nav.console') }}</a>
       {% else %}
-        <a class="btn btn-ghost btn-sm" href="{{ base_url('login') }}">{{ lang_text('nav.login') }}</a>
-        <a class="btn btn-primary btn-sm" href="{{ base_url('signup') }}">{{ lang_text('nav.signup') }}</a>
+        <a class="btn-text theme-secondary btn-sm" href="{{ base_url('login') }}">{{ lang_text('nav.login') }}</a>
+        <a class="btn-solid theme-primary btn-sm" href="{{ base_url('signup') }}">{{ lang_text('nav.signup') }}</a>
       {% endif %}
 
-      <!-- 언어 선택. 고른 언어는 쿠키에 1년간 기억한다. -->
-      <div class="relative" id="langPicker">
-        <button type="button" id="langToggle"
-                class="btn btn-sm btn-secondary"
-                aria-haspopup="true" aria-expanded="false"
-                title="{{ lang_text('nav.language') }}">
-          <span class="material-symbols-outlined text-[18px] leading-none">language</span>
-          <span>{{ locales[i18n.locale]['name'] }}</span>
-        </button>
-
-        <div id="langMenu"
-             class="absolute right-0 z-50 mt-1 hidden w-36 overflow-hidden rounded-md border border-slate-200 bg-white py-1 shadow-lg">
-          {% for code, info in locales.items() %}
-            <a class="flex items-center justify-between px-3 py-2 text-sm hover:bg-slate-50 {{ 'font-semibold text-brand-600' if code == i18n.locale else 'text-slate-600' }}"
-               href="{{ base_url('lang/' ~ code) }}">
-              {{ info['name'] }}
-              {% if code == i18n.locale %}<span>✓</span>{% endif %}
-            </a>
-          {% endfor %}
-        </div>
+      <button type="button" class="btn-outline theme-secondary btn-sm" data-bs-toggle="menu"
+              data-bs-placement="bottom-end" aria-expanded="false" title="{{ lang_text('nav.language') }}">
+        <i class="bi bi-globe2" aria-hidden="true"></i>
+        <span>{{ locales[i18n.locale]['name'] }}</span>
+      </button>
+      <div class="menu">
+        {% for code, info in locales.items() %}
+          <a class="menu-item{{ ' active' if code == i18n.locale else '' }}" href="{{ base_url('lang/' ~ code) }}"
+             {{- ' aria-current="true"'|safe if code == i18n.locale else '' }}>{{ info['name'] }}</a>
+        {% endfor %}
       </div>
     </div>
   </div>
@@ -65,65 +57,47 @@
 {% include content_view %}
 </main>
 
-<footer class="border-t border-slate-200 bg-slate-50">
-  <div class="mx-auto max-w-6xl px-4 py-10">
-    <div class="flex flex-wrap items-start justify-between gap-6">
+<footer class="rh-public-footer">
+  <div class="rh-public-wrap">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-7">
       <div>
-        <div class="flex items-center gap-2 text-base font-bold text-slate-900">
-          <span class="flex h-7 w-7 items-center justify-center rounded-md bg-brand-500 text-white">
-            <span class="material-symbols-outlined icon-sm">support_agent</span>
-          </span>
+        <div class="rh-brand fs-md">
+          <span class="rh-public-logo rh-public-logo-sm" aria-hidden="true"><i class="bi bi-headset"></i></span>
           {{ app_name }}
         </div>
-        <p class="mt-2 max-w-md text-sm text-slate-500">{{ lang_text('footer.tagline') }}</p>
+        <p class="mt-3 mb-0 fs-sm fg-3 rh-public-measure">{{ lang_text('footer.tagline') }}</p>
       </div>
 
-      <div class="text-sm text-slate-500">
-        <div class="mb-2 font-semibold text-slate-700">{{ lang_text('footer.links') }}</div>
-        <ul class="space-y-1">
-          <li><a class="hover:underline" href="{{ base_url('login') }}">{{ lang_text('footer.login') }}</a></li>
-          <li><a class="hover:underline" href="{{ base_url('signup') }}">{{ lang_text('footer.signup') }}</a></li>
+      <div class="fs-sm fg-3">
+        <div class="mb-3 fw-semibold fg-2">{{ lang_text('footer.links') }}</div>
+        <ul class="list-unstyled vstack gap-1 mb-0">
+          <li><a href="{{ base_url('login') }}">{{ lang_text('footer.login') }}</a></li>
+          <li><a href="{{ base_url('signup') }}">{{ lang_text('footer.signup') }}</a></li>
         </ul>
       </div>
 
       {% if contact_email|default('') or contact_phone|default('') %}
-      <div class="text-sm text-slate-500">
-        <div class="mb-2 font-semibold text-slate-700">{{ lang_text('footer.contact') }}</div>
-        <ul class="space-y-1">
+      <div class="fs-sm fg-3">
+        <div class="mb-3 fw-semibold fg-2">{{ lang_text('footer.contact') }}</div>
+        <ul class="list-unstyled vstack gap-1 mb-0">
           {% if contact_phone|default('') %}
             <li>{{ contact_phone }}</li>
           {% endif %}
           {% if contact_email|default('') %}
-            <li><a class="hover:underline" href="mailto:{{ contact_email }}">{{ contact_email }}</a></li>
+            <li><a href="mailto:{{ contact_email }}">{{ contact_email }}</a></li>
           {% endif %}
         </ul>
       </div>
       {% endif %}
     </div>
 
-    <div class="mt-8 border-t border-slate-200 pt-6 text-xs text-slate-400">
+    <div class="mt-7 pt-6 border-top fs-xs fg-3">
       &copy; {{ php_date('Y') }} {{ app_name }}. {{ lang_text('footer.copyright') }}
     </div>
   </div>
 </footer>
 
 {% include 'layouts/_partials.html' %}
-
-<script>
-$(function () {
-    // 언어 메뉴 열고 닫기
-    $('#langToggle').on('click', function (e) {
-        e.stopPropagation();
-        var expanded = $('#langMenu').toggleClass('hidden').is(':visible');
-        $(this).attr('aria-expanded', expanded);
-    });
-
-    $(document).on('click', function () {
-        $('#langMenu').addClass('hidden');
-        $('#langToggle').attr('aria-expanded', 'false');
-    });
-});
-</script>
 {% if widget_key|default('') %}
 <!-- 우리 소개 페이지에도 같은 상담 위젯을 붙여 둔다. 고객사가 받는 스니펫과 형태가 같다. -->
 <script src="{{ base_url('widget.js') }}" data-key="{{ widget_key }}" defer></script>

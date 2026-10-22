@@ -4,70 +4,63 @@
 
   문구는 assets/lang/{locale}.json 에서 가져온다. 방문자가 헤더에서 고른 언어가 적용된다.
   주의: 실제로 제공하는 기능만 담는다. 도입 실적, 인증, 고객사 로고 등은 확인된 사실이 생기면 추가한다.
+  아이콘은 Bootstrap Icons 이름이며 routers/home.py 의 landing_icons() 한 곳에서 정한다. 모양은 wani-public.css.
 -#}
 {%- set unit = lang_text('home.pricing.currency_unit') -%}
 
 
 <!-- 히어로 -->
-<section class="relative overflow-hidden bg-slate-900">
-  <div class="absolute inset-0 bg-[radial-gradient(60%_60%_at_70%_20%,rgba(31,111,235,0.35),transparent)]"></div>
-
-  <div class="relative mx-auto max-w-6xl px-4 py-20 sm:py-28">
-    <div class="grid items-center gap-12 lg:grid-cols-2">
+<section class="rh-hero">
+  <div class="rh-public-wrap rh-hero-inner">
+    <div class="rh-hero-grid">
       <div>
-        <span class="badge badge-blue">{{ lang_text('home.hero.badge') }}</span>
+        <span class="badge rh-hero-badge">{{ lang_text('home.hero.badge') }}</span>
 
-        <h1 class="mt-4 text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+        <h1 class="rh-hero-title">
           {{ lang_text('home.hero.title1') }}<br>
-          <span class="text-brand-500">{{ lang_text('home.hero.title2') }}</span>
+          <span class="rh-hero-accent">{{ lang_text('home.hero.title2') }}</span>
           {{ lang_text('home.hero.title3') }}<br>
           {{ lang_text('home.hero.title4') }}
         </h1>
 
-        <p class="mt-5 max-w-lg text-base leading-relaxed text-slate-300">
-          {{ lang_text('home.hero.body') }}
-        </p>
+        <p class="rh-hero-body">{{ lang_text('home.hero.body') }}</p>
 
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a class="btn btn-primary btn-lg" href="{{ base_url('signup') }}">
+        <div class="d-flex flex-wrap gap-4 mt-7">
+          <a class="btn-solid rh-btn-on-dark btn-lg" href="{{ base_url('signup') }}">
             {{ lang_text('home.hero.cta') }}
-            <span class="material-symbols-outlined icon-sm">{{ icons['misc']['arrow'] }}</span>
+            <i class="bi bi-{{ icons['misc']['arrow'] }}" aria-hidden="true"></i>
           </a>
-          <a class="btn btn-lg border border-slate-600 text-slate-200 hover:bg-slate-800" href="#how">
-            {{ lang_text('home.hero.cta2') }}
-          </a>
+          <a class="btn-outline rh-btn-ghost-dark btn-lg" href="#how">{{ lang_text('home.hero.cta2') }}</a>
         </div>
 
-        <p class="mt-4 text-sm text-slate-400">
-          <span class="font-semibold text-slate-200">{{ lang_text('home.hero.price', {'price': (pricing['price'])|number_format, 'accounts': pricing['accounts']}) }}</span>
-          · <a class="underline hover:text-white" href="#pricing">{{ lang_text('home.hero.price_link') }}</a>
+        <p class="rh-hero-price">
+          <strong>{{ lang_text('home.hero.price', {'price': (pricing['price'])|number_format, 'accounts': pricing['accounts']}) }}</strong>
+          · <a href="#pricing">{{ lang_text('home.hero.price_link') }}</a>
         </p>
       </div>
 
       <!-- 연결 흐름 요약 -->
-      <div class="rounded-xl border border-slate-700 bg-slate-800/60 p-6 backdrop-blur">
-        <div class="mb-4 text-sm font-semibold text-slate-300">{{ lang_text('home.flow.title') }}</div>
+      <div class="rh-hero-panel">
+        <div class="fs-sm fw-semibold mb-5">{{ lang_text('home.flow.title') }}</div>
 
-        <ol class="space-y-4">
+        <ol class="list-unstyled vstack gap-5 mb-0">
           {% for i in range(1, 4) %}
-          <li class="flex gap-3">
-            <span class="icon-tile icon-tile-dark shrink-0">
-              <span class="material-symbols-outlined icon-md">{{ icons['flow'][i] }}</span>
-            </span>
+          <li class="d-flex gap-4">
+            <span class="rh-icon-tile rh-icon-tile-dark"><i class="bi bi-{{ icons['flow'][i] }}" aria-hidden="true"></i></span>
             <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-brand-400">{{ i }}</span>
-                <span class="font-medium text-white">{{ lang_text('home.flow.step' ~ i ~ '.title') }}</span>
+              <div class="d-flex align-items-center gap-3">
+                <span class="rh-hero-step">{{ i }}</span>
+                <span class="fw-medium">{{ lang_text('home.flow.step' ~ i ~ '.title') }}</span>
               </div>
-              <div class="text-sm text-slate-400">{{ lang_text('home.flow.step' ~ i ~ '.body') }}</div>
+              <div class="fs-sm rh-hero-muted">{{ lang_text('home.flow.step' ~ i ~ '.body') }}</div>
             </div>
           </li>
           {% endfor %}
         </ol>
 
-        <div class="mt-6 rounded-lg bg-slate-900/70 p-4">
-          <div class="code-display text-center text-3xl text-brand-500">418 305</div>
-          <div class="mt-1 text-center text-xs text-slate-500">{{ lang_text('home.flow.sample') }}</div>
+        <div class="rh-hero-code">
+          <div class="rh-code-sample tabular-nums">418 305</div>
+          <div class="fs-xs rh-hero-muted text-center mt-1">{{ lang_text('home.flow.sample') }}</div>
         </div>
       </div>
     </div>
@@ -75,46 +68,42 @@
 </section>
 
 <!-- 채팅 상담 + 원격지원 (두 기능을 함께 쓰는 것이 이 서비스의 핵심) -->
-<section id="dual" class="border-b border-slate-200 bg-white">
-  <div class="mx-auto max-w-6xl px-4 py-16">
+<section id="dual" class="rh-section">
+  <div class="rh-public-wrap">
     <div class="text-center">
-      <span class="badge badge-blue">{{ lang_text('home.dual.badge') }}</span>
-      <h2 class="mt-4 text-2xl font-bold text-slate-900">{{ lang_text('home.dual.title') }}</h2>
-      <p class="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-slate-500">
-        {{ lang_text('home.dual.subtitle') }}
-      </p>
+      <span class="badge badge-subtle theme-primary">{{ lang_text('home.dual.badge') }}</span>
+      <h2 class="rh-section-title mt-5">{{ lang_text('home.dual.title') }}</h2>
+      <p class="rh-section-sub">{{ lang_text('home.dual.subtitle') }}</p>
     </div>
 
-    <div class="mt-10 grid gap-6 md:grid-cols-3">
+    <div class="rh-cards rh-cards-3 mt-9">
       {% for i in range(1, 4) %}
-      <div class="card h-full transition-shadow hover:shadow-md">
+      <div class="card rh-feature-card">
         <div class="card-body">
-          <span class="icon-tile icon-tile-brand">
-            <span class="material-symbols-outlined icon-lg">{{ icons['dual'][i] }}</span>
-          </span>
-          <div class="mt-3 font-semibold text-slate-800">{{ lang_text('home.dual.' ~ i ~ '.title') }}</div>
-          <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ lang_text('home.dual.' ~ i ~ '.body') }}</p>
+          <span class="rh-icon-tile"><i class="bi bi-{{ icons['dual'][i] }}" aria-hidden="true"></i></span>
+          <div class="fw-semibold mt-4">{{ lang_text('home.dual.' ~ i ~ '.title') }}</div>
+          <p class="fs-sm fg-3 mt-3 mb-0">{{ lang_text('home.dual.' ~ i ~ '.body') }}</p>
         </div>
       </div>
       {% endfor %}
     </div>
 
     <!-- 상담에서 원격지원으로 넘어가는 흐름 -->
-    <div class="mt-10 rounded-xl border border-slate-200 bg-slate-50 p-6">
-      <div class="mb-4 text-sm font-semibold text-slate-700">{{ lang_text('home.dual.flow.title') }}</div>
+    <div class="bg-1 border rounded-7 p-7 mt-9">
+      <div class="fs-sm fw-semibold fg-2 mb-5">{{ lang_text('home.dual.flow.title') }}</div>
 
-      <ol class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <ol class="list-unstyled rh-cards rh-cards-4 mb-0">
         {% for i in range(1, 5) %}
-        <li class="flex items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3">
-          <span class="step-badge">{{ i }}</span>
-          <span class="text-sm text-slate-600">{{ lang_text('home.dual.flow.' ~ i) }}</span>
+        <li class="d-flex align-items-center gap-4 bg-body border rounded-5 p-4">
+          <span class="rh-step-badge">{{ i }}</span>
+          <span class="fs-sm fg-2">{{ lang_text('home.dual.flow.' ~ i) }}</span>
         </li>
         {% endfor %}
       </ol>
 
       {% if not empty(widget_key) %}
-      <p class="mt-4 flex items-center gap-2 text-sm text-brand-600">
-        <span class="material-symbols-outlined icon-sm">{{ icons['dual'][1] }}</span>
+      <p class="d-flex align-items-center gap-3 fs-sm fg-primary mt-5 mb-0">
+        <i class="bi bi-{{ icons['dual'][1] }}" aria-hidden="true"></i>
         {{ lang_text('home.dual.try') }}
       </p>
       {% endif %}
@@ -123,16 +112,14 @@
 </section>
 
 <!-- 핵심 가치 -->
-<section class="border-b border-slate-200 bg-white">
-  <div class="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:grid-cols-2 lg:grid-cols-3">
+<section class="rh-section border-top">
+  <div class="rh-public-wrap rh-cards rh-cards-3">
     {% for i in range(1, 7) %}
-    <div class="flex gap-4">
-      <span class="icon-tile icon-tile-brand">
-        <span class="material-symbols-outlined icon-lg">{{ icons['value'][i] }}</span>
-      </span>
+    <div class="d-flex gap-5">
+      <span class="rh-icon-tile"><i class="bi bi-{{ icons['value'][i] }}" aria-hidden="true"></i></span>
       <div>
-        <div class="text-lg font-bold text-slate-900">{{ lang_text('home.value.' ~ i ~ '.title') }}</div>
-        <p class="mt-1 text-sm leading-relaxed text-slate-500">{{ lang_text('home.value.' ~ i ~ '.body') }}</p>
+        <div class="fs-lg fw-bold">{{ lang_text('home.value.' ~ i ~ '.title') }}</div>
+        <p class="fs-sm fg-3 mt-1 mb-0">{{ lang_text('home.value.' ~ i ~ '.body') }}</p>
       </div>
     </div>
     {% endfor %}
@@ -140,36 +127,30 @@
 </section>
 
 <!-- 이용 방법 -->
-<section id="how" class="bg-slate-50">
-  <div class="mx-auto max-w-6xl px-4 py-16">
-    <h2 class="text-center text-2xl font-bold text-slate-900">{{ lang_text('home.how.title') }}</h2>
-    <p class="mt-2 text-center text-sm text-slate-500">{{ lang_text('home.how.subtitle') }}</p>
+<section id="how" class="rh-section bg-1">
+  <div class="rh-public-wrap">
+    <h2 class="rh-section-title text-center">{{ lang_text('home.how.title') }}</h2>
+    <p class="rh-section-sub">{{ lang_text('home.how.subtitle') }}</p>
 
-    <div class="mt-10 grid gap-6 md:grid-cols-3">
+    <div class="rh-cards rh-cards-3 mt-9">
       {% for i in range(1, 4) %}
-      <div class="card transition-shadow hover:shadow-md">
+      <div class="card rh-feature-card">
         <div class="card-body">
-          <div class="flex items-center gap-3">
-            <span class="step-badge">{{ i }}</span>
-            <span class="icon-tile icon-tile-brand">
-              <span class="material-symbols-outlined icon-lg">{{ icons['how'][i] }}</span>
-            </span>
+          <div class="d-flex align-items-center gap-4">
+            <span class="rh-step-badge">{{ i }}</span>
+            <span class="rh-icon-tile"><i class="bi bi-{{ icons['how'][i] }}" aria-hidden="true"></i></span>
           </div>
-          <div class="mt-3 font-semibold text-slate-800">{{ lang_text('home.how.' ~ i ~ '.title') }}</div>
-          <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ lang_text('home.how.' ~ i ~ '.body') }}</p>
+          <div class="fw-semibold mt-4">{{ lang_text('home.how.' ~ i ~ '.title') }}</div>
+          <p class="fs-sm fg-3 mt-3 mb-0">{{ lang_text('home.how.' ~ i ~ '.body') }}</p>
           {% if i == 1 %}
-          <code class="mt-3 block rounded bg-slate-100 px-2 py-1 text-xs text-slate-600">
-            {{ base_url() }}{{ lang_text('home.how.1.sample') }}
-          </code>
+          <code class="d-block bg-2 rounded-3 px-3 py-2 fs-xs fg-2 mt-4">{{ base_url() }}{{ lang_text('home.how.1.sample') }}</code>
           {% elif i == 2 and not empty(demo_download) %}
-          <a class="btn btn-primary btn-sm mt-3" href="{{ demo_download }}">
-            {{ lang_text('home.how.2.download') }}
+          <a class="btn-solid theme-primary btn-sm mt-4" href="{{ demo_download }}">
+            <i class="bi bi-download" aria-hidden="true"></i>{{ lang_text('home.how.2.download') }}
           </a>
           {% endif %}
           {% if i == 1 %}
-          <a class="mt-2 inline-block text-xs text-brand-600 hover:underline" href="{{ demo_url }}">
-            {{ lang_text('home.how.1.demo') }}
-          </a>
+          <a class="d-inline-block fs-xs mt-3" href="{{ demo_url }}">{{ lang_text('home.how.1.demo') }}</a>
           {% endif %}
         </div>
       </div>
@@ -179,127 +160,114 @@
 </section>
 
 <!-- 기능 -->
-<section id="features" class="bg-white">
-  <div class="mx-auto max-w-6xl px-4 py-16">
-    <h2 class="text-center text-2xl font-bold text-slate-900">{{ lang_text('home.features.title') }}</h2>
-    <p class="mt-2 text-center text-sm text-slate-500">{{ lang_text('home.features.subtitle') }}</p>
+<section id="features" class="rh-section">
+  <div class="rh-public-wrap">
+    <h2 class="rh-section-title text-center">{{ lang_text('home.features.title') }}</h2>
+    <p class="rh-section-sub">{{ lang_text('home.features.subtitle') }}</p>
 
-    <div class="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="rh-cards rh-cards-3 mt-9">
       {% for i in range(1, 10) %}
-      <div class="card h-full transition-shadow hover:shadow-md">
+      <div class="card rh-feature-card">
         <div class="card-body">
-          <span class="icon-tile icon-tile-brand">
-            <span class="material-symbols-outlined icon-lg">{{ icons['features'][i] }}</span>
-          </span>
-          <div class="mt-3 font-semibold text-slate-800">{{ lang_text('home.features.' ~ i ~ '.title') }}</div>
-          <p class="mt-2 text-sm leading-relaxed text-slate-500">{{ lang_text('home.features.' ~ i ~ '.body') }}</p>
+          <span class="rh-icon-tile"><i class="bi bi-{{ icons['features'][i] }}" aria-hidden="true"></i></span>
+          <div class="fw-semibold mt-4">{{ lang_text('home.features.' ~ i ~ '.title') }}</div>
+          <p class="fs-sm fg-3 mt-3 mb-0">{{ lang_text('home.features.' ~ i ~ '.body') }}</p>
         </div>
       </div>
       {% endfor %}
     </div>
 
-    <p class="mt-8 text-center text-xs text-slate-400">{{ lang_text('home.features.note') }}</p>
+    <p class="text-center fs-xs fg-3 mt-7 mb-0">{{ lang_text('home.features.note') }}</p>
   </div>
 </section>
 
 <!-- 보안 -->
-<section id="security" class="bg-slate-900">
-  <div class="mx-auto max-w-6xl px-4 py-16">
-    <div class="grid gap-10 lg:grid-cols-2">
-      <div>
-        <h2 class="text-2xl font-bold text-white">{{ lang_text('home.security.title') }}</h2>
-        <p class="mt-3 text-sm leading-relaxed text-slate-300">{{ lang_text('home.security.body') }}</p>
+<section id="security" class="rh-section rh-section-dark">
+  <div class="rh-public-wrap rh-split">
+    <div>
+      <h2 class="rh-section-title">{{ lang_text('home.security.title') }}</h2>
+      <p class="fs-sm rh-hero-muted mt-4">{{ lang_text('home.security.body') }}</p>
 
-        <div class="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4">
-          <div class="flex items-center gap-2 font-semibold text-red-300">
-            <span class="material-symbols-outlined icon-md">{{ icons['misc']['phishing'] }}</span>
-            {{ lang_text('home.security.phishing.title') }}
-          </div>
-          <p class="mt-1 text-sm leading-relaxed text-red-100/80">
-            {{ lang_text('home.security.phishing.body') }}
-          </p>
+      <div class="rh-warning-box mt-7">
+        <div class="d-flex align-items-center gap-3 fw-semibold">
+          <i class="bi bi-{{ icons['misc']['phishing'] }} fs-lg" aria-hidden="true"></i>
+          {{ lang_text('home.security.phishing.title') }}
+        </div>
+        <p class="fs-sm mt-2 mb-0">{{ lang_text('home.security.phishing.body') }}</p>
+      </div>
+    </div>
+
+    <div class="vstack gap-5">
+      {% for i in range(1, 7) %}
+      <div class="d-flex gap-4 rh-hero-panel p-5">
+        <span class="rh-icon-tile rh-icon-tile-dark"><i class="bi bi-{{ icons['security'][i] }}" aria-hidden="true"></i></span>
+        <div>
+          <div class="fw-medium">{{ lang_text('home.security.' ~ i ~ '.title') }}</div>
+          <p class="fs-sm rh-hero-muted mt-1 mb-0">{{ lang_text('home.security.' ~ i ~ '.body') }}</p>
         </div>
       </div>
-
-      <div class="space-y-4">
-        {% for i in range(1, 7) %}
-        <div class="flex gap-3 rounded-lg border border-slate-700 bg-slate-800/60 p-4">
-          <span class="icon-tile icon-tile-dark">
-            <span class="material-symbols-outlined icon-md">{{ icons['security'][i] }}</span>
-          </span>
-          <div>
-            <div class="font-medium text-white">{{ lang_text('home.security.' ~ i ~ '.title') }}</div>
-            <p class="mt-1 text-sm leading-relaxed text-slate-400">{{ lang_text('home.security.' ~ i ~ '.body') }}</p>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
+      {% endfor %}
     </div>
   </div>
 </section>
 
 <!-- 요금 -->
-<section id="pricing" class="bg-white">
-  <div class="mx-auto max-w-4xl px-4 py-16">
-    <h2 class="text-center text-2xl font-bold text-slate-900">{{ lang_text('home.pricing.title') }}</h2>
-    <p class="mt-2 text-center text-sm text-slate-500">{{ lang_text('home.pricing.subtitle') }}</p>
+<section id="pricing" class="rh-section">
+  <div class="rh-public-wrap">
+    <h2 class="rh-section-title text-center">{{ lang_text('home.pricing.title') }}</h2>
+    <p class="rh-section-sub">{{ lang_text('home.pricing.subtitle') }}</p>
 
-    <div class="mx-auto mt-10 max-w-md">
-      <div class="card border-2 border-brand-500 shadow-lg">
+    <div class="rh-price-wrap mt-9">
+      <div class="card rh-price-card">
         <div class="card-body text-center">
-          <div class="badge badge-blue">{{ lang_text('home.pricing.badge') }}</div>
+          <span class="badge badge-subtle theme-primary">{{ lang_text('home.pricing.badge') }}</span>
 
-          <div class="mt-4">
-            <span class="text-4xl font-bold text-slate-900">
-              {{ (pricing['price'])|number_format }}{{ unit }}
-            </span>
-            <span class="text-slate-500"> / {{ lang_text('home.pricing.period', {'months': pricing['months']}) }}</span>
+          <div class="mt-5">
+            <span class="rh-price tabular-nums">{{ (pricing['price'])|number_format }}{{ unit }}</span>
+            <span class="fg-3"> / {{ lang_text('home.pricing.period', {'months': pricing['months']}) }}</span>
           </div>
 
-          <div class="mt-1 text-sm text-slate-500">
+          <div class="fs-sm fg-3 mt-1">
             {{ lang_text('home.pricing.includes', {'accounts': pricing['accounts']}) }}
           </div>
 
-          <div class="mt-4 rounded-lg bg-slate-50 py-3 text-sm text-slate-600">
-            <span class="font-semibold text-slate-800">
+          <div class="bg-1 rounded-5 py-4 fs-sm fg-2 mt-5">
+            <span class="fw-semibold fg-1">
               {{ lang_text('home.pricing.per_account', {'year': (pricing['per_account_year'])|number_format}) }}
             </span>
-            <span class="text-slate-400">
+            <span class="fg-3">
               {{ lang_text('home.pricing.per_month', {'month': (pricing['per_account_month'])|number_format}) }}
             </span>
           </div>
 
-          <ul class="mt-6 space-y-2 text-left text-sm text-slate-600">
+          <ul class="list-unstyled vstack gap-3 text-start fs-sm fg-2 mt-7 mb-0">
             {% for i in range(1, 7) %}
-            <li class="flex items-start gap-2">
-              <span class="material-symbols-outlined icon-sm mt-0.5 text-brand-500">{{ icons['misc']['check'] }}</span>
+            <li class="d-flex align-items-start gap-3">
+              <i class="bi bi-{{ icons['misc']['check'] }} fg-primary" aria-hidden="true"></i>
               <span>{{ lang_text('home.pricing.item' ~ i, {'accounts': pricing['accounts']}) }}</span>
             </li>
             {% endfor %}
           </ul>
 
-          <a class="btn btn-primary btn-lg mt-7 w-full" href="{{ base_url('signup') }}">
+          <a class="btn-solid theme-primary btn-lg w-100 mt-7" href="{{ base_url('signup') }}">
             {{ lang_text('home.pricing.cta') }}
           </a>
 
-          <p class="mt-3 text-xs text-slate-400">{{ lang_text('home.pricing.note') }}</p>
+          <p class="fs-xs fg-3 mt-4 mb-0">{{ lang_text('home.pricing.note') }}</p>
         </div>
       </div>
 
       {% if not empty(contact_email) or not empty(contact_phone) %}
-      <div class="mt-6 text-center text-sm text-slate-500">
+      <div class="d-flex flex-wrap justify-content-center align-items-center gap-4 fs-sm fg-3 mt-7">
         {{ lang_text('home.pricing.contact') }}
         {% if not empty(contact_phone) %}
-          <span class="inline-flex items-center gap-1 font-medium text-slate-700">
-            <span class="material-symbols-outlined icon-sm">{{ icons['misc']['call'] }}</span>
-            {{ contact_phone }}
+          <span class="d-inline-flex align-items-center gap-2 fw-medium fg-1">
+            <i class="bi bi-{{ icons['misc']['call'] }}" aria-hidden="true"></i>{{ contact_phone }}
           </span>
         {% endif %}
         {% if not empty(contact_email) %}
-          <a class="inline-flex items-center gap-1 font-medium text-brand-600 hover:underline"
-             href="mailto:{{ contact_email }}">
-            <span class="material-symbols-outlined icon-sm">{{ icons['misc']['mail'] }}</span>
-            {{ contact_email }}
+          <a class="d-inline-flex align-items-center gap-2 fw-medium" href="mailto:{{ contact_email }}">
+            <i class="bi bi-{{ icons['misc']['mail'] }}" aria-hidden="true"></i>{{ contact_email }}
           </a>
         {% endif %}
       </div>
@@ -309,20 +277,18 @@
 </section>
 
 <!-- 자주 묻는 질문 -->
-<section id="faq" class="bg-slate-50">
-  <div class="mx-auto max-w-4xl px-4 py-16">
-    <h2 class="text-center text-2xl font-bold text-slate-900">{{ lang_text('home.faq.title') }}</h2>
+<section id="faq" class="rh-section bg-1">
+  <div class="rh-public-wrap rh-public-narrow">
+    <h2 class="rh-section-title text-center">{{ lang_text('home.faq.title') }}</h2>
 
-    <div class="mt-8 space-y-3">
+    <div class="vstack gap-4 mt-7">
       {% for i in range(1, 10) %}
-      <details class="card group">
-        <summary class="card-body flex cursor-pointer items-center justify-between font-medium text-slate-800">
-          {{ lang_text('home.faq.' ~ i ~ '.q') }}
-          <span class="material-symbols-outlined icon-md shrink-0 text-slate-400 transition-transform group-open:rotate-180">{{ icons['misc']['expand'] }}</span>
+      <details class="card rh-faq">
+        <summary class="rh-faq-q">
+          <span>{{ lang_text('home.faq.' ~ i ~ '.q') }}</span>
+          <i class="bi bi-{{ icons['misc']['expand'] }} rh-faq-icon" aria-hidden="true"></i>
         </summary>
-        <div class="border-t border-slate-100 px-5 py-4 text-sm leading-relaxed text-slate-500">
-          {{ lang_text('home.faq.' ~ i ~ '.a', {'accounts': pricing['accounts']}) }}
-        </div>
+        <div class="rh-faq-a">{{ lang_text('home.faq.' ~ i ~ '.a', {'accounts': pricing['accounts']}) }}</div>
       </details>
       {% endfor %}
     </div>
@@ -330,13 +296,13 @@
 </section>
 
 <!-- 마무리 CTA -->
-<section class="bg-brand-500">
-  <div class="mx-auto max-w-4xl px-4 py-14 text-center">
-    <h2 class="text-2xl font-bold text-white">{{ lang_text('home.cta.title') }}</h2>
-    <p class="mt-3 text-sm text-blue-100">{{ lang_text('home.cta.body') }}</p>
-    <a class="btn btn-lg mt-6 bg-white text-brand-600 hover:bg-blue-50" href="{{ base_url('signup') }}">
+<section class="rh-section rh-cta">
+  <div class="rh-public-wrap rh-public-narrow text-center">
+    <h2 class="rh-section-title">{{ lang_text('home.cta.title') }}</h2>
+    <p class="fs-sm mt-4">{{ lang_text('home.cta.body') }}</p>
+    <a class="btn-solid rh-btn-on-dark btn-lg mt-6" href="{{ base_url('signup') }}">
       {{ lang_text('home.cta.button') }}
-      <span class="material-symbols-outlined icon-sm">{{ icons['misc']['arrow'] }}</span>
+      <i class="bi bi-{{ icons['misc']['arrow'] }}" aria-hidden="true"></i>
     </a>
   </div>
 </section>

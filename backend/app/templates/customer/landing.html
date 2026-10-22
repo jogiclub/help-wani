@@ -3,127 +3,107 @@
   역할: 고객 접속 안내 페이지 (조직 로고/소개/문의처와 접속 절차, 조직이 설정한 언어로 표시)
 
   1차 배포는 Microsoft Store 단독이다. 직접 다운로드는 .env 의 DIRECT_DOWNLOAD_ENABLED 로 켠다(docs/code-signing.md).
+  모양은 customer.css(rhc-*). Bootstrap 을 싣지 않는 화면이다.
 -#}
 {%- set show_download = download_enabled and download_info -%}
-<!-- 조직 소개: 로고, 이름, 소개 문구, 문의처 (조직 정보 화면에서 관리) -->
-<div class="card">
-  <div class="card-body text-center">
+<div class="rhc-stack">
+  <!-- 조직 소개: 로고, 이름, 소개 문구, 문의처 (조직 정보 화면에서 관리) -->
+  <div class="rhc-card rhc-center">
     {% if not empty(org.logo_path) %}
-      <img src="{{ base_url(org.logo_path) }}" alt="{{ org.name }}" class="mx-auto max-h-16 max-w-full">
+      <img src="{{ base_url(org.logo_path) }}" alt="{{ org.name }}" class="rhc-logo">
     {% else %}
-      <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl font-bold text-white">
-        {{ org.name[:1] }}
-      </div>
+      <span class="rhc-logo-letter" aria-hidden="true">{{ org.name[:1] }}</span>
     {% endif %}
-    <h1 class="mt-3 text-2xl font-bold text-slate-800">
-      {{ lang_text('customer.title', {'org': org.name}) }}
-    </h1>
+    <h1 class="rhc-title">{{ lang_text('customer.title', {'org': org.name}) }}</h1>
     {% if not empty(org.intro) %}
-      <p class="mx-auto mt-2 max-w-xl whitespace-pre-line text-sm leading-relaxed text-slate-600">{{ org.intro }}</p>
+      <p class="rhc-intro">{{ org.intro }}</p>
     {% endif %}
     {% if not empty(org.phone) %}
-      <p class="mt-3 text-sm text-slate-500">
+      <p class="rhc-muted rhc-contact">
         {{ lang_text('customer.contact') }}
-        <a class="font-semibold text-brand-600 hover:underline" href="tel:{{ tel_digits }}">{{ org.phone }}</a>
+        <a href="tel:{{ tel_digits }}">{{ org.phone }}</a>
       </p>
     {% endif %}
   </div>
-</div>
-<p class="mt-4 text-center text-sm text-slate-500">{{ lang_text('customer.subtitle') }}</p>
+  <p class="rhc-muted rhc-subtitle">{{ lang_text('customer.subtitle') }}</p>
 
-{% if not empty(guide_count) %}
-<!-- 공개 가이드 (가이드 관리에서 공개한 글이 있을 때만) -->
-<a class="card mt-4 flex items-center gap-3 px-5 py-3 hover:bg-slate-50" href="{{ base_url(org.org_code ~ '/guide') }}">
-  <span class="min-w-0 flex-1">
-    <span class="block font-semibold text-slate-800">{{ lang_text('customer.guide_link') }}</span>
-    <span class="block text-sm text-slate-500">{{ lang_text('customer.guide_hint') }}</span>
-  </span>
-  <span class="shrink-0 text-brand-600">→</span>
-</a>
-{% endif %}
+  {% if not empty(guide_count) %}
+  <!-- 공개 가이드 (가이드 관리에서 공개한 글이 있을 때만) -->
+  <a class="rhc-card rhc-link-card" href="{{ base_url(org.org_code ~ '/guide') }}">
+    <span>
+      <strong>{{ lang_text('customer.guide_link') }}</strong>
+      <span class="rhc-muted">{{ lang_text('customer.guide_hint') }}</span>
+    </span>
+    <span class="rhc-link-arrow" aria-hidden="true">&rarr;</span>
+  </a>
+  {% endif %}
 
-<div class="alert alert-danger mt-4">
-  <p class="font-bold">{{ lang_text('customer.warning.title') }}</p>
-  <p class="mt-1 leading-relaxed">{{ lang_text('customer.warning.body') }}</p>
-</div>
+  <div class="rhc-alert" role="note">
+    <strong>{{ lang_text('customer.warning.title') }}</strong>
+    {{ lang_text('customer.warning.body') }}
+  </div>
 
-<!-- 1단계: 설치 -->
-<div class="card mt-4">
-  <div class="card-body">
-    <div class="flex gap-4">
-      <span class="step-badge">1</span>
-      <div class="min-w-0 flex-1">
-        <div class="font-semibold text-slate-800">{{ lang_text('customer.step1.title') }}</div>
-        <div class="mt-1 text-sm text-slate-500">{{ lang_text('customer.step1.body') }}</div>
+  <div class="rhc-stack-sm">
+    <!-- 1단계: 설치 -->
+    <div class="rhc-card rhc-step">
+      <div class="rhc-step-num-cell"><span class="rhc-step-num">1</span></div>
+      <div>
+        <div class="rhc-step-title">{{ lang_text('customer.step1.title') }}</div>
+        <div class="rhc-step-body">{{ lang_text('customer.step1.body') }}</div>
 
         {% if show_download %}
-        <a class="btn btn-primary btn-lg mt-3 w-full sm:w-auto" href="{{ download_url }}">
+        <a class="rhc-btn rhc-btn-primary rhc-btn-auto rhc-mt" href="{{ download_url }}">
           {{ lang_text('customer.step1.download_button') }}
         </a>
-        <div class="form-help">
+        <div class="rhc-meta">
           RemoteHelp_{{ org.org_code }}.exe ·
           {{ download_info.size_mb }}MB ·
           <span data-i18n-date="{{ download_info.modified }}" data-i18n-date-style="date"></span>
         </div>
-        <details class="mt-2 text-xs text-slate-400">
-          <summary class="cursor-pointer">{{ lang_text('customer.step1.checksum') }}</summary>
-          <code class="mt-1 block break-all">{{ download_info.sha256 }}</code>
+        <details class="rhc-details">
+          <summary>{{ lang_text('customer.step1.checksum') }}</summary>
+          <code>{{ download_info.sha256 }}</code>
         </details>
-        <div class="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
+        <div class="rhc-divider rhc-muted rhc-small">
           {{ lang_text('customer.step1.store_note') }}
-          <a class="text-brand-600 hover:underline" href="{{ store_app_url }}">
-            {{ lang_text('customer.step1.button') }}
-          </a>
+          <a href="{{ store_app_url }}">{{ lang_text('customer.step1.button') }}</a>
         </div>
         {% else %}
-        <a class="btn btn-primary btn-lg mt-3 w-full sm:w-auto" href="{{ store_app_url }}">
+        <a class="rhc-btn rhc-btn-primary rhc-btn-auto rhc-mt" href="{{ store_app_url }}">
           {{ lang_text('customer.step1.button') }}
         </a>
-        <div class="mt-2">
-          <a class="text-xs text-brand-600 hover:underline"
-             href="{{ store_web_url }}" target="_blank" rel="noopener">
-            {{ lang_text('customer.step1.fallback') }}
-          </a>
+        <div class="rhc-meta">
+          <a href="{{ store_web_url }}" target="_blank" rel="noopener">{{ lang_text('customer.step1.fallback') }}</a>
         </div>
         {% endif %}
       </div>
     </div>
-  </div>
-</div>
 
-<!-- 2단계: 실행 -->
-<div class="card mt-3">
-  <div class="card-body">
-    <div class="flex gap-4">
-      <span class="step-badge">2</span>
+    <!-- 2단계: 실행 -->
+    <div class="rhc-card rhc-step">
+      <div class="rhc-step-num-cell"><span class="rhc-step-num">2</span></div>
       <div>
-        <div class="font-semibold text-slate-800">{{ lang_text('customer.step2.title') }}</div>
-        <div class="mt-1 text-sm text-slate-500">{{ lang_text('customer.step2.body') }}</div>
-        <a class="btn btn-success mt-3" href="{{ protocol_url }}">
+        <div class="rhc-step-title">{{ lang_text('customer.step2.title') }}</div>
+        <div class="rhc-step-body">{{ lang_text('customer.step2.body') }}</div>
+        <a class="rhc-btn rhc-btn-success rhc-btn-auto rhc-mt" href="{{ protocol_url }}">
           {{ lang_text('customer.step2.button') }}
         </a>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- 3단계: 코드 입력 -->
-<div class="card mt-3">
-  <div class="card-body">
-    <div class="flex gap-4">
-      <span class="step-badge">3</span>
+    <!-- 3단계: 코드 입력 -->
+    <div class="rhc-card rhc-step">
+      <div class="rhc-step-num-cell"><span class="rhc-step-num">3</span></div>
       <div>
-        <div class="font-semibold text-slate-800">{{ lang_text('customer.step3.title') }}</div>
-        <div class="mt-1 text-sm text-slate-500">{{ lang_text('customer.step3.body') }}</div>
+        <div class="rhc-step-title">{{ lang_text('customer.step3.title') }}</div>
+        <div class="rhc-step-body">{{ lang_text('customer.step3.body') }}</div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="card mt-4">
-  <div class="card-body text-sm text-slate-500">
-    <div class="mb-2 font-semibold text-slate-700">{{ lang_text('customer.notice.title') }}</div>
-    <ul class="list-disc space-y-1 pl-5">
+  <div class="rhc-card">
+    <div class="rhc-notice-title">{{ lang_text('customer.notice.title') }}</div>
+    <ul class="rhc-list">
       <li>{{ lang_text('customer.notice.item1') }}</li>
       <li>{{ lang_text('customer.notice.item2') }}</li>
       <li>{{ lang_text('customer.notice.item3') }}</li>

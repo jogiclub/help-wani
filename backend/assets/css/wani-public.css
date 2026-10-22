@@ -1,0 +1,232 @@
+/**
+ * 파일 위치: backend/assets/css/wani-public.css
+ * 역할: 소개(홍보) 페이지 전용 모양 (layouts/public.html, home/landing.html)
+ *
+ * 관리 화면처럼 셸을 쓰지 않는 방문자용 화면이다. 색은 wani.css 의 --wani-* 토큰만 쓴다.
+ * 어두운 구역(히어로, 보안)은 왔니 주색의 진한 값(primary-text-emphasis)을 바탕으로 쓴다.
+ */
+.rh-public {
+    --rh-dark: var(--wani-primary-text-emphasis);
+    --rh-dark-2: #0a2f5c;
+    --rh-on-dark: #ffffff;
+    --rh-on-dark-muted: #c9d4e3;
+    background: var(--wani-surface);
+}
+
+.rh-public-wrap {
+    width: 100%;
+    max-width: 1152px;
+    margin-inline: auto;
+    padding-inline: 16px;
+}
+.rh-public-narrow { max-width: 896px; }
+.rh-public-measure { max-width: 28rem; }
+
+/* 머리 */
+.rh-public-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--wani-border);
+}
+.rh-public-header-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    min-height: var(--wani-header-height);
+}
+.rh-public-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--wani-radius-lg);
+    background: var(--wani-primary);
+    color: #ffffff;
+    font-size: 20px;
+}
+.rh-public-logo-sm { width: 28px; height: 28px; font-size: 16px; border-radius: var(--wani-radius-md); }
+.rh-public-nav { gap: 4px; }
+.rh-public-nav a {
+    padding: 6px 12px;
+    border-radius: var(--wani-radius-md);
+    color: var(--wani-ink-subtle);
+    font-size: 14px;
+    text-decoration: none;
+}
+.rh-public-nav a:hover { background: var(--wani-sidebar-hover); color: var(--wani-primary); }
+
+/* 구역 */
+.rh-section { padding-block: 64px; }
+.rh-section-title {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    color: var(--wani-ink-strong);
+}
+.rh-section-sub {
+    max-width: 42rem;
+    margin: 8px auto 0;
+    text-align: center;
+    color: var(--wani-ink-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+.rh-cards { display: grid; gap: 24px; }
+.rh-cards-3 { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.rh-cards-4 { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.rh-split { display: grid; gap: 40px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+.rh-feature-card { height: 100%; transition: box-shadow .15s; }
+.rh-feature-card:hover { box-shadow: var(--wani-shadow-popover); }
+.rh-feature-card p { line-height: 1.6; }
+
+.rh-icon-tile {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--wani-radius-lg);
+    background: var(--wani-primary-bg-subtle);
+    color: var(--wani-primary);
+    font-size: 22px;
+}
+.rh-icon-tile-dark { background: rgba(255, 255, 255, 0.1); color: #ffffff; }
+
+.rh-step-badge {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--wani-primary);
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* 어두운 구역 (히어로, 보안, 마무리) */
+.rh-hero,
+.rh-section-dark,
+.rh-cta {
+    background:
+        radial-gradient(60% 60% at 75% 15%, rgba(0, 60, 255, 0.28), transparent),
+        radial-gradient(50% 50% at 10% 100%, rgba(135, 2, 244, 0.22), transparent),
+        var(--rh-dark);
+    color: var(--rh-on-dark);
+}
+.rh-section-dark .rh-section-title,
+.rh-cta .rh-section-title { color: var(--rh-on-dark); }
+.rh-cta p { color: var(--rh-on-dark-muted); }
+
+.rh-hero-inner { padding-block: 88px; }
+.rh-hero-grid { display: grid; gap: 48px; align-items: center; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.rh-hero-badge { --bs-badge-bg: rgba(255, 255, 255, 0.14); --bs-badge-color: #ffffff; }
+.rh-hero-title {
+    margin: 16px 0 0;
+    font-size: clamp(30px, 4.4vw, 48px);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -1.5px;
+    color: var(--rh-on-dark);
+}
+.rh-hero-accent { color: #8fb4ff; }
+.rh-hero-body { max-width: 32rem; margin: 20px 0 0; color: var(--rh-on-dark-muted); line-height: 1.7; }
+.rh-hero-price { margin: 16px 0 0; color: var(--rh-on-dark-muted); font-size: 14px; }
+.rh-hero-price strong { color: var(--rh-on-dark); }
+.rh-hero-price a { color: var(--rh-on-dark-muted); }
+.rh-hero-price a:hover { color: #ffffff; }
+.rh-hero-muted { color: var(--rh-on-dark-muted); }
+.rh-hero-step { color: #8fb4ff; font-size: 12px; font-weight: 700; }
+
+.rh-hero-panel {
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(6px);
+}
+.rh-hero-code {
+    margin-top: 24px;
+    padding: 16px;
+    border-radius: var(--wani-radius-lg);
+    background: rgba(0, 0, 0, 0.25);
+}
+.rh-code-sample {
+    font-family: var(--wani-font-mono);
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: 0.35em;
+    text-align: center;
+    color: #8fb4ff;
+}
+
+/* 어두운 바탕 위 버튼 */
+.rh-btn-on-dark {
+    --bs-theme-bg: #ffffff;
+    --bs-theme-contrast: var(--wani-primary);
+    --bs-theme-focus-ring: rgba(255, 255, 255, 0.5);
+}
+.rh-btn-ghost-dark {
+    --bs-theme-fg: #ffffff;
+    --bs-theme-border: rgba(255, 255, 255, 0.4);
+    --bs-theme-bg: rgba(255, 255, 255, 0.12);
+    --bs-theme-contrast: #ffffff;
+    --bs-btn-hover-bg: rgba(255, 255, 255, 0.12);
+    --bs-btn-hover-color: #ffffff;
+}
+
+.rh-warning-box {
+    padding: 16px;
+    border: 1px solid rgba(255, 150, 150, 0.35);
+    border-radius: var(--wani-radius-lg);
+    background: rgba(203, 20, 20, 0.16);
+    color: #ffd9d9;
+}
+
+/* 요금 */
+.rh-price-wrap { max-width: 448px; margin-inline: auto; }
+.rh-price-card { border: 2px solid var(--wani-primary); box-shadow: var(--wani-shadow-lg); }
+.rh-price-card .card-body { padding: 32px; }
+.rh-price { font-size: 36px; font-weight: 700; color: var(--wani-ink-strong); }
+
+/* 자주 묻는 질문 */
+.rh-faq { overflow: hidden; }
+.rh-faq-q {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 16px 20px;
+    font-weight: 500;
+    cursor: pointer;
+    list-style: none;
+}
+.rh-faq-q::-webkit-details-marker { display: none; }
+.rh-faq-icon { flex-shrink: 0; color: var(--wani-ink-muted); font-size: 20px; transition: transform .15s; }
+.rh-faq[open] .rh-faq-icon { transform: rotate(180deg); }
+.rh-faq-a {
+    padding: 16px 20px;
+    border-top: 1px solid var(--wani-border);
+    color: var(--wani-ink-muted);
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+/* 바닥글 */
+.rh-public-footer { padding-block: 40px; background: var(--wani-surface-muted); border-top: 1px solid var(--wani-border); }
+
+@media (width < 768px) {
+    .rh-section { padding-block: 48px; }
+    .rh-hero-inner { padding-block: 56px; }
+    .rh-public-header-row { gap: 12px; }
+    .rh-price-card .card-body { padding: 20px; }
+}
