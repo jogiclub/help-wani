@@ -14,14 +14,14 @@
 
 | 화면 | 주소 | 대상 | 레이아웃 |
 |---|---|---|---|
-| 가이드 관리 | `/admin/guide` | 조직 관리자 | `layouts/main.php` |
-| 가이드 편집 | `/admin/guide/edit/{id}` | 조직 관리자 | `layouts/main.php` |
-| 공개 가이드 목록 + 검색 | `/{조직코드}/guide` | 고객(누구나) | `layouts/customer.php` |
-| 공개 가이드 상세 | `/{조직코드}/guide/{slug}` | 고객(누구나) | `layouts/customer.php` |
+| 가이드 관리 | `/admin/guide` | 조직 관리자 | `layouts/main.html` |
+| 가이드 편집 | `/admin/guide/edit/{id}` | 조직 관리자 | `layouts/main.html` |
+| 공개 가이드 목록 + 검색 | `/{조직코드}/guide` | 고객(누구나) | `layouts/guide.html` |
+| 공개 가이드 상세 | `/{조직코드}/guide/{slug}` | 고객(누구나) | `layouts/guide.html` |
 
 - 요청의 `help.wani.im/{조직id}/guide` 는 **`org_code`** 로 만듭니다. 고객 접속 페이지(`/{조직코드}`)와 같은 식별자이며,
-  숫자 id 를 주소에 내보내지 않습니다. 고객에게 보내는 주소는 `customer_url($org->org_code).'/guide'` 로 만듭니다(3.13).
-- 헤더(`layouts/main.php` 의 `$menu`)의 조직 관리 묶음에 **`가이드 관리`** 를 추가합니다.
+  숫자 id 를 주소에 내보내지 않습니다. 고객에게 보내는 주소는 `customer_url(org.org_code + '/guide')` 로 만듭니다(3.13).
+- 헤더(`layouts/main.html` 의 메뉴)의 조직 관리 묶음에 **`가이드 관리`** 를 추가합니다.
 
 ```
 원격지원 | 상담 대화 | 조직 관리 | 상담원 관리 | 조직 정보 | 상담 위젯 | 가이드 관리
@@ -114,12 +114,12 @@
 
 ### 3-3. 이미지
 
-- **Dropzone.js(`RHImageDrop.create`)** 로만 올립니다(3.14). 컨트롤러는 `'use_dropzone' => TRUE`.
+- **Dropzone.js(`RHImageDrop.create`)** 로만 올립니다(3.14). 라우터는 `'use_dropzone': True`.
 - PNG/JPG/WEBP, 2MB 이하, SVG 거부. 서버는 로고 업로드와 같은 내용 기준 형식 판별을 씁니다
-  (`Admin::api_logo_upload()` 의 검사를 공통 함수로 뽑아 함께 씁니다).
+  (로고 업로드와 같은 `check_uploaded_image()` 를 함께 씁니다).
 - 저장 위치 `backend/assets/uploads/guides/{org_id}/{임의이름}.{확장자}`. `.gitignore` 에 추가하고 `.gitkeep` 만 둡니다.
 - 글을 지우거나 블록에서 이미지를 빼면 파일도 지웁니다. 다른 글이 같은 경로를 쓰고 있으면 남깁니다.
-- 올리고 저장하지 않은 파일은 다음 업로드/가져오기 때 하루가 지난 것부터 정리합니다(`Guide_model::cleanup_images`).
+- 올리고 저장하지 않은 파일은 다음 업로드/가져오기 때 하루가 지난 것부터 정리합니다(`guide_model.cleanup_images`).
 
 ---
 
@@ -200,7 +200,7 @@ ALTER TABLE organizations
 
 ## 5. 키워드 매칭 (AI 토큰 없음)
 
-외부 API 를 부르지 않고 **PHP 문자열 처리 + MySQL 색인 조회**만으로 추천합니다. 비용은 질의 한 번에 SELECT 한 번입니다.
+외부 API 를 부르지 않고 **서버 문자열 처리 + MySQL 색인 조회**만으로 추천합니다. 비용은 질의 한 번에 SELECT 한 번입니다.
 
 ### 5-1. 정규화 (색인과 질문에 똑같이 적용)
 
@@ -209,7 +209,7 @@ ALTER TABLE organizations
 3. 공백으로 나눠 낱말 목록
 4. 한국어 조사·어미 떼기: 낱말 끝이 목록에 있으면 잘라냄
    `에서, 으로, 에게, 까지, 부터, 은, 는, 이, 가, 을, 를, 에, 로, 와, 과, 도, 만, 요, 해요, 합니다, 안돼요, 돼요` 등
-   (목록은 `application/config/guide_match.php` 에 둡니다. 남는 낱말이 1글자가 되면 떼지 않습니다)
+   (목록은 `backend/app/settings/guide_match.py` 에 둡니다. 남는 낱말이 1글자가 되면 떼지 않습니다)
 5. 불용어 제거: `안녕하세요, 문의, 질문, 좀, 너무, 어떻게, 왜, 그리고` 등, 영어 `the, a, how, is` 등
 6. 한글 낱말이 3글자 이상이면 **2글자 조각(bi-gram)** 을 추가로 만듦
    예) `프린터연결` → `프린, 린터, 터연, 연결`. 띄어쓰기를 안 하거나 합성어로 쓴 질문을 잡기 위해서입니다.
@@ -246,7 +246,7 @@ HAVING score >= ?
 | 공개 페이지 검색 | 1 | 사용자가 직접 찾는 것 |
 
 - 질문 낱말은 최대 30개로 자릅니다(긴 붙여넣기 대비).
-- 점수 기준과 가중치는 `config/guide_match.php` 에 두어 코드 수정 없이 조정합니다.
+- 점수 기준과 가중치는 `settings/guide_match.py` 에 두어 코드 수정 없이 조정합니다.
 
 ### 5-4. 검토한 다른 방법
 
@@ -271,14 +271,14 @@ HAVING score >= ?
   - 검색창도 함께 둬서 상담원이 직접 찾을 수 있게 합니다.
 - 각 추천에 **[보내기]**: 가이드 카드 메시지를 저장합니다.
   - `messages.sender_type = 'agent'`, `body` = 제목 + 주소(카드를 못 그리는 화면에서도 읽히도록), `meta` = 카드 정보
-  - **저장 후 `Realtime::publish_message()` 로 발행합니다(3.11).** 기존 `api_chat_send` 와 같은 경로를 탑니다.
+  - **저장 후 `realtime.publish_message()` 로 발행합니다(3.11).** 기존 `api_chat_send` 와 같은 경로를 탑니다.
 - 새 API: `GET /console/api/guide/suggest/{conversation_id}`, `GET /console/api/guide/search?q=`,
   `POST /console/api/chat/send_guide` (`conversation_id`, `article_id`). 주소는 뷰에서 `base_url()` 로 만들어 `CHAT_URLS` 에 담습니다(3.7).
 
 ### 6-2. 상담 위젯 (`widget.js`)
 
 - 조직이 `guide_autosuggest` 를 켰을 때만 동작합니다(조직 관리 > 상담 위젯 화면에 체크박스).
-- 방문자가 메시지를 보내면 `Widget::send()` 안에서 매칭하고, 기준 점수(10) 이상이면
+- 방문자가 메시지를 보내면 `widget.send()` 안에서 매칭하고, 기준 점수(10) 이상이면
   `sender_type = 'system'` 카드 메시지 1건을 저장하고 발행합니다. 상담원도 대화창에서 "자동 추천됨" 으로 봅니다.
 - 같은 대화에서 같은 글은 한 번만 자동 추천합니다. 대화당 자동 추천은 최대 3회입니다.
 - 위젯은 의존성 없이 돕니다(3.9). 카드 모양은 Shadow DOM 안 CSS 로 그리고, 문구(`이 가이드가 도움이 될 수 있어요`, `가이드 보기`)는
@@ -382,11 +382,11 @@ HAVING score >= ?
 
 - 블록 순서는 위/아래 버튼으로 바꿉니다(끌어다 놓기 라이브러리를 새로 넣지 않음).
 - 저장은 `blocks` 배열을 JSON 으로 보내고 서버가 7-2 와 같은 검사 함수를 거칩니다. 화면 입력과 파일 가져오기의 검사를 한 곳에 둡니다.
-- 미리보기는 공개 페이지와 같은 뷰 조각(`views/guide/_article.php`)을 씁니다.
+- 미리보기는 공개 페이지와 같은 뷰 조각(`templates/guide/_article.html`)을 씁니다.
 
 ### 8-3. 공개 페이지 (`/{조직코드}/guide`)
 
-- 상단은 고객 접속 페이지와 같은 조직 로고/이름(`layouts/customer.php`).
+- 상단은 고객 접속 페이지와 같은 조직 로고/이름(`layouts/customer.html`).
 - 검색창 + 분류별 목록. 상세에서 조회수를 1 올립니다(같은 브라우저 연속 조회는 세션으로 거름).
 - 문구 언어는 **조직 설정**을 따릅니다(3.2 표, 고객이 보는 화면). 가이드 내용 자체는 관리자가 쓴 언어 그대로입니다.
 - 상세 하단: "해결되지 않았나요? [원격지원 받기]" → `/{조직코드}` 로 이동.
@@ -424,28 +424,28 @@ HAVING score >= ?
 | 유튜브 iframe 주소는 `youtube-nocookie.com/embed/` 로만 만든다 | 뷰/JS 에서 `youtube.com/embed` 직접 사용 금지 |
 | 가이드 카드 메시지 저장 뒤 발행 | `send_guide` 에 `publish_message` 호출 존재 |
 | 가이드 업로드 폴더 git 제외 | `.gitignore` 에 `backend/assets/uploads/guides/*` |
-| 가이드 본문 출력 시 이스케이프 | `_article.php` 에 `html_escape` 없이 블록 출력 금지 |
+| 가이드 본문 출력 시 이스케이프 | 공개 가이드 템플릿에서 `\|safe` 금지(Jinja 자동 이스케이프), 글 블록은 `guide_text_html()` |
 
-추가할 라우트 (`$route['(:any)']` 위)
+경로 (`main.py` 에서 조직 코드 라우터 `customer.org_router` 보다 먼저 등록, 3.8)
 
-```php
-// 조직 관리 > 가이드
-$route['admin/guide']               = 'admin_guide/index';
-$route['admin/guide/edit/(:num)']   = 'admin_guide/edit/$1';
-$route['admin/guide/new']           = 'admin_guide/edit';
-$route['admin/guide/export']        = 'admin_guide/export';
-$route['admin/guide/api/(:any)']    = 'admin_guide/api_$1';
-// 상담원 콘솔 가이드 추천
-$route['console/api/guide/suggest/(:num)'] = 'console/api_guide_suggest/$1';
-$route['console/api/guide/search']         = 'console/api_guide_search';
-$route['console/api/chat/send_guide']      = 'console/api_chat_send_guide';
-// 공개 가이드 (고객 화면 묶음 안, (:any) 보다 위)
-$route['(:any)/guide']        = 'guide/index/$1';
-$route['(:any)/guide/(:any)'] = 'guide/article/$1/$2';
+```
+# 조직 관리 > 가이드 (routers/admin_guide.py, require_admin)
+/admin/guide                 index
+/admin/guide/new             new
+/admin/guide/edit/{id}       edit
+/admin/guide/preview/{id}    preview
+/admin/guide/export          export
+/admin/guide/api/{이름}       api_{이름}
+# 상담원 콘솔 가이드 추천 (routers/console.py)
+/console/api/guide/suggest/{conversation_id}   api_guide_suggest
+/console/api/guide/search                      api_guide_search
+/console/api/chat/send_guide                   api_chat_send_guide
+# 공개 가이드 (routers/guide.py, 모음 주소가 글 주소보다 먼저)
+/{org_code}/guide            index
+/{org_code}/guide/{slug}     article
 ```
 
-- `Admin.php` 가 이미 커서 가이드는 별도 컨트롤러 `Admin_guide`(관리자 검사 공통 부모 사용)로 나눕니다.
-- 컨트롤러 이름 `Guide` 와 라이브러리 `Guide_matcher` 는 이름이 겹치지 않습니다(3.11 마지막 항목).
+- 조직 관리(`routers/admin.py`)와 나눠 가이드 관리는 `routers/admin_guide.py` 에 두고 둘 다 `Depends(require_admin)` 을 씁니다.
 
 ---
 
@@ -467,25 +467,25 @@ $route['(:any)/guide/(:any)'] = 'guide/article/$1/$2';
 | 항목 | 파일 |
 |---|---|
 | 스키마 | `sql/migrations/006-guides.sql`, `sql/01-schema.sql` |
-| 매칭 | `libraries/Guide_matcher.php`, `config/guide_match.php` |
-| 저장/검사/색인/guide.json | `models/Guide_model.php` |
-| 관리 화면 | `controllers/Admin_guide.php`, `views/admin/guide.php`, `views/admin/guide_edit.php`, `assets/js/admin/guide.js`, `assets/js/admin/guide-edit.js` |
-| 공개 화면 | `controllers/Guide.php`, `views/guide/*`, `assets/js/guide.js` |
-| 상담 연계 | `Console::api_guide_suggest / api_guide_search / api_chat_send_guide`, `Widget::suggest_guide`, `assets/js/console/chat.js`, `assets/js/widget.js` |
+| 매칭 | `libraries/guide_matcher.py`, `settings/guide_match.py` |
+| 저장/검사/색인/guide.json | `models/guide_model.py` |
+| 관리 화면 | `routers/admin_guide.py`, `templates/admin/guide.html`, `templates/admin/guide_edit.html`, `assets/js/admin/guide.js`, `assets/js/admin/guide-edit.js` |
+| 공개 화면 | `routers/guide.py`, `templates/guide/*`, `assets/js/guide.js` |
+| 상담 연계 | `console.api_guide_suggest / api_guide_search / api_chat_send_guide`, `widget._suggest_guide`, `assets/js/console/chat.js`, `assets/js/widget.js` |
 | 설정 | 상담 대화 > 설정 드로어의 "가이드 자동 추천" (`organizations.guide_autosuggest`) |
-| 규칙 검사 | `scripts/check-conventions.py` 의 `check_guide()`, `check_routes()`(정확히 `$route['(:any)']` 만 본다) |
+| 규칙 검사 | `scripts/check-conventions.py` 의 `check_guide()`, `check_routes()`(조직 코드 라우터가 맨 마지막, 모음 주소 순서·예약) |
 
 계획과 달라진 점
 
 - 관리 화면에 **미리보기**(`/admin/guide/preview/{id}`)를 더했습니다. 임시 글도 고객 화면 모양으로 봅니다.
-- 관리자 검사를 `Admin_Controller`(core/MY_Controller.php)로 옮겨 `Admin` 과 `Admin_guide` 가 함께 씁니다.
+- 관리자 검사는 `require_admin`(core/deps.py) 하나를 `routers/admin.py` 와 `routers/admin_guide.py` 가 함께 씁니다.
 - guide.json 올리기도 Dropzone(`RHImageDrop`)으로 받습니다(CLAUDE.md 3.14 의 파일 입력 금지 규칙).
 - 공개 검색에서 낱말이 하나도 맞지 않으면 제목/부제목에 그 말이 들어 있는지 한 번 더 봅니다(1글자 질문 등).
 - 조사를 떼기 전과 후 모두 불용어를 봅니다("안녕하세요" 가 "안녕하" 로 남는 문제).
 
 ### 12-1. 가이드 샘플 (2026-10-21 추가)
 
-- `/admin/guide` 를 처음 열 때 글이 없으면 샘플 10개를 만듭니다(`Guide_model::seed_samples`).
+- `/admin/guide` 를 처음 열 때 글이 없으면 샘플 10개를 만듭니다(`guide_model.seed_samples`).
   분류 5개(시작하기, 원격지원, 문제 해결, 계정, 결제)와 동의어 5묶음도 함께 만듭니다.
 - 형태: 글만 7개, 글+이미지 1개(원격지원 받는 방법, 이미지 2장), 글+이미지+유튜브 2개(프린터, 인터넷).
 - 모두 **임시** 상태입니다. 고객 화면과 상담 추천에 바로 나오지 않게 하려는 것이며, 화면 상단에 안내를 띄웁니다.
@@ -511,8 +511,8 @@ $route['(:any)/guide/(:any)'] = 'guide/article/$1/$2';
 
 - 강조색은 조직의 상담 위젯 색(`widget_color`)을 따릅니다.
 - 미리보기는 `/{조직코드}/guide?theme=키` 이며 그 조직 관리자로 로그인한 세션에서만 받습니다. 다른 방문자에게는 저장된 테마가 보입니다.
-- 구조: `Guide_model::page_data()` 가 목록/검색/상세 데이터를 만들고 `views/guide/page.php` 가 테마 뷰를 고릅니다.
-  관리자 미리보기(`/admin/guide/preview/{id}`)도 같은 경로를 탑니다. 레이아웃은 `layouts/guide.php`.
+- 구조: `guide_model.page_data()` 가 목록/검색/상세 데이터를 만들고 `templates/guide/page.html` 이 테마 템플릿을 고릅니다.
+  관리자 미리보기(`/admin/guide/preview/{id}`)도 같은 경로를 탑니다. 레이아웃은 `layouts/guide.html`.
 - 테마 2~5 의 모양은 `assets/css/guide-themes.css` 입니다. 레이어 밖 일반 CSS 라 Tailwind 유틸리티보다 우선하며,
   공통 본문 조각의 `guide-*` 클래스에 테마별 모양을 덧입힙니다.
 - 아이콘은 SVG 를 마크업에 직접 넣었습니다(Material Symbols 목록 등록 불필요).

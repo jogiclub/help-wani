@@ -67,7 +67,7 @@
 ### M1. 매크로 만들기/고치기
 
 **화면 위치**: 상담 대화(`/console/chat`) 상단의 **[매크로]** 버튼 → 매크로 관리(`/console/macro`).
-편집은 **드로어**(`openDrawer('macroEditDrawer')`, 3.7)에서 합니다. 드로어는 `views/console/_macro_edit.php` + `macro-editor.js` 로
+편집은 **드로어**(`openDrawer('macroEditDrawer')`, 3.7)에서 합니다. 드로어는 `templates/console/_macro_edit.html` + `macro-editor.js` 로
 관리 화면과 상담 대화 화면([매크로로 저장])이 함께 씁니다.
 
 ```
@@ -101,7 +101,7 @@
 | 공용 | 조직당 2,000개 |
 | 개인 | 상담원당 300개 |
 
-- 수치는 `config/macro.php` 한 곳에서 고칩니다. 화면 저장과 파일 가져오기는 **같은 검사 함수 `Macro_model::clean_macro()`** 를 거칩니다(가이드의 `clean_article` 과 같은 방식).
+- 수치는 `settings/macro.py` 한 곳에서 고칩니다. 화면 저장과 파일 가져오기는 **같은 검사 함수 `macro_model.clean_macro()`** 를 거칩니다(가이드의 `clean_article` 과 같은 방식).
 
 #### 변수
 
@@ -159,7 +159,7 @@
 
 ### M3. 매크로 관리 목록
 
-**주소**: `/console/macro` (모든 상담원). 레이아웃 `layouts/main.php`.
+**주소**: `/console/macro` (모든 상담원). 레이아웃 `layouts/main.html`.
 
 ```
 매크로                                   [양식 받기] [파일로 등록] [내려받기] [+ 매크로]
@@ -170,7 +170,7 @@
 | ★ | 환불 규정 안내 | {고객 이름}님, 환불은… | 공용 | 김관리    | 128  | 10-21 14:02 | 10-02 09:10 | ⋯ |
 ```
 
-- 목록은 **wgrid**(`RHGrid.create()`, 기본 20개, 3.5)로 그립니다. 컨트롤러에서 `'use_grid' => TRUE`.
+- 목록은 **wgrid**(`RHGrid.create()`, 기본 20개, 3.5)로 그립니다. 라우터에서 `'use_grid': True`.
 - 컬럼 `key`: `_fav`, `name`, `body`, `scope`, `created_by_name`, `use_count`, `last_used_at`, `updated_at`, `_actions`.
   날짜 열은 `format: RHGrid.shortDateTime`(조직 시간대, 3.4).
 - 정렬: 이름, 사용 횟수, 최근 사용, 수정 시각. 기본은 **최근 사용 내림차순**(안 쓴 것은 맨 아래).
@@ -228,9 +228,8 @@
 
 **파일 형식** — CSV 로 결정
 
-- 포털에는 PHP 엑셀 라이브러리가 없습니다(composer 의존성 없음).
-- XLSX 는 ZIP 안의 XML 이라 `ZipArchive` 로 첫 시트와 공유 문자열만 읽는 최소 파서를 만들 수 있으나,
-  지금 `docker/web/Dockerfile` 은 `libzip-dev` 만 설치하고 **PHP `zip` 확장은 설치하지 않습니다**(`docker-php-ext-install mysqli pdo_mysql`).
+- 포털에는 엑셀 라이브러리가 없습니다(`backend/requirements.txt` 에 넣지 않음).
+- XLSX 는 ZIP 안의 XML 이라 표준 `zipfile` 로 첫 시트와 공유 문자열만 읽는 최소 파서를 만들 수 있으나, 지금은 만들지 않았습니다.
 - **CSV(UTF-8, BOM 포함 — 엑셀에서 한글이 깨지지 않게)** 로 받고 내려줍니다. 엑셀 기본 저장(CP949)도 받습니다.
   머리글은 `name, content, keywords` 이며 한글 머리글(`이름, 내용, 키워드`)도 받습니다.
 - 내려받을 때 `= + - @` 로 시작하는 칸은 엑셀이 수식으로 실행하지 않도록 앞에 `'` 를 붙이고, 가져올 때 뗍니다.
@@ -241,9 +240,9 @@
 - 가이드 추천과 같은 방식으로 **AI 없이 키워드 매칭**합니다. 색인 만들기와 단어 쪼개기는 `Guide_matcher` 의
   `words()` / `grams()` 를 그대로 재사용합니다(조사 제거, 정규화가 같아야 결과가 일관됨).
 - 색인 대상: 매크로 **이름 + 키워드**(가중치 높게), 내용(낮게). 매크로를 저장·삭제할 때 `macro_terms` 를 다시 만듭니다.
-  저장은 반드시 `Macro_model::save()` 를 거칩니다(가이드의 `save_article()` 규칙과 같음).
+  저장은 반드시 `macro_model.save()` 를 거칩니다(가이드의 `save_article()` 규칙과 같음).
 - 질의: 그 대화의 **마지막 고객 메시지 1건**. `/` 목록을 열 때 `GET /console/api/macro/suggest/{conversation_id}` 로 최대 3개를 받습니다.
-- 기준 점수와 가중치는 `config/macro.php` 에 둡니다. 기준 미만이면 추천 묶음을 숨깁니다.
+- 기준 점수와 가중치는 `settings/macro.py` 에 둡니다. 기준 미만이면 추천 묶음을 숨깁니다.
 - 개인 매크로는 본인 것만 후보에 넣습니다.
 
 ### M8. 사용 통계 (2차)
@@ -264,8 +263,8 @@
 | 다른 사람의 개인 매크로 보기 | X | X |
 | 즐겨찾기 (본인) | O | O |
 
-- 공용 매크로를 바꾸는 API 는 컨트롤러 안에서 `role = 'admin'` 을 검사합니다. 거부 응답은
-  `api_response(FALSE, ..., 403)` 뒤 `$this->output->_display(); exit;` (3.6).
+- 공용 매크로를 바꾸는 API 는 `macro_model` 안에서 `role = 'admin'` 을 검사합니다. 거부 응답은
+  `api_response(False, ..., None, 403)` 입니다(3.6).
 - 모든 조회·수정은 `org_id = 로그인 상담원의 org_id` 조건을 겁니다. 개인 매크로는 `owner_agent_id = 본인` 까지 겁니다.
 
 ---
@@ -341,7 +340,7 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 ```
 
 - `owner_key` 는 처음에 생성 컬럼(`AS (IFNULL(owner_agent_id, 0)) STORED`)으로 잡았으나, MySQL 은 CASCADE 외래 키가 걸린 컬럼을
-  STORED 생성 컬럼의 원본으로 허용하지 않아(ERROR 1215) **일반 컬럼으로 두고 `Macro_model` 이 채웁니다.**
+  STORED 생성 컬럼의 원본으로 허용하지 않아(ERROR 1215) **일반 컬럼으로 두고 `macro_model` 이 채웁니다.**
   상담원이 지워지면 개인 매크로가 함께 지워지므로 값이 어긋날 일은 없습니다.
 - 시각 컬럼은 모두 UTC 저장, 화면에서만 변환합니다(3.4).
 - 상담원을 삭제하면 그 사람의 개인 매크로와 즐겨찾기가 함께 지워집니다. 공용 매크로는 `created_by` 만 비워지고 남습니다.
@@ -368,8 +367,8 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 | GET | `/console/macro/export?scope=org\|personal` | 내려받기 (2차) |
 | POST | `/console/api/chat/send` | **기존.** 선택 인자 `macro_id` 추가 |
 
-- 라우트는 `$route['(:any)']` 보다 위에 넣습니다(3.8).
-- JS 는 뷰에서 `base_url()` 로 만든 절대 주소를 **`MACRO_URLS`** 전역에 담아 씁니다(3.7). 콘솔 대화 화면은 기존 `CHAT_URLS` 에 `macroList`, `macroSuggest` 를 더합니다.
+- 경로는 `routers/console_macro.py` 에 있고 `main.py` 에서 조직 코드 라우터보다 먼저 등록합니다(3.8).
+- JS 는 템플릿에서 `base_url()` 로 만든 절대 주소를 **`MACRO_URLS`** 전역에 담아 씁니다(3.7). 콘솔 대화 화면은 기존 `CHAT_URLS` 에 `macroList`, `macroSuggest` 를 더합니다.
 - `audit_logs` 기록: `macro_create`, `macro_update`, `macro_delete`, `macro_import` (공용 매크로만. 개인 매크로는 남기지 않음).
 
 ---
@@ -378,13 +377,13 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 
 | 위치 | 변경 |
 |---|---|
-| `controllers/Console_macro.php` (신규) | 관리 화면과 API. Console.php 는 `api_chat_send` 의 `macro_id` 기록과 `chat()` 의 편집 설정만 더함 |
-| `controllers/Admin.php`, `views/admin/dashboard.php` | 많이 쓴 공용 매크로 카드(M8) |
-| `models/Macro_model.php` (신규) | `list_for_agent()`, `clean_macro()`, `save()`, `delete()`, `record_use()`, 즐겨찾기, 색인 |
-| `config/macro.php` (신규) | 개수 제한, 길이 제한, 파일 제한, 추천 가중치·기준 점수 |
-| `views/console/macro.php` (신규) | 관리 목록(wgrid) + 즐겨찾기 순서 + 파일 등록 모달 |
-| `views/console/_macro_edit.php` (신규) | 편집 드로어(관리 화면, 상담 대화 화면 공용) |
-| `views/console/chat.php` | 상단 [매크로] 링크, 입력창 옆 매크로 버튼, `/` 팝업 마크업, `CHAT_URLS` 추가 |
+| `routers/console_macro.py` | 관리 화면과 API. `routers/console.py` 는 `api_chat_send` 의 `macro_id` 기록과 `chat()` 의 편집 설정만 더함 |
+| `routers/admin.py`, `templates/admin/dashboard.html` | 많이 쓴 공용 매크로 카드(M8) |
+| `models/macro_model.py` | `list_for_agent()`, `clean_macro()`, `save()`, `delete()`, `record_use()`, 즐겨찾기, 색인 |
+| `settings/macro.py` | 개수 제한, 길이 제한, 파일 제한, 추천 가중치·기준 점수 |
+| `templates/console/macro.html` | 관리 목록(wgrid) + 즐겨찾기 순서 + 파일 등록 모달 |
+| `templates/console/_macro_edit.html` | 편집 드로어(관리 화면, 상담 대화 화면 공용) |
+| `templates/console/chat.html` | 상단 [매크로] 링크, 입력창 옆 매크로 버튼, `/` 팝업 마크업, `CHAT_URLS` 추가 |
 | `assets/js/console/macro.js` (신규) | 관리 화면 |
 | `assets/js/console/macro-common.js` (신규) | 검색 순위(초성 포함), 변수 치환·표시 (`RHMacro`) |
 | `assets/js/console/macro-editor.js` (신규) | 편집 드로어 (`RHMacroEditor`) |
@@ -397,14 +396,14 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 | `scripts/check-conventions.py` | 아래 검사 추가 |
 
 - 뷰에서 JS 는 `asset_url('assets/js/console/macro.js')` 로 넣습니다(3.1).
-- 아이콘(예: `bolt`, `star`, `upload_file`, `download`)을 쓰면 `Home::landing_icons()` 목록에도 넣습니다(3.3).
+- 아이콘(예: `bolt`, `star`, `upload_file`, `download`)을 쓰면 `home.landing_icons()` 목록에도 넣습니다(3.3).
 - 위젯(`widget.js`)은 바뀌지 않습니다. 고객에게는 일반 상담원 메시지로만 보입니다.
 
 ### 규칙 검사 (`check-conventions.py` 의 `check_macro`)
 
 | 검사 | 이유 |
 |---|---|
-| `macros` 테이블에 INSERT/UPDATE/DELETE 하는 곳이 `Macro_model` 밖에 없는지 | 색인(M7)과 검사(`clean_macro`)를 우회하지 않게 |
+| `macros` 테이블에 INSERT/UPDATE/DELETE 하는 곳이 `macro_model` 밖에 없는지 | 색인(M7)과 검사(`clean_macro`)를 우회하지 않게 |
 | `macro*.js` 가 `innerHTML` / `.html()` 에 값을 넣지 않는지 | 매크로 내용은 사용자가 쓴 글 — 이스케이프 누락 방지 |
 | `api_chat_send` 에 `record_use()` 와 발행이 함께 있는지 | 매크로 전송이 기존 저장·발행 경로를 벗어나지 않게 |
 
@@ -416,7 +415,7 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 
 | 단계 | 내용 | 끝났다고 보는 기준 |
 |---|---|---|
-| 1 | 마이그레이션 + `Macro_model` + `config/macro.php` | 스키마 적용, 모델 단위 동작 |
+| 1 | 마이그레이션 + `macro_model` + `settings/macro.py` | 스키마 적용, 모델 단위 동작 |
 | 2 | 관리 화면(M1, M3) + 다국어 3종 | 공용/개인 만들기·고치기·지우기, 권한 거부 확인 |
 | 3 | `/` 팝업(M2) + 사용 기록 | 콘솔에서 불러와 보내기, 위젯에 정상 수신, `use_count` 증가 |
 | 4 | 즐겨찾기(M5) + 보낸 메시지로 만들기(M4) | 순서 바꾸기, 100개 제한 |
@@ -432,9 +431,9 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 
 정한 것(기본안대로)
 
-1. **파일 형식**: CSV. XLSX 는 PHP `zip` 확장을 웹 이미지(개발·운영)에 넣기로 하면 더합니다.
+1. **파일 형식**: CSV. XLSX 는 필요해지면 `zipfile` 기반 파서나 라이브러리 추가를 검토합니다.
 2. **진입 위치**: 헤더 메뉴에 두지 않고 상담 대화 화면의 [매크로] 버튼과 입력창 / 목록의 [매크로 관리] 로 들어갑니다.
-3. **개수 제한**: 공용 2,000 / 개인 300 / 즐겨찾기 100 (`config/macro.php`).
+3. **개수 제한**: 공용 2,000 / 개인 300 / 즐겨찾기 100 (`settings/macro.py`).
 4. **이미지·파일 첨부 매크로**, **가이드 카드 매크로**: 넣지 않았습니다.
 
 아직 열려 있는 것

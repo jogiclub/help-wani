@@ -47,7 +47,7 @@
 
 ### F1. 운영 시간
 
-**설정 위치**: 상담 대화 > 설정 드로어(`_widget_settings.php`)에 `운영 시간` 섹션 추가. 조직 관리자만.
+**설정 위치**: 상담 대화 > 설정 드로어(`_widget_settings.html`)에 `운영 시간` 섹션 추가. 조직 관리자만.
 
 ```
 운영 시간  [x] 운영 시간 사용        시간대: Asia/Seoul (조직 정보에서 변경)
@@ -112,7 +112,7 @@
 - 콘솔 접속이 끊기면(`last_seen_at` 이 `ONLINE_WINDOW_SECONDS` 지남) 상태와 상관없이 제외합니다.
 - 로그인하면 "응대 가능" 으로 시작합니다. 마지막 상태를 기억하지 않습니다(어제 "응대 종료" 로 두고 퇴근한 사람이 오늘 안 보이는 문제).
 
-**최종 판정** — 한 곳(`Chat_model::availability($org)`)에서만 계산합니다.
+**최종 판정** — 한 곳(`chat_hours_model.availability(org)`)에서만 계산합니다.
 
 ```
 운영 중?   = 조직 수동 상태가 있으면 그 값, 없으면 (휴일 아님 AND 운영 시간 안)
@@ -250,21 +250,21 @@ conversations 추가
 
 | 위치 | 변경 |
 |---|---|
-| `views/console/_widget_settings.php` | 섹션 추가: 운영 시간 / 휴일 / 운영 시간 외 위젯 / 부재 문구 / 답변 속도 / 전화 버튼. 드로어가 길어지므로 **상단 탭**(설치 · 모양 · 운영 · 자동 응답)으로 나눔 |
-| `views/console/chat.php` | 상단에 조직 운영 상태 스위치(관리자), 현재 상태 배지(전원), 대화창 담당/입력 중 표시 |
-| `views/layouts/main.php` | 헤더에 상담원 개인 상태 선택 |
+| `templates/console/_widget_settings.html` | 섹션 추가: 운영 시간 / 휴일 / 운영 시간 외 위젯 / 부재 문구 / 답변 속도 / 전화 버튼. 드로어가 길어지므로 **상단 탭**(설치 · 모양 · 운영 · 자동 응답)으로 나눔 |
+| `templates/console/chat.html` | 상단에 조직 운영 상태 스위치(관리자), 현재 상태 배지(전원), 대화창 담당/입력 중 표시 |
+| `templates/layouts/main.html` | 헤더에 상담원 개인 상태 선택 |
 | `assets/js/console/chat.js` | 담당 확인 모달, presence 송수신, 브라우저 알림, 탭 제목 |
 | `assets/js/widget.js` | 상태 점, 운영 시간 요약, 답변 속도, 표시 방식 3종, 전화 버튼, 이메일 받기 칸 |
-| `models/Chat_model.php` | `availability()`, `next_open_at()`, `maybe_auto_reply()`, 첫 응답 기록 |
-| `models/Chat_hours_model.php` (신규) | 운영 시간·휴일 CRUD, 판정 로직, 공휴일 후보 |
-| `controllers/Widget.php` | init/poll 응답에 `availability`, 전송 후 자동 응답 |
-| `controllers/Console.php` | 운영 상태 변경, 개인 상태, presence, 담당 가져오기/비우기 API |
+| `models/chat_model.py` | 자동 응답 한 번 기록(`claim_auto_reply()`), 운영 중 문의 기록(`mark_received()`), 첫 응답·답변 속도 |
+| `models/chat_hours_model.py` | 운영 시간·휴일 저장, 판정(`availability()`, 다음 운영 시각), 수동 상태(`set_manual()`), 공휴일 후보 |
+| `routers/widget.py` | init/poll 응답에 `availability`, 전송 후 자동 응답(`_auto_reply()`) |
+| `routers/console.py` | 운영 상태 변경, 개인 상태, presence, 담당 가져오기/비우기 API |
 | `assets/lang/{ko,en,ja}.json` | 모든 새 문구 (세 파일 함께) |
-| `config/holidays/{KR,JP,US}.php` 또는 외부 API | 공휴일 후보 (확인 필요 1) |
+| `settings/holidays.py`(국가별) | 공휴일 후보 (확인 필요 1, 지금은 KR 만) |
 
 - 모든 저장 API 는 허용 목록 검사(요일 0~6, 시각 형식, 모드 ENUM, 문구 길이)를 합니다(3.7).
 - 운영 상태 변경, 운영 시간/휴일 수정, 담당 가져오기는 `audit_logs` 에 남깁니다.
-- 새 아이콘(전화, 시계 등)은 `Home::landing_icons()` 목록에 추가합니다(3.3).
+- 새 아이콘(전화, 시계 등)은 `home.landing_icons()` 목록에 추가합니다(3.3).
 
 ---
 
@@ -318,7 +318,7 @@ next_open 탐색은 최대 14일 앞까지만 보고, 그 안에 운영일이 �
 | 다음 운영 시각 | 시간대 이름을 붙임 | 자동 응답 문구에는 붙이지 않고, 위젯 머리의 운영 시간 줄은 시각만 표시 | 고객 대부분이 조직과 같은 시간대. 필요하면 2차에서 추가 |
 | 연락처 받기 | 운영 시간 외에 이메일 입력 칸을 새로 띄움 | 기존 이름/이메일 칸을 그대로 두고 안내 문구만 바꿈 | 위젯에 이미 입력 칸이 있음. 고객에게 답변 메일을 보내는 기능은 없으므로 "메일로 답변" 이라고 약속하지 않음 |
 | 운영 시간 외 조직 알림 메일 | 모아 보내기 옵션 | 지금처럼 즉시(대화당 1회). 판단 기준만 `availability()` 로 바꿈 | 예약 실행(크론)이 없음 — 8장 2번 |
-| 공휴일 출처 | 미정 | `config/holidays.php` 한국 2026~2027 (hyunbinseo/holidays-kr, 우주항공청 월력요항 기준) | 8장 1번 제안대로 |
+| 공휴일 출처 | 미정 | `settings/holidays.py` 한국 2026~2027 (hyunbinseo/holidays-kr, 우주항공청 월력요항 기준) | 8장 1번 제안대로 |
 | 답변 속도 컬럼 | `chat_reply_minutes` 하나에 직접 지정값과 계산 캐시를 함께 | 직접 지정 `chat_reply_minutes`, 계산값 `chat_reply_auto_min` 으로 나눔 | 방식을 바꿔도 직접 지정값이 지워지지 않게 |
 | 첫 응답 시간 기준 | 방문자 첫 메시지 | `conversations.first_visitor_at` 을 새로 둠 | 대화는 위젯을 열 때 만들어져 `created_at` 이 첫 메시지 시각이 아님 |
 | 새 문의 알림 | 실시간 메시지 이벤트로 판단 | 목록 갱신 때 미확인 수가 늘어난 대화로 판단 | 실시간과 폴링이 같은 길을 타므로 실시간이 끊겨도 알림이 나감. 미확인이 0 이 될 때까지 대화당 1번 |

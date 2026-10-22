@@ -45,14 +45,14 @@ AI 가 `https://help.wani.im/admin/guide` 의 가이드를 직접 읽고 고칠 
      |  3. PATCH /api/guide/v1/articles/{slug}     이미지 src / 유튜브 주소 교체
      |     (또는 PUT /api/guide/v1/guide.json 으로 통째로 올리기)
      v
-[포털]  키 검증 -> 범위 검사 -> Guide_model::clean_article() -> save_article() -> 색인 재생성 -> audit_logs
+[포털]  키 검증 -> 범위 검사 -> guide_model.clean_article() -> save_article() -> 색인 재생성 -> audit_logs
 ```
 
 **검사와 저장 경로는 화면과 같습니다**(CLAUDE.md 3.15). API 전용 검사를 따로 만들지 않습니다.
 
-- 글 검사: `Guide_model::clean_article()` / `clean_block()`
-- 저장: `Guide_model::save_article()` / `set_status()` (색인 함께 갱신)
-- 통째로 올리기: `Guide_model::import()`
+- 글 검사: `guide_model.clean_article()` / `clean_block()`
+- 저장: `guide_model.save_article()` / `set_status()` (색인 함께 갱신)
+- 통째로 올리기: `guide_model.import_guide()`
 - 이미지 검사: `check_uploaded_image()` (PNG/JPG/WEBP, SVG 거부)
 - 외부 이미지 받기: `fetch_external_image()` (https, 공인 IPv4, 리다이렉트 재검사, 2MB)
 
@@ -125,11 +125,11 @@ CREATE TABLE guide_api_keys (
 - 기본 주소: `{PUBLIC_BASE_URL}api/guide/v1/` (시험 서버 `https://help.wani.im/api/guide/v1/`)
 - 인증: `Authorization: Bearer rhg_...` 헤더만 받습니다. **주소(쿼리)로 키를 받지 않습니다**(로그·Referer 에 남음).
 - 응답: 기존 규약 `{ "result": true|false, "message": "", "data": {} }` (`api_response()`)
-- CSRF: 세션이 없는 서버 간 호출이므로 `csrf_exclude_uris` 에 `api/guide/.*` 추가. 대신 키 검증으로 막습니다.
+- CSRF: 세션이 없는 서버 간 호출이므로 `core/csrf.py` 의 `EXCLUDE_URIS` 에 `api/guide/.*` 추가. 대신 키 검증으로 막습니다.
   세션 쿠키는 이 경로에서 **읽지도 쓰지도 않습니다**(키 없이 로그인 세션으로 통과하는 길을 막음).
-- 라우트: `routes.php` 의 `$route['(:any)']` 보다 위에 둡니다(3.8).
-- 컨트롤러: `controllers/api/Guide_api.php` (라이브러리 이름과 겹치지 않게, 3.11)
-- 키 검증 실패는 `api_response()` 뒤 `$this->output->_display(); exit;` (3.6)
+- 경로: 새 라우터를 `main.py` 에서 조직 코드 라우터(`customer.org_router`)보다 먼저 등록합니다(3.8).
+- 라우터: `routers/api_guide.py`
+- 키 검증 실패는 `raise Halt(api_response(False, ..., None, 401))` (3.6)
 
 | 상태 코드 | 경우 |
 |---|---|
@@ -144,8 +144,8 @@ CREATE TABLE guide_api_keys (
 
 | 메서드 | 경로 | 범위 | 내용 |
 |---|---|---|---|
-| GET | `/guide.json` | read | 전체 내보내기. `Guide_model::export()` 와 같은 형식(guide-plan.md 7장) |
-| PUT | `/guide.json?mode=merge` | write | 전체 올리기. `Guide_model::import()`. `mode=replace` 는 `publish` 필요 |
+| GET | `/guide.json` | read | 전체 내보내기. `guide_model.export()` 와 같은 형식(guide-plan.md 7장) |
+| PUT | `/guide.json?mode=merge` | write | 전체 올리기. `guide_model.import_guide()`. `mode=replace` 는 `publish` 필요 |
 | GET | `/articles` | read | 글 목록(slug, 제목, 상태, 수정 시각, 버전) |
 | GET | `/articles/{slug}` | read | 글 하나. 응답 헤더 `ETag` |
 | PUT | `/articles/{slug}` | write | 글 하나 통째로 만들기/바꾸기 |
@@ -377,7 +377,7 @@ AI 앱에 "도구"로 붙이는 방식입니다. 같은 API 를 `list_articles`,
 | 키 유출 | 해시 저장, 한 번만 표시, 만료 기본 30일, 즉시 폐기, 허용 IP, `rhg_` 접두어로 비밀 스캔 |
 | AI 가 공개 화면을 망가뜨림 | `publish` 범위 기본 꺼짐 → 임시 저장, 변경 이력과 되돌리기 |
 | 다른 조직 접근 | 키 하나 = 조직 하나. 모든 조회에 `org_id` 를 키에서 가져와 붙임(요청 값은 쓰지 않음) |
-| 악성 본문 | HTML 미허용, 기존 `clean_article()` / `html_escape()` 그대로 |
+| 악성 본문 | HTML 미허용, 기존 `clean_article()` / 템플릿 자동 이스케이프 그대로 |
 | 이미지로 서버 내부 접근(SSRF) | 외부 주소는 `fetch_external_image()` 만 사용(공인 IPv4, 고정 접속, 리다이렉트 재검사) |
 | 사람과 AI 동시 수정 | `If-Match` / 409 |
 | 무차별 키 대입 | 401 이 IP 당 분당 10회를 넘으면 10분 차단, 키 비교는 해시 일치 조회 |
@@ -392,14 +392,14 @@ AI 앱에 "도구"로 붙이는 방식입니다. 같은 API 를 `list_articles`,
 
 - [ ] `009-guide-api-keys.sql` (키, 변경 이력 테이블)
 - [ ] `Guide_api_key_model` (발급, 해시 검증, 범위·IP·만료 검사, 마지막 사용 갱신)
-- [ ] `controllers/api/Guide_api.php` + 라우트 + `csrf_exclude_uris`
+- [ ] `routers/api_guide.py` + `main.py` 등록 + `EXCLUDE_URIS`
 - [ ] 엔드포인트: `guide.json` GET/PUT, `articles` GET/PUT/PATCH/DELETE, `images`, `videos/check`, `dry_run`
 - [ ] `If-Match` / ETag
 - [ ] `save_article()` 에 변경 이력 저장 추가, 편집 화면 [이전 버전]
 - [ ] 관리 화면 설정 드로어 > AI 연결 (발급, 목록, 폐기, 안내문 복사)
 - [ ] `openapi.json`, `instructions`
 - [ ] `audit_logs`, 호출 한도
-- [ ] 다국어 세 사전, 아이콘 추가 시 `Home::landing_icons()` 등록
+- [ ] 다국어 세 사전, 아이콘 추가 시 `home.landing_icons()` 등록
 
 ### 2단계
 
@@ -420,9 +420,9 @@ AI 앱에 "도구"로 붙이는 방식입니다. 같은 API 를 `list_articles`,
 
 `scripts/check-conventions.py` 에 넣을 검사
 
-- `Guide_api.php` 에서 `guide_articles` 테이블을 직접 `insert`/`update` 하지 않는지
-- `guide_api_keys` 에 `key_hash` 외 평문 키 컬럼이 없는지, 코드에서 `$_GET` 으로 키를 읽지 않는지
-- `routes.php` 에서 `api/guide/` 규칙이 `(:any)` 보다 위에 있는지
+- `routers/api_guide.py` 에서 `guide_articles` 테이블을 직접 고치지 않는지(지금도 guide_model 밖에서 고치면 검사가 잡음)
+- `guide_api_keys` 에 `key_hash` 외 평문 키 컬럼이 없는지, 코드에서 쿼리(`query_data`)로 키를 읽지 않는지
+- `main.py` 에서 `api/guide/` 라우터가 조직 코드 라우터보다 먼저 등록됐는지
 - `csrf_exclude_uris` 에 `api/guide/.*` 가 있는지
 
 ---

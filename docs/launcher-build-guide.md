@@ -227,7 +227,7 @@ dotnet publish RemoteHelp.App\RemoteHelp.App.csproj -c Release -r win-x64 --self
    `.gitignore` 되어 있어 **커밋되지 않습니다.** 운영 서버에는 별도로 올려야 합니다.
 2. 직접 다운로드는 기본 **꺼져 있습니다.** 켜려면 포털 `.env` 에서
    `DIRECT_DOWNLOAD_ENABLED=true` — **서명된 exe 를 올린 뒤에만** 켭니다.
-3. 포털의 `Download::launcher()` 가 조직별 파일 이름 `RemoteHelp_{조직코드}.exe` 로 내려줍니다.
+3. 포털의 `/{조직코드}/download`(`routers/customer.py` 의 `launcher()`)가 조직별 파일 이름 `RemoteHelp_{조직코드}.exe` 로 내려줍니다.
    (같은 파일을 이름만 바꿔 전송하므로 조직별로 따로 빌드하지 않습니다.)
 4. 고객 페이지(`/<조직코드>`)에서 다운로드 버튼과 SHA-256 이 보이는지 확인합니다.
 

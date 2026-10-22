@@ -99,9 +99,9 @@
 |---|---|
 | 동영상을 따로 등록하는 테이블/화면 | **채택하지 않음.** 원본이 두 곳이 되어 글과 어긋난다 |
 | 저장할 때 `guide_videos` 색인 테이블을 다시 만든다 | 보류. `guide_terms` 처럼 `save_article()`/`set_status()` 에서 함께 만들어야 해 고칠 곳이 늘어난다 |
-| **조회할 때 공개 글의 `blocks` 에서 video 블록을 모은다** | **채택.** 원본이 하나(가이드 본문)이고, 조직당 글이 수백 건 수준이라 PHP 에서 풀어도 충분하다 |
+| **조회할 때 공개 글의 `blocks` 에서 video 블록을 모은다** | **채택.** 원본이 하나(가이드 본문)이고, 조직당 글이 수백 건 수준이라 서버에서 풀어도 충분하다 |
 
-- `Guide_model::public_videos($org_id)` 하나에서 만듭니다. 공개 글만, 가이드 목차 순서(`list_articles` 정렬) 또는 최신 수정순(옵션).
+- `guide_model.public_videos(org_id)` 하나에서 만듭니다. 공개 글만, 가이드 목차 순서(`list_articles` 정렬) 또는 최신 수정순(옵션).
 - 같은 영상(`youtube_id`)이 여러 글에 있으면 **처음 나온 하나만** 보이고, "이 영상이 있는 가이드" 에 여러 글을 함께 적습니다.
 - 각 동영상은 `{youtube_id, caption, article_id, article_title, article_slug, category_name}` 입니다.
   제목은 블록 설명(`caption`)을 쓰고, 비어 있으면 글 제목을 씁니다.
@@ -122,7 +122,7 @@
 
 - 넓은 화면 3열, 중간 2열, 좁은 화면 1열 격자.
 - 영상은 기존 본문과 같은 규칙으로 그립니다(CLAUDE.md 3.15). `youtube-nocookie.com/embed/{id}`, `loading="lazy"`,
-  `referrerpolicy="strict-origin-when-cross-origin"`. iframe 마크업은 `_article.php` 에서 **`_video.php` 조각으로 떼어 두 곳이 함께 씁니다.**
+  `referrerpolicy="strict-origin-when-cross-origin"`. iframe 마크업은 `_article.html` 에서 **`_video.html` 조각으로 떼어 두 곳이 함께 씁니다.**
   주소 규칙이 한 곳에만 있도록 하기 위해서입니다.
 - iframe 이 한꺼번에 많이 뜨지 않도록 **한 쪽 12개**, 아래 [더 보기](`?page=2`).
 - 분류 고르기(`?category={id}`)는 옵션 "분류로 거르기" 를 켰을 때만 보입니다. 값은 그 조직의 분류 id 허용 목록으로 검사합니다(3.7).
@@ -152,7 +152,7 @@
 - 하위 항목은 상위 옵션을 켰을 때만 고를 수 있습니다(꺼져 있으면 흐리게).
 - 카드 아래에 지금 모음에 나올 개수를 보여 줍니다. 0건인데 켜면 "고객 화면에 빈 페이지가 보입니다" 를 `showConfirmModal` 로 묻습니다.
 - [미리보기] 는 테마 미리보기와 같이 새 창으로 엽니다. 옵션이 꺼져 있어도 **그 조직 관리자 세션이면** 미리 볼 수 있습니다
-  (`?preview=1`, `Guide::preview_theme()` 와 같은 조건).
+  (`?preview=1`, `guide._preview_theme()` 와 같은 조건).
 - 저장은 `POST /admin/guide/api/page_options_save`, 응답은 `api_response()`(3.7). 모든 값은 허용 목록으로 검사합니다.
 - 저장하면 `audit_logs` 에 `guide_page_options` 로 바뀐 값을 남깁니다.
 - 가이드 관리 목록(wgrid)에 "새 기능" 열(배지 + 출시일)을 더하고, 위쪽 거르기에 "새 기능만" 을 더합니다.
@@ -185,7 +185,7 @@ ALTER TABLE organizations
   ADD COLUMN guide_video_filter      TINYINT(1)       NOT NULL DEFAULT 0  COMMENT '동영상 모음 분류 거르기';
 ```
 
-- 기존 설정(`guide_theme`, `guide_autosuggest`)과 같이 조직 컬럼으로 둡니다. 옵션 목록과 허용값은 `Guide_model::page_options()` 한 곳에 둡니다.
+- 기존 설정(`guide_theme`, `guide_autosuggest`)과 같이 조직 컬럼으로 둡니다. 옵션 목록과 허용값은 `guide_model.page_options()` 한 곳에 둡니다.
 - `published_at` 은 `save_article()` / `set_status()` 에서 **draft → published 로 처음 바뀔 때만** 찍습니다. 다시 임시로 돌렸다가 공개해도 바꾸지 않습니다.
 - 새 기능 값의 검사는 화면 저장과 guide.json 가져오기가 함께 쓰는 `clean_article()` 에 넣습니다(3.15, 검사를 따로 만들지 않음).
 
@@ -193,17 +193,16 @@ ALTER TABLE organizations
 
 ## 6. 주소와 예약어
 
-`(:any)/guide/(:any)` 는 글 주소(slug)를 받으므로 새 주소를 **그보다 위에** 둡니다(3.8).
+`/{org_code}/guide/{slug}` 는 글 주소를 받으므로 새 주소를 `routers/guide.py` 에서 **그보다 먼저** 등록합니다(3.8).
 
-```php
-// 공개 가이드 (고객 화면 묶음 안, (:any) 보다 위)
-$route['(:any)/guide/features'] = 'guide/features/$1';
-$route['(:any)/guide/videos']   = 'guide/videos/$1';
-$route['(:any)/guide']          = 'guide/index/$1';
-$route['(:any)/guide/(:any)']   = 'guide/article/$1/$2';
+```
+/{org_code}/guide/features   features
+/{org_code}/guide/videos     videos
+/{org_code}/guide            index
+/{org_code}/guide/{slug}     article
 ```
 
-- **`features`, `videos` 는 글 주소로 쓸 수 없게 막습니다.** `Guide_model::RESERVED_SLUGS` 에 두고 `clean_article()` 이 거부합니다.
+- **`features`, `videos` 는 글 주소로 쓸 수 없게 막습니다.** `guide_model.RESERVED_SLUGS` 에 두고 `clean_article()` 이 거부합니다.
   앞으로 모음 페이지를 더할 때도 이 목록에 먼저 넣습니다.
 - 마이그레이션 전에 이 두 slug 를 이미 쓴 글이 있는지 확인합니다. 있으면 `{slug}-1` 로 바꾸고 그 조직 `audit_logs` 에 남깁니다.
 - guide.json 가져오기에서 예약어 slug 를 만나면 slug 를 비우고(번호 주소로 접속) 경고에 적습니다.
@@ -213,21 +212,21 @@ $route['(:any)/guide/(:any)']   = 'guide/article/$1/$2';
 ## 7. 공개 화면 구조 (테마 5종 공통)
 
 테마 5개(`card`, `docs`, `portal`, `faq`, `dark`)마다 새 화면을 따로 만들지 않고 **공통 조각을 테마가 불러 씁니다.**
-본문 블록을 모든 테마가 `_article.php` 로 그리는 것과 같은 방식입니다.
+본문 블록을 모든 테마가 `_article.html` 로 그리는 것과 같은 방식입니다.
 
 | 파일 | 역할 |
 |---|---|
-| `views/guide/_tabs.php` | 탭 줄(전체 / 새 기능 / 동영상). 켜 둔 탭만, 지금 화면 강조 |
-| `views/guide/_features.php` | 새 기능 모음 본문 |
-| `views/guide/_videos.php` | 동영상 모음 본문 |
-| `views/guide/_video.php` | 유튜브 iframe 하나(`_article.php` 와 `_videos.php` 가 함께 씀) |
-| `views/guide/_feature_strip.php` | 첫 화면 최근 새 기능 띠 |
+| `templates/guide/_tabs.html` | 탭 줄(전체 / 새 기능 / 동영상). 켜 둔 탭만, 지금 화면 강조 |
+| `templates/guide/_features.html` | 새 기능 모음 본문 |
+| `templates/guide/_videos.html` | 동영상 모음 본문 |
+| `templates/guide/_video.html` | 유튜브 iframe 하나(`_article.html` 와 `_videos.html` 가 함께 씀) |
+| `templates/guide/_feature_strip.html` | 첫 화면 최근 새 기능 띠 |
 
-- `Guide_model::page_data()` 에 `view`(`list` / `features` / `videos`)를 받아 값을 더합니다.
+- `guide_model.page_data()` 에 `view`(`list` / `features` / `videos`)를 받아 값을 더합니다.
   `features` 면 `features`(월별 묶음), `videos` 면 `videos` 와 `video_total`, 공통으로 `options`, `tabs` 를 돌려줍니다.
-- 테마 뷰는 목록을 그리던 자리에서 `$view` 를 보고 `_features` / `_videos` 를 부릅니다. 모양 차이는 `assets/css/guide-themes.css` 에
+- 테마 템플릿은 목록을 그리던 자리에서 `view` 를 보고 `_features` / `_videos` 를 부릅니다. 모양 차이는 `assets/css/guide-themes.css` 에
   `.gt-{테마} .guide-feature-*`, `.guide-video-grid` 로 덧입힙니다(일반 CSS, Tailwind 빌드 밖).
-- `docs` 테마의 왼쪽 목차와 `portal` 테마의 분류 카드 위에도 같은 `_tabs.php` 를 둡니다.
+- `docs` 테마의 왼쪽 목차와 `portal` 테마의 분류 카드 위에도 같은 `_tabs.html` 를 둡니다.
 - 새 Tailwind 클래스를 공통 조각에 쓰면 `./scripts/build-css.sh` 로 다시 빌드합니다(3.1).
 - 아이콘은 테마와 같이 SVG 를 마크업에 직접 넣습니다(Material Symbols 목록 등록 불필요).
 - 상세 하단 "해결되지 않았나요?" 와 상담 위젯 열기는 모음 페이지에도 그대로 둡니다.
@@ -299,16 +298,16 @@ $route['(:any)/guide/(:any)']   = 'guide/article/$1/$2';
 | 규칙 | 검사 함수(안) |
 |---|---|
 | `(:any)/guide/features`, `(:any)/guide/videos` 가 `(:any)/guide/(:any)` 보다 위 | `check_routes()` 에 순서 검사 추가 |
-| 라우트의 모음 경로 이름이 모두 `RESERVED_SLUGS` 에 있다 | `check_guide()` — `routes.php` 의 `(:any)/guide/{낱말}` 과 목록 대조 |
+| 라우트의 모음 경로 이름이 모두 `RESERVED_SLUGS` 에 있다 | `check_routes()` — `routers/guide.py` 의 `/{org_code}/guide/{낱말}` 과 목록 대조 |
 | 테마 뷰 5개가 모두 `_tabs` 를 부른다 | `check_guide()` — 테마 뷰 누락 검사에 이어서 |
-| 유튜브 iframe 은 `_video.php` 한 곳에서만 만든다 | `youtube-nocookie.com/embed` 가 `_video.php` 밖의 뷰에 없는지 |
+| 유튜브 iframe 은 `_video.html` 한 곳에서만 만든다 | `youtube-nocookie.com/embed` 가 `_video.html` 밖의 템플릿에 없는지 |
 
 CLAUDE.md 3.15 에 넣을 요약(안)
 
 > - 공개 가이드의 **새 기능 모음**(`/{조직코드}/guide/features`)과 **동영상 모음**(`/guide/videos`)은 조직 옵션으로 켤 때만 보인다(기본 꺼짐).
->   옵션 목록은 `Guide_model::page_options()` 한 곳. 모음 경로는 `RESERVED_SLUGS` 에 넣어 글 주소로 쓸 수 없게 한다(검사가 잡는다).
+>   옵션 목록은 `guide_model.page_options()` 한 곳. 모음 경로는 `RESERVED_SLUGS` 에 넣어 글 주소로 쓸 수 없게 한다(검사가 잡는다).
 > - 새 기능은 글마다 표시(`is_feature`, 출시일 `feature_at` UTC)한다. 동영상 모음은 따로 저장하지 않고 공개 글의 video 블록에서 모은다.
-> - 유튜브 iframe 은 `views/guide/_video.php` 하나로 그린다.
+> - 유튜브 iframe 은 `templates/guide/_video.html` 하나로 그린다.
 
 ---
 
@@ -335,15 +334,15 @@ CLAUDE.md 3.15 에 넣을 요약(안)
 |---|---|
 | 스키마 | `sql/migrations/012-guide-collections.sql`(011 은 매크로가 먼저 씀), `sql/01-schema.sql` |
 | 저장/검사/조회 | `Guide_model`: `RESERVED_SLUGS`, `clean_feature()`, `mark_published()`, `page_options()` / `set_page_options()`, `public_features()`, `public_videos()`, `new_feature_ids()`, `collection_data()`, export/import 의 `feature` |
-| 공개 화면 | `Guide::features()` / `videos()`, `views/guide/_tabs`, `_collection`, `_features`, `_videos`, `_video`, `_new_badge`, `_feature_strip`, 테마 5종, `assets/css/guide-themes.css` |
-| 관리 화면 | `Admin_guide::api_page_options_save()`, `views/admin/guide.php`(공개 페이지 구성 카드, 새 기능만 거르기, 새 기능 열), `views/admin/guide_edit.php`(새 기능 표시/출시일/버전), `assets/js/admin/guide.js`, `guide-edit.js` |
+| 공개 화면 | `guide.features()` / `videos()`, `templates/guide/_tabs`, `_collection`, `_features`, `_videos`, `_video`, `_new_badge`, `_feature_strip`, 테마 5종, `assets/css/guide-themes.css` |
+| 관리 화면 | `admin_guide.api_page_options_save()`, `templates/admin/guide.html`(공개 페이지 구성 카드, 새 기능만 거르기, 새 기능 열), `templates/admin/guide_edit.html`(새 기능 표시/출시일/버전), `assets/js/admin/guide.js`, `guide-edit.js` |
 | 다국어 | `guide.tab_*`, `guide.features_*`, `guide.videos_*`, `guide.load_more`, `guide.month_label` 등 19개 키(ko/en/ja) |
-| 규칙 검사 | `check_guide()` 5번: 모음 라우트 순서, 예약어 대조, 테마의 `_tabs`/`_collection`, iframe 은 `_video.php` 에서만 |
+| 규칙 검사 | `check_guide()` 5번: 모음 라우트 순서, 예약어 대조, 테마의 `_tabs`/`_collection`, iframe 은 `_video.html` 에서만 |
 
 계획과 달라진 점
 
 - 마이그레이션 번호가 011 에서 **012** 로 바뀌었습니다.
-- 모음 본문을 테마가 고르지 않도록 `_collection.php` 조각을 하나 더 두었습니다(테마는 `$view !== 'list'` 이면 이것만 부름).
+- 모음 본문을 테마가 고르지 않도록 `_collection.html` 조각을 하나 더 두었습니다(테마는 `view != 'list'` 이면 이것만 부름).
 - 모음의 [더 보기] 는 `?page=n` 이면 처음부터 n 쪽 분량을 보입니다(앞의 항목이 사라지지 않게). 최대 50쪽.
 - 분류 거르기는 버튼(칩) 목록으로 그렸습니다(스크립트 없이 동작). 동영상이 있는 분류가 둘 이상일 때만 보입니다.
 - 마이그레이션은 이미 공개된 글의 `published_at` 을 마지막 수정 시각으로 채우고, `features`/`videos` 주소를 쓰던 글은 `{slug}-1` 로 바꿉니다
