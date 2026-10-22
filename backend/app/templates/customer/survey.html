@@ -1,0 +1,52 @@
+{#-
+  파일 위치: backend/app/templates/customer/survey.html
+  역할: 원격지원 만족도 조사 — PHP views/customer/survey.php 대응
+-#}
+<div class="mx-auto max-w-md">
+  <div class="card">
+    <div class="card-body text-center">
+      <h1 class="text-xl font-bold text-slate-800">{{ lang_text('survey.title') }}</h1>
+      <p class="mt-1 text-xs text-slate-500">
+        {{ org.name }} · {{ to_timezone(session_row.created_at, i18n.timezone) }}
+      </p>
+
+      {% if existing %}
+        <div class="alert alert-info mt-5">{{ lang_text('survey.already') }}</div>
+      {% else %}
+        <div class="my-5 flex justify-center gap-1 text-4xl" id="stars">
+          {% for i in range(1, 6) %}
+            <span class="star cursor-pointer text-slate-300 transition-colors" data-score="{{ i }}">★</span>
+          {% endfor %}
+        </div>
+        <textarea class="form-input mb-3" id="comment" rows="4"
+                  data-i18n-placeholder="survey.comment_placeholder"></textarea>
+        <button class="btn btn-primary w-full" id="btnSubmit" data-i18n="survey.submit"></button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+$(function () {
+    var score = 0;
+
+    $('#stars .star').on('click', function () {
+        score = parseInt($(this).data('score'), 10);
+        $('#stars .star').each(function () {
+            var active = parseInt($(this).data('score'), 10) <= score;
+            $(this).toggleClass('text-amber-400', active).toggleClass('text-slate-300', !active);
+        });
+    });
+
+    $('#btnSubmit').on('click', function () {
+        if (!score) {
+            showToast(__('survey.need_score'), 'warning');
+            return;
+        }
+        apiPost(window.location.href, { score: score, comment: $('#comment').val() }, function (data, message) {
+            showToast(message, 'success');
+            $('#btnSubmit').prop('disabled', true);
+        });
+    });
+});
+</script>

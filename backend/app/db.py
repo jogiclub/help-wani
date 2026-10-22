@@ -118,6 +118,12 @@ def execute(sql, params=None):
         return ExecResult(result.rowcount, result.lastrowid)
 
 
+def like_pattern(value):
+    """CI3 like() 대응 값: ! % _ 를 ! 로 이스케이프하고 앞뒤에 % 를 붙인다. SQL 에는 LIKE :x ESCAPE '!' 로 쓴다."""
+    escaped = str(value).replace('!', '!!').replace('%', '!%').replace('_', '!_')
+    return '%' + escaped + '%'
+
+
 def _ident(name):
     if not name.replace('_', '').isalnum():
         raise ValueError(f'허용하지 않는 이름: {name}')

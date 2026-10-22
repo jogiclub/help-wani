@@ -8,13 +8,40 @@
 고객 화면은 컨트롤러가 use_org_locale() 로 조직 설정을 다시 지정한다(CLAUDE.md 3.2).
 SessionMiddleware 안쪽에 있어야 한다(main.py 에서 이것을 먼저 add_middleware 한다).
 """
+import re
 import time
 
 from starlette.requests import Request
 
 from app.core import session as rh_session
+from app.core.errors import show_error
 from app.core.i18n import supported_locales
 from app.core.request import current_request
+
+# CI3 config permitted_uri_chars. 경로 조각에 이 밖의 글자가 있으면 400 이다(CI3 URI::filter_uri, 경로는 디코드하지 않고 검사).
+_PERMITTED_SEGMENT = re.compile(r'^[a-z 0-9~%.:_\-]+$', re.IGNORECASE)
+
+
+def _normalize_path(scope):
+    """CI3 처럼 경로 앞뒤의 / 를 무시하고 겹친 / 를 하나로 본다(/demo/ 와 /demo 는 같은 화면). 정적 파일은 건드리지 않는다.
+
+    허용하지 않는 글자가 있으면 False.
+    """
+    path = scope.get('path', '/')
+    if path.startswith('/assets/'):
+        return True
+
+    raw = scope.get('raw_path') or path.encode('utf-8')
+    raw_text = raw.decode('latin-1').split('?', 1)[0]
+    for segment in raw_text.split('/'):
+        if segment and not _PERMITTED_SEGMENT.match(segment):
+            return False
+
+    cleaned = '/' + '/'.join(part for part in path.split('/') if part)
+    if cleaned != path:
+        scope['path'] = cleaned
+        scope['raw_path'] = ('/' + '/'.join(part for part in raw_text.split('/') if part)).encode('latin-1')
+    return True
 
 
 def use_org_locale(request, org):
@@ -32,6 +59,10 @@ class RequestContextMiddleware:
     async def __call__(self, scope, receive, send):
         if scope['type'] != 'http':
             await self.app(scope, receive, send)
+            return
+
+        if not _normalize_path(scope):
+            await show_error('The URI you submitted has disallowed characters.', 400)(scope, receive, send)
             return
 
         request = Request(scope, receive)

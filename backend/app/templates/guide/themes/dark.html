@@ -1,0 +1,87 @@
+{#-
+  파일 위치: backend/app/templates/guide/themes/dark.html
+  역할: 공개 가이드 5번 테마 "다크 미니멀형" (어두운 배경, 번호 목록) — PHP views/guide/themes/dark.php 대응
+-#}
+{%- set counter = namespace(number=0) -%}
+<div class="gt-dark-page">
+  <header class="gt-dark-head">
+    <a class="gt-dark-brand" href="{{ base }}">
+      <span class="gt-dark-dot"></span>{{ lang_text('guide.page_title', {'org': org.name}) }}
+    </a>
+    <form class="gt-dark-search" method="get" action="{{ base }}">
+      <input type="search" name="q" value="{{ q }}" maxlength="100"
+             placeholder="{{ lang_text('guide.search_placeholder') }}" aria-label="{{ lang_text('guide.search_button') }}">
+    </form>
+  </header>
+
+  <main class="gt-dark-main">
+  {% include 'guide/_tabs.html' %}
+
+  {% if view != 'list' %}
+    {% include 'guide/_collection.html' %}
+
+  {% elif results is not none %}
+    <div class="gt-dark-bar">
+      <h1>{{ lang_text('guide.results', {'q': q}) }}</h1>
+      <a href="{{ base }}">{{ lang_text('guide.reset') }}</a>
+    </div>
+    {% if not results %}
+      <p class="gt-dark-muted">{{ lang_text('guide.no_result', {'q': q}) }}</p>
+    {% else %}
+      <div class="gt-dark-list">
+        {% for item in results %}
+        <a class="gt-dark-row" href="{{ link(item) }}">
+          <span class="gt-dark-num">→</span>
+          <span><strong>{{ item.title }}</strong> {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}
+          {% if not empty(item.subtitle) %}<small>{{ item.subtitle }}</small>{% endif %}</span>
+        </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% elif article is not none %}
+    <nav class="gt-dark-crumb">
+      <a href="{{ base }}">{{ lang_text('guide.home') }}</a>
+      {% if category != '' %}<span>/</span><span>{{ category }}</span>{% endif %}
+    </nav>
+    <article class="gt-dark-article">
+      {% include 'guide/_article.html' %}
+    </article>
+    <nav class="gt-dark-pager">
+      {% if prev %}
+      <a href="{{ link(prev) }}"><small>← {{ lang_text('guide.prev') }}</small>{{ prev.title }}</a>
+      {% else %}<span></span>{% endif %}
+      {% if next %}
+      <a class="is-next" href="{{ link(next) }}"><small>{{ lang_text('guide.next') }} →</small>{{ next.title }}</a>
+      {% endif %}
+    </nav>
+
+  {% elif not groups %}
+    <p class="gt-dark-muted">{{ lang_text('guide.empty') }}</p>
+
+  {% else %}
+    <h1 class="gt-dark-headline">{{ lang_text('guide.hero') }}</h1>
+    <p class="gt-dark-muted">{{ lang_text('guide.subtitle') }}</p>
+    {% include 'guide/_feature_strip.html' %}
+    {% for group in groups %}
+    <section class="gt-dark-group">
+      <h2>{{ group.name }}</h2>
+      <div class="gt-dark-list">
+        {% for item in group.articles %}{% set counter.number = counter.number + 1 %}
+        <a class="gt-dark-row" href="{{ link(item) }}">
+          <span class="gt-dark-num">{{ '%02d'|format(counter.number) }}</span>
+          <span><strong>{{ item.title }}</strong> {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}
+          {% if not empty(item.subtitle) %}<small>{{ item.subtitle }}</small>{% endif %}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+  {% endif %}
+
+    <div class="gt-dark-unsolved">
+      <span>{{ lang_text('guide.unsolved') }} {{ lang_text('guide.unsolved_body') }}</span>
+      <a href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+    </div>
+  </main>
+</div>

@@ -1,5 +1,5 @@
 """
-파일 위치: backend/app/settings.py
+파일 위치: backend/app/settings/__init__.py
 역할: 앱 상수 (PHP application/config/constants.php 의 RH_* 대응)
 """
 RH_CODE_TTL = 600             # 코드 유효시간(초)

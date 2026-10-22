@@ -2,13 +2,14 @@
 파일 위치: backend/app/routers/auth.py
 역할: 상담원 로그인/로그아웃 (PHP controllers/Auth.php 대응)
 
-조직 가입 신청(signup)은 3단계에서 옮긴다.
 """
 from fastapi import APIRouter, Depends, Request
 
 from app.core import session as rh_session
 from app.core.errors import redirect
+from app.core.i18n import supported_countries, supported_locales, supported_timezones
 from app.core.input import PostData, post_data
+from app.core.php import php_str
 from app.core.request import base_url, client_ip
 from app.core.response import api_response
 from app.core.templates import render
@@ -91,3 +92,74 @@ def logout(request: Request):
 
     rh_session.destroy(request)
     return redirect('login')
+
+
+@router.api_route('/signup', methods=['GET', 'POST'])
+def signup(request: Request, post: PostData = Depends(post_data)):
+    """조직 가입 신청. 운영자 승인(status=active) 후 로그인할 수 있다."""
+    if request.method == 'POST':
+        error = validation.run(post.fields, [
+            ('org_code', '조직 주소', ['required', 'alpha_dash', 'min_length[3]', 'max_length[32]']),
+            ('org_name', '조직명', ['required', 'max_length[100]']),
+            ('biz_no', '사업자등록번호', ['required', 'max_length[20]']),
+            ('name', '담당자명', ['required', 'max_length[60]']),
+            ('email', '이메일', ['required', 'valid_email', 'max_length[190]']),
+            ('password', '비밀번호', ['required', 'min_length[10]']),
+            ('password_confirm', '비밀번호 확인', ['required', 'matches[password]']),
+        ])
+        if error is not None:
+            return api_response(False, error, None, 400)
+
+        org_code = php_str(post.xss('org_code')).lower()
+        email = post.xss('email')
+
+        if organization_model.get_by_code(org_code):
+            return api_response(False, '이미 사용 중인 조직 주소입니다.', None, 409)
+
+        if agent_model.get_by_email(email):
+            return api_response(False, '이미 가입된 이메일입니다.', None, 409)
+
+        # 국가/언어/시간대는 허용 목록 안의 값만 받는다(CLAUDE.md 3.7).
+        countries, locales, timezones = supported_countries(), supported_locales(), supported_timezones()
+
+        country = php_str(post.xss('country'))
+        locale = php_str(post.xss('locale'))
+        timezone = php_str(post.xss('timezone'))
+
+        country = country if country in countries else 'KR'
+        locale = locale if locale in locales else countries[country]['locale']
+        timezone = timezone if timezone in timezones else countries[country]['timezone']
+
+        org_id = organization_model.insert({
+            'org_code': org_code,
+            'name': post.xss('org_name'),
+            'biz_no': post.xss('biz_no'),
+            'phone': post.xss('phone'),
+            'country': country,
+            'locale': locale,
+            'timezone': timezone,
+            'status': 'pending',
+        })
+
+        agent_id = agent_model.insert({
+            'org_id': org_id,
+            'email': email,
+            'password': post.str('password'),
+            'name': post.xss('name'),
+            'phone': post.xss('phone'),
+            'role': 'admin',
+        })
+
+        log_model.audit(org_id, agent_id, 'org_signup', org_code, client_ip(request))
+
+        return api_response(True,
+                            '가입 신청이 접수되었습니다. 운영자 승인 후 로그인할 수 있습니다. '
+                            '승인 여부는 로그인 화면에서 확인하실 수 있습니다.',
+                            {'redirect': base_url('login')})
+
+    return render(request, 'auth/signup', {
+        'page_title': '조직 가입 신청',
+        'countries': supported_countries(),
+        'locales': supported_locales(),
+        'timezones': supported_timezones(),
+    }, 'layouts/blank')

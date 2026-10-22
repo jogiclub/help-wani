@@ -1,0 +1,57 @@
+{#-
+  파일 위치: backend/app/templates/guide/_article.html
+  역할: 가이드 본문 그리기 (제목, 부제목, 글/이미지/유튜브 블록) — 모든 테마 공통, PHP views/guide/_article.php 대응
+
+  모든 값은 이스케이프해서 내보낸다(자동 이스케이프). 글 블록은 guide_text_html() 이 이스케이프한 뒤 https 주소만 링크로 바꾼다.
+  이미지는 이 조직에 올린 파일 또는 외부 https 주소다(guide_image_url). 외부 사이트에 Referer 를 보내지 않는다.
+  유튜브는 _video.html 한 곳에서 만든다. 새 기능으로 표시된 글이면 맨 위에 "새 기능 · 버전 · 출시일" 을 보인다.
+  hide_heading 이 참이면 제목/부제목을 빼고 본문만 그린다(제목을 테마가 따로 그릴 때).
+-#}
+{%- set hide_heading = hide_heading|default(false) -%}
+{%- set released = guide_feature_date(article) -%}
+<div class="guide-article">
+{% if not empty(article.is_feature) %}
+<p class="guide-feature-tag">
+  <span class="guide-feature-kind">{{ lang_text('guide.tab_features') }}</span>
+  {% if not empty(article.feature_label) %}<span class="guide-feature-label">{{ article.feature_label }}</span>{% endif %}
+  {% if not empty(released) %}
+  <span>{{ lang_text('guide.released_on') }} <span data-i18n-date="{{ released }}" data-i18n-date-style="date"></span></span>
+  {% endif %}
+</p>
+{% endif %}
+{% if not hide_heading %}
+<h1 class="guide-title text-2xl font-bold text-slate-800">{{ article.title }}</h1>
+{% if not empty(article.subtitle) %}
+<p class="guide-subtitle mt-1 text-slate-500">{{ article.subtitle }}</p>
+{% endif %}
+<p class="guide-meta mt-2 text-xs text-slate-400">
+  {{ lang_text('guide.updated') }}
+  <span data-i18n-date="{{ article.updated_at }}" data-i18n-date-style="date"></span>
+</p>
+{% endif %}
+
+<div class="guide-body {{ '' if hide_heading else 'mt-6' }} space-y-5">
+{% for block in article.blocks %}
+  {% if block.type == 'text' %}
+  <div class="guide-text whitespace-pre-line break-words leading-relaxed text-slate-700">{{ guide_text_html(block.text) }}</div>
+
+  {% elif block.type == 'image' %}
+  <figure class="guide-figure">
+    <img class="guide-img max-w-full rounded-lg border border-slate-200" loading="lazy" referrerpolicy="no-referrer"
+         src="{{ guide_image_url(block.src) }}" alt="{{ block.caption }}">
+    {% if block.caption != '' %}
+    <figcaption class="guide-caption mt-1 text-sm text-slate-500">{{ block.caption }}</figcaption>
+    {% endif %}
+  </figure>
+
+  {% elif block.type == 'video' %}
+  <figure class="guide-figure guide-figure-video">
+    {% with yt_id = block.youtube_id, yt_title = block.caption %}{% include 'guide/_video.html' %}{% endwith %}
+    {% if block.caption != '' %}
+    <figcaption class="guide-caption mt-1 text-sm text-slate-500">{{ block.caption }}</figcaption>
+    {% endif %}
+  </figure>
+  {% endif %}
+{% endfor %}
+</div>
+</div>

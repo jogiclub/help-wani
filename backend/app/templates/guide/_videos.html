@@ -1,0 +1,44 @@
+{#-
+  파일 위치: backend/app/templates/guide/_videos.html
+  역할: 동영상 모음 본문 (공개 가이드의 유튜브 블록을 모은 격자) — 모든 테마 공통, PHP views/guide/_videos.php 대응
+
+  동영상은 따로 저장하지 않고 공개 글의 본문 블록에서 모은다(guide_model.public_videos).
+-#}
+<header class="guide-collection-head">
+  <h1>{{ lang_text('guide.videos_title') }} <small>{{ video_total|int }}</small></h1>
+  <p>{{ lang_text('guide.videos_desc') }}</p>
+</header>
+
+{% if video_categories|length > 1 %}
+<nav class="guide-video-filter" aria-label="{{ lang_text('guide.category_filter') }}">
+  <a class="{{ 'is-active' if video_category == 0 else '' }}" href="{{ base ~ '/videos' }}">{{ lang_text('guide.category_all') }}</a>
+  {% for category_id, category_name in video_categories.items() %}
+  <a class="{{ 'is-active' if video_category == php_int(category_id) else '' }}"
+     href="{{ base ~ '/videos?category=' ~ php_int(category_id) }}">{{ category_name }}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+{% if not videos %}
+  <p class="guide-collection-empty">{{ lang_text('guide.videos_empty') }}</p>
+{% else %}
+  <div class="guide-video-grid">
+    {% for video in videos %}
+    {% set video_title = video.caption if video.caption != '' else video.articles[0].title %}
+    <figure class="guide-video-card">
+      {% with yt_id = video.youtube_id, yt_title = video_title %}{% include 'guide/_video.html' %}{% endwith %}
+      <figcaption>
+        <strong>{{ video_title }}</strong>
+        <span class="guide-video-from">{{ lang_text('guide.videos_in_article') }}</span>
+        {% for item in video.articles %}
+        <a href="{{ link(item) }}">{{ item.title }}</a>
+        {% endfor %}
+      </figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+
+  {% if more_url != '' %}
+  <a class="guide-more" href="{{ more_url }}">{{ lang_text('guide.load_more') }}</a>
+  {% endif %}
+{% endif %}

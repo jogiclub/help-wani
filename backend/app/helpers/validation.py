@@ -16,6 +16,10 @@ _EMAIL_RE = re.compile(rb'''^(?!(?:(?:\x22?\x5C[\x00-\x7E]\x22?)|(?:\x22?[^\x5C\
 MESSAGES = {
     'required': 'The {field} field is required.',
     'valid_email': 'The {field} field must contain a valid email address.',
+    'min_length': 'The {field} field must be at least {param} characters in length.',
+    'max_length': 'The {field} field cannot exceed {param} characters in length.',
+    'alpha_dash': 'The {field} field may only contain alpha-numeric characters, underscores, and dashes.',
+    'matches': 'The {field} field does not match the {param} field.',
 }
 
 
@@ -31,33 +35,65 @@ def required(value):
     """CI3 required: 배열이 아니면 trim 한 값이 비어 있으면 실패."""
     if isinstance(value, (list, dict)):
         return bool(value)
-    return value is not None and str(value).strip() != ''
+    return value is not None and str(value).strip(' \t\n\r\x00\x0b') != ''
 
 
-def message(rule, field):
-    return MESSAGES[rule].replace('{field}', field)
+def min_length(value, param):
+    return str(param).isdigit() and int(param) <= len(str(value if value is not None else ''))
 
 
-_RULES = {'required': required, 'valid_email': valid_email}
+def max_length(value, param):
+    return str(param).isdigit() and int(param) >= len(str(value if value is not None else ''))
+
+
+def alpha_dash(value):
+    # PHP '/^[a-z0-9_-]+$/i' 의 $ 는 끝 줄바꿈 앞에서도 맞는다(파이썬 $ 와 같음).
+    return re.match(r'^[a-z0-9_-]+$', str(value if value is not None else ''), re.IGNORECASE) is not None
+
+
+_RULES = {'required': required, 'valid_email': valid_email, 'min_length': min_length,
+          'max_length': max_length, 'alpha_dash': alpha_dash}
+
+_PARAM_RE = re.compile(r'^(.*?)\[(.*)\]$')
 
 
 def run(fields, rules, prefix=' ', suffix=' '):
-    """CI3 form_validation->run() + validation_errors(prefix, suffix) 대응.
+    """CI3 form_validation->run() + validation_errors(prefix, suffix) 대응(system/libraries/Form_validation.php).
 
-    rules: [(필드, 이름, ['required', 'valid_email']), ...]
-    통과하면 None, 실패하면 오류 문자열을 돌려준다.
-    - 필드마다 처음 실패한 규칙 하나만 남긴다.
-    - 비어 있고 required 가 아닌 필드는 나머지 규칙을 건너뛴다.
+    rules: [(필드, 이름표, ['required', 'min_length[3]', 'matches[password]', ...]), ...]
+    통과하면 None, 실패하면 오류 문자열.
+    - 'required' 는 맨 앞으로 옮겨 먼저 검사한다(_prepare_rules).
+    - 값이 비어 있으면(None, '') required / matches 가 아닌 규칙은 건너뛴다. 배열 값은 빈 값으로 본다.
+    - 필드마다 처음 실패한 규칙 하나만 남긴다. {param} 이 다른 필드 이름이면 그 이름표로 바꾼다.
     """
+    labels = {field: label for field, label, _ in rules}
+    values = {}
+    for field, _, _ in rules:
+        value = fields.get(field)
+        values[field] = None if isinstance(value, (dict, list)) else value
+
     errors = []
     for field, label, names in rules:
-        value = fields.get(field)
-        blank = value is None or value == ''
-        for name in names:
-            if blank and name != 'required' and 'required' not in names:
-                break
-            if not _RULES[name](value if value is not None else ''):
-                errors.append(message(name, label))
+        ordered = (['required'] if 'required' in names else []) + [n for n in names if n != 'required']
+        value = values[field]
+
+        for spec in ordered:
+            match = _PARAM_RE.match(spec)
+            rule, param = (match.group(1), match.group(2)) if match else (spec, None)
+
+            if (value is None or value == '') and rule not in ('required', 'isset', 'matches'):
+                continue
+
+            if rule == 'matches':
+                ok = param in values and values[param] is not None and value == values[param]
+            elif param is not None:
+                ok = _RULES[rule](value, param)
+            else:
+                ok = _RULES[rule](value)
+
+            if not ok:
+                shown = labels.get(param, param) if param is not None else ''
+                errors.append(MESSAGES[rule].replace('{field}', label).replace('{param}', shown))
                 break
 
     if not errors:

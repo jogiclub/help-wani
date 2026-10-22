@@ -187,3 +187,17 @@ def php_empty(value):
     if isinstance(value, (list, dict, tuple)):
         return len(value) == 0
     return False
+
+
+def php_round(value, precision=0):
+    """PHP round(): 0.5 는 0 에서 먼 쪽으로(파이썬 round 는 짝수 쪽). 결과는 float."""
+    from decimal import ROUND_HALF_UP, Decimal
+    quantum = Decimal(1).scaleb(-int(precision))
+    return float(Decimal(repr(float(value))).quantize(quantum, rounding=ROUND_HALF_UP))
+
+
+def number_format(value, decimals=0):
+    """PHP number_format($n, $decimals): 천 단위 쉼표, 소수점 '.', PHP round 와 같은 반올림."""
+    rounded = php_round(float(value), decimals)
+    text = f'{abs(rounded):,.{int(decimals)}f}'
+    return ('-' + text) if rounded < 0 else text

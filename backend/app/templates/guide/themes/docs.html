@@ -1,0 +1,134 @@
+{#-
+  파일 위치: backend/app/templates/guide/themes/docs.html
+  역할: 공개 가이드 2번 테마 "문서형 (왼쪽 목차)" — 상단 검색 + 왼쪽 번호 목차 + 오른쪽 본문 카드. PHP views/guide/themes/docs.php 대응
+
+  좁은 화면에서는 목차를 접고 머리말의 목차 버튼으로 연다(assets/js/guide.js 의 data-gt-toc).
+  넓은 화면에서는 목차와 본문 사이를 Split.js 로 끌어 너비를 바꾼다(data-gt-split, layouts/guide.html 이 docs 테마에서만 불러온다).
+-#}
+<header class="gt-docs-header">
+  <a class="gt-docs-brand" href="{{ base }}">
+    {% if not empty(org.logo_path) %}
+      <img src="{{ base_url(org.logo_path) }}" alt="{{ org.name }}" class="gt-docs-logo">
+    {% else %}
+      <span class="gt-docs-initial">{{ org.name[:1] }}</span>
+      <span class="gt-docs-org">{{ org.name }}</span>
+    {% endif %}
+    <span class="gt-docs-title">{{ lang_text('guide.brand') }}</span>
+  </a>
+  <div class="gt-docs-tools">
+    <form class="gt-docs-search" method="get" action="{{ base }}">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" name="q" value="{{ q }}" maxlength="100"
+             placeholder="{{ lang_text('guide.search_placeholder') }}" aria-label="{{ lang_text('guide.search_button') }}">
+    </form>
+    <a class="gt-docs-cta" href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+    <button type="button" class="gt-docs-menu" data-gt-toc="gtToc" aria-controls="gtToc" aria-label="{{ lang_text('guide.toc') }}"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  </div>
+</header>
+
+<div class="gt-docs-shell" data-gt-split data-gt-split-label="{{ lang_text('guide.toc_resize') }}">
+  <aside class="gt-docs-side" id="gtToc">
+    {% for group in groups %}
+    <div class="gt-docs-heading">{{ group.name }}</div>
+    <ol class="gt-docs-list">
+      {% for item in group.articles %}
+      <li><a class="gt-docs-link {{ 'is-active' if is_current(item) else '' }}" href="{{ link(item) }}">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</a></li>
+      {% endfor %}
+    </ol>
+    {% endfor %}
+  </aside>
+
+  <main class="gt-docs-main">
+    <div class="gt-docs-wrap">
+    {% include 'guide/_tabs.html' %}
+
+    {% if view != 'list' %}
+      <section class="gt-docs-card">
+        <div class="gt-docs-card-body">{% include 'guide/_collection.html' %}</div>
+      </section>
+
+    {% elif results is not none %}
+      <section class="gt-docs-card">
+        <div class="gt-docs-card-head">
+          <h1 class="gt-docs-card-title">{{ lang_text('guide.results', {'q': q}) }}</h1>
+          <a class="gt-docs-reset" href="{{ base }}">{{ lang_text('guide.reset') }}</a>
+        </div>
+        {% if not results %}
+          <p class="gt-docs-empty">{{ lang_text('guide.no_result', {'q': q}) }}</p>
+        {% else %}
+          <div class="gt-docs-results">
+            {% for item in results %}
+            <a href="{{ link(item) }}">
+              <strong>{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</strong>
+              {% if not empty(item.subtitle) %}<span>{{ item.subtitle }}</span>{% endif %}
+            </a>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </section>
+
+    {% elif article is not none %}
+      <section class="gt-docs-card">
+        <div class="gt-docs-card-head">
+          <h1 class="gt-docs-card-title">{{ category if category != '' else article.title }}</h1>
+          <nav class="gt-docs-crumb" aria-label="breadcrumb">
+            <a href="{{ base }}">{{ lang_text('guide.home') }}</a>
+            {% if category != '' %}<span>/</span><span>{{ category }}</span>{% endif %}
+            <span>/</span><span class="is-current">{{ article.title }}</span>
+          </nav>
+        </div>
+        <div class="gt-docs-card-body">
+          {% if not empty(article.subtitle) %}
+          <p class="gt-docs-summary">{{ article.subtitle }}</p>
+          {% endif %}
+          <div class="gt-docs-section">
+            <h2>{{ article.title }}</h2>
+            {% with hide_heading = true %}{% include 'guide/_article.html' %}{% endwith %}
+          </div>
+          <p class="gt-docs-updated">
+            {{ lang_text('guide.updated') }}
+            <span data-i18n-date="{{ article.updated_at }}" data-i18n-date-style="date"></span>
+          </p>
+          <nav class="gt-docs-pager">
+            {% if prev %}
+            <a class="is-prev" href="{{ link(prev) }}"><small>{{ lang_text('guide.prev') }}</small>{{ prev.title }}</a>
+            {% else %}<span></span>{% endif %}
+            {% if next %}
+            <a class="is-next" href="{{ link(next) }}"><small>{{ lang_text('guide.next') }}</small>{{ next.title }}</a>
+            {% endif %}
+          </nav>
+        </div>
+      </section>
+
+    {% else %}
+      <section class="gt-docs-card">
+        <div class="gt-docs-card-head">
+          <h1 class="gt-docs-card-title">{{ lang_text('guide.page_title', {'org': org.name}) }}</h1>
+          <nav class="gt-docs-crumb"><span class="is-current">{{ lang_text('guide.home') }}</span></nav>
+        </div>
+        <div class="gt-docs-card-body">
+          <p class="gt-docs-summary">{{ lang_text('guide.subtitle') }}</p>
+          {% include 'guide/_feature_strip.html' %}
+          {% if not groups %}
+            <p class="gt-docs-empty">{{ lang_text('guide.empty') }}</p>
+          {% else %}
+          <div class="gt-docs-overview">
+            {% for group in groups %}
+            <div class="gt-docs-section">
+              <h2>{{ group.name }} <small>{{ lang_text('guide.count', {'n': group.articles|length}) }}</small></h2>
+              <ol>
+                {% for item in group.articles %}
+                <li><a href="{{ link(item) }}">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</a></li>
+                {% endfor %}
+              </ol>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </section>
+    {% endif %}
+
+    </div>
+  </main>
+</div>

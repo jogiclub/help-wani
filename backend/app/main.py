@@ -17,7 +17,7 @@ from app.core.csrf import CSRFMiddleware, verify_csrf
 from app.core.errors import Halt, show_404
 from app.core.middleware import RequestContextMiddleware
 from app.core.response import api_response
-from app.routers import api_launcher, api_realtime_auth, api_relay, auth, dev
+from app.routers import api_launcher, api_realtime_auth, api_relay, auth, customer, dev, guide, home
 from app.static import AssetFiles
 
 logger = logging.getLogger('remotehelp')
@@ -30,6 +30,8 @@ app = FastAPI(
     openapi_url='/_openapi.json' if config.APP_ENV == 'development' else None,
     # 제외 경로가 아닌 모든 POST 에 CSRF 검사(CI3 csrf_protection = TRUE)
     dependencies=[Depends(verify_csrf)],
+    # 끝 / 는 RequestContextMiddleware 가 CI3 처럼 무시하므로 리다이렉트하지 않는다.
+    redirect_slashes=False,
 )
 
 # 나중에 더한 미들웨어가 바깥쪽이다. 세션 → CSRF → 요청 문맥(세션을 읽음) 순서로 감싼다.
@@ -71,8 +73,14 @@ app.include_router(api_launcher.router)
 app.include_router(api_relay.router)
 app.include_router(api_realtime_auth.router)
 app.include_router(auth.router)
+app.include_router(home.router)
 
 if config.APP_ENV == 'development':
     app.include_router(dev.router)
 
-# 조직 코드 라우터({org_code})는 3단계에서 이 아래, 맨 마지막에 등록한다.
+# 조직 코드로 시작하는 주소. 공개 가이드의 모음 주소가 글 주소보다 먼저다(routers/guide.py 안의 순서).
+app.include_router(guide.router)
+app.include_router(customer.router)
+
+# 조직 코드 하나만 받는 /{org_code} 는 반드시 맨 마지막이다(CLAUDE.md 3.8). 새 최상위 주소는 이보다 위에 등록한다.
+app.include_router(customer.org_router)

@@ -1,0 +1,11 @@
+{#-
+  파일 위치: backend/app/templates/guide/page.html
+  역할: 공개 가이드 화면의 테마 고르기 (목록/검색/상세 공통, 데이터는 guide_model.page_data) — PHP views/guide/page.php 대응
+
+  테마 템플릿은 templates/guide/themes/{테마}.html 이며 article 이 있으면 상세, results 가 있으면 검색 결과, 둘 다 없으면 목록을 그린다.
+  link(item), is_current(item) 은 routers/guide.py 가 넘긴다(페이지 안 이동은 지금 연 주소, 고객에게 보내는 주소만 customer_url).
+-#}
+{% if preview|default(false) %}
+<div class="gt-preview-bar">{{ lang_text('guide.preview_notice') }}</div>
+{% endif %}
+{% include 'guide/themes/' ~ theme ~ '.html' %}

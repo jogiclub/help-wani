@@ -1,0 +1,17 @@
+{#-
+  파일 위치: backend/app/templates/guide/_tabs.html
+  역할: 공개 가이드 탭 줄 (전체 / 새 기능 / 동영상) — 모든 테마 공통, PHP views/guide/_tabs.php 대응
+
+  탭은 guide_model.page_data() 가 만든다. 켜 둔 모음이 없으면 tabs 가 비어 아무것도 그리지 않는다.
+-#}
+{% if tabs %}
+<nav class="guide-tabs" aria-label="{{ lang_text('guide.tabs_label') }}">
+  {% for tab in tabs %}
+  {% if tab.key == view %}
+  <a class="guide-tab is-active" href="{{ tab.url }}" aria-current="page">{{ tab.label }}</a>
+  {% else %}
+  <a class="guide-tab" href="{{ tab.url }}">{{ tab.label }}</a>
+  {% endif %}
+  {% endfor %}
+</nav>
+{% endif %}

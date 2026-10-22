@@ -1,0 +1,73 @@
+{#-
+  파일 위치: backend/app/templates/guide/themes/card.html
+  역할: 공개 가이드 1번 테마 "기본 카드형" (가운데 한 줄, 분류별 카드 목록) — PHP views/guide/themes/card.php 대응
+
+  받는 값은 guide_model.page_data() 와 routers/guide.py 의 link, is_current.
+-#}
+<main class="mx-auto max-w-3xl px-4 py-8">
+{% include 'guide/_header.html' %}
+{% include 'guide/_tabs.html' %}
+
+{% if view != 'list' %}
+  <div class="card mt-4"><div class="card-body">{% include 'guide/_collection.html' %}</div></div>
+
+{% elif article is not none %}
+  <div class="mt-4 mb-2">
+    <a class="text-sm text-brand-600 hover:underline" href="{{ base }}">← {{ lang_text('guide.back') }}</a>
+  </div>
+  <article class="card">
+    <div class="card-body">
+      {% include 'guide/_article.html' %}
+    </div>
+  </article>
+
+{% else %}
+  <form class="mt-4 flex gap-2" method="get" action="{{ base }}">
+    <input class="form-input flex-1" name="q" value="{{ q }}" maxlength="100"
+           placeholder="{{ lang_text('guide.search_placeholder') }}">
+    <button class="btn btn-primary shrink-0" type="submit">{{ lang_text('guide.search_button') }}</button>
+  </form>
+
+  {% if results is not none %}
+    <div class="mt-5 mb-2 flex items-center gap-3">
+      <h2 class="font-semibold text-slate-700">{{ lang_text('guide.results', {'q': q}) }}</h2>
+      <a class="ml-auto text-sm text-brand-600 hover:underline" href="{{ base }}">{{ lang_text('guide.back') }}</a>
+    </div>
+    {% if not results %}
+      <div class="card"><div class="card-body text-sm text-slate-500">{{ lang_text('guide.no_result', {'q': q}) }}</div></div>
+    {% else %}
+      <div class="card divide-y divide-slate-100">
+        {% for item in results %}
+        <a class="block px-5 py-3 hover:bg-slate-50" href="{{ link(item) }}">
+          <div class="font-medium text-slate-800">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</div>
+          {% if not empty(item.subtitle) %}
+          <div class="mt-0.5 text-sm text-slate-500">{{ item.subtitle }}</div>
+          {% endif %}
+        </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+  {% elif not groups %}
+    <div class="card mt-5"><div class="card-body text-center text-sm text-slate-500">{{ lang_text('guide.empty') }}</div></div>
+
+  {% else %}
+    {% include 'guide/_feature_strip.html' %}
+    {% for group in groups %}
+    <h2 class="mt-6 mb-2 font-semibold text-slate-700">{{ group.name }}</h2>
+    <div class="card divide-y divide-slate-100">
+      {% for item in group.articles %}
+      <a class="block px-5 py-3 hover:bg-slate-50" href="{{ link(item) }}">
+        <div class="font-medium text-slate-800">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</div>
+        {% if not empty(item.subtitle) %}
+        <div class="mt-0.5 text-sm text-slate-500">{{ item.subtitle }}</div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  {% endif %}
+{% endif %}
+
+{% include 'guide/_unsolved.html' %}
+</main>

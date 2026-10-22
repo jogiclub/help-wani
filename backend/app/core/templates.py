@@ -11,14 +11,14 @@
 from pathlib import Path
 
 from fastapi.responses import HTMLResponse
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, Undefined, select_autoescape
 from markupsafe import Markup
 
 from app import config
 from app.core import csrf
 from app.core.i18n import (current_locale, current_timezone, lang_text, load_messages, supported_locales,
                            timezone_offset_label, to_timezone)
-from app.core.php import php_date, php_json_encode
+from app.core.php import number_format, php_date, php_empty, php_int, php_json_encode, php_str
 from app.core.request import base_url, uri_string
 from app.helpers.app import (asset_url, customer_url, format_duration, guide_image_url, guide_text_html,
                              relay_viewer_ws_url, status_label)
@@ -39,7 +39,13 @@ def _js(value, unescaped_unicode=True):
     return Markup(php_json_encode(value, unescaped_unicode=unescaped_unicode))
 
 
+def _empty(value):
+    """PHP empty(). 없는 속성(PHP 는 경고 없이 비어 있는 것으로 봄)도 비어 있다."""
+    return isinstance(value, Undefined) or php_empty(value)
+
+
 env.filters['js'] = _js
+env.filters['number_format'] = number_format
 env.globals.update(
     base_url=base_url,
     asset_url=asset_url,
@@ -54,6 +60,10 @@ env.globals.update(
     format_duration=format_duration,
     status_label=status_label,
     php_date=php_date,
+    # PHP empty() / (int). DB 값은 문자열이라 '0' 이 파이썬에서는 참이다. PHP 의 empty()·참거짓 판정은 empty() 로 옮긴다.
+    empty=_empty,
+    php_int=php_int,
+    php_str=php_str,
     csrf_token_name=csrf.TOKEN_NAME,
 )
 

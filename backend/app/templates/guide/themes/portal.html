@@ -1,0 +1,111 @@
+{#-
+  파일 위치: backend/app/templates/guide/themes/portal.html
+  역할: 공개 가이드 3번 테마 "헬프센터형" (큰 검색창과 분류 카드) — PHP views/guide/themes/portal.php 대응
+-#}
+{%- set ns = namespace(same_category=[]) -%}
+{%- if article is not none -%}
+  {%- for group in groups -%}
+    {%- if php_int(group.id) == php_int(article.category_id) %}{% set ns.same_category = group.articles %}{% endif -%}
+  {%- endfor -%}
+{%- endif -%}
+<section class="gt-portal-hero {{ 'is-compact' if article is not none else '' }}">
+  <div class="gt-portal-top">
+    <a class="gt-portal-brand" href="{{ base }}">
+      {% if not empty(org.logo_path) %}
+        <span class="gt-portal-logo"><img src="{{ base_url(org.logo_path) }}" alt="{{ org.name }}"></span>
+      {% endif %}
+      <span>{{ lang_text('guide.page_title', {'org': org.name}) }}</span>
+    </a>
+    <a class="gt-portal-cta" href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+  </div>
+  {% if article is none %}
+  <h1 class="gt-portal-headline">{{ lang_text('guide.hero') }}</h1>
+  {% endif %}
+  <form class="gt-portal-search" method="get" action="{{ base }}">
+    <input type="search" name="q" value="{{ q }}" maxlength="100"
+           placeholder="{{ lang_text('guide.search_placeholder') }}">
+    <button type="submit">{{ lang_text('guide.search_button') }}</button>
+  </form>
+</section>
+
+<main class="gt-portal-main">
+{% include 'guide/_tabs.html' %}
+
+{% if view != 'list' %}
+  <div class="gt-portal-panel gt-portal-collection">{% include 'guide/_collection.html' %}</div>
+
+{% elif results is not none %}
+  <div class="gt-portal-bar">
+    <h2>{{ lang_text('guide.results', {'q': q}) }}</h2>
+    <a href="{{ base }}">{{ lang_text('guide.reset') }}</a>
+  </div>
+  {% if not results %}
+    <div class="gt-portal-panel gt-portal-empty">{{ lang_text('guide.no_result', {'q': q}) }}</div>
+  {% else %}
+    <div class="gt-portal-panel gt-portal-list">
+      {% for item in results %}
+      <a href="{{ link(item) }}">
+        <strong>{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</strong>
+        {% if not empty(item.subtitle) %}<span>{{ item.subtitle }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% elif article is not none %}
+  <nav class="gt-portal-crumb">
+    <a href="{{ base }}">{{ lang_text('guide.home') }}</a>
+    {% if category != '' %}<span>›</span><span>{{ category }}</span>{% endif %}
+  </nav>
+  <div class="gt-portal-detail">
+    <article class="gt-portal-panel gt-portal-article">
+      {% include 'guide/_article.html' %}
+    </article>
+    {% if ns.same_category|length > 1 %}
+    <aside class="gt-portal-panel gt-portal-related">
+      <h2>{{ lang_text('guide.related') }}</h2>
+      {% for item in ns.same_category %}
+      <a class="{{ 'is-active' if is_current(item) else '' }}" href="{{ link(item) }}">{{ item.title }}</a>
+      {% endfor %}
+    </aside>
+    {% endif %}
+  </div>
+
+{% elif not groups %}
+  <div class="gt-portal-panel gt-portal-empty">{{ lang_text('guide.empty') }}</div>
+
+{% else %}
+  {% include 'guide/_feature_strip.html' %}
+  <div class="gt-portal-grid">
+    {% for group in groups %}
+    <section class="gt-portal-panel gt-portal-category">
+      <h2>{{ group.name }}</h2>
+      <p class="gt-portal-count">{{ lang_text('guide.count', {'n': group.articles|length}) }}</p>
+      <ul>
+        {% for item in group.articles[:5] %}
+        <li><a href="{{ link(item) }}">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</a></li>
+        {% endfor %}
+      </ul>
+      {% if group.articles|length > 5 %}
+      <details>
+        <summary>{{ lang_text('guide.more', {'n': group.articles|length - 5}) }}</summary>
+        <ul>
+          {% for item in group.articles[5:] %}
+          <li><a href="{{ link(item) }}">{{ item.title }} {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}</a></li>
+          {% endfor %}
+        </ul>
+      </details>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </div>
+{% endif %}
+
+  <div class="gt-portal-unsolved">
+    <div>
+      <strong>{{ lang_text('guide.unsolved') }}</strong>
+      <span>{{ lang_text('guide.unsolved_body') }}</span>
+    </div>
+    <a href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+  </div>
+</main>

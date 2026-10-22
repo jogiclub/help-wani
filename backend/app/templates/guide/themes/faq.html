@@ -1,0 +1,101 @@
+{#-
+  파일 위치: backend/app/templates/guide/themes/faq.html
+  역할: 공개 가이드 4번 테마 "FAQ 아코디언형" (질문을 누르면 그 자리에서 답이 펼쳐진다) — PHP views/guide/themes/faq.php 대응
+-#}
+<main class="gt-faq-main">
+  <header class="gt-faq-head">
+    <a class="gt-faq-org" href="{{ base }}">
+      {% if not empty(org.logo_path) %}
+        <img src="{{ base_url(org.logo_path) }}" alt="{{ org.name }}">
+      {% endif %}
+      <span>{{ org.name }}</span>
+    </a>
+    <h1>{{ lang_text('guide.faq_title') }}</h1>
+    <p>{{ lang_text('guide.subtitle') }}</p>
+    <form class="gt-faq-search" method="get" action="{{ base }}">
+      <input type="search" name="q" value="{{ q }}" maxlength="100"
+             placeholder="{{ lang_text('guide.search_placeholder') }}">
+      <button type="submit">{{ lang_text('guide.search_button') }}</button>
+    </form>
+  </header>
+  {% include 'guide/_tabs.html' %}
+
+{% if view != 'list' %}
+  <div class="gt-faq-collection">{% include 'guide/_collection.html' %}</div>
+
+{% elif results is not none %}
+  <div class="gt-faq-bar">
+    <h2>{{ lang_text('guide.results', {'q': q}) }}</h2>
+    <a href="{{ base }}">{{ lang_text('guide.reset') }}</a>
+  </div>
+  {% if not results %}
+    <p class="gt-faq-empty">{{ lang_text('guide.no_result', {'q': q}) }}</p>
+  {% else %}
+    <div class="gt-faq-group">
+      {% for item in results %}
+      <a class="gt-faq-row" href="{{ link(item) }}">
+        <span class="gt-faq-q">Q</span>
+        <span><strong>{{ item.title }}</strong> {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}
+        {% if not empty(item.subtitle) %}<small>{{ item.subtitle }}</small>{% endif %}</span>
+      </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+{% elif article is not none %}
+  <div class="gt-faq-bar">
+    <a href="{{ base }}">← {{ lang_text('guide.back') }}</a>
+    {% if category != '' %}<span class="gt-faq-chip is-static">{{ category }}</span>{% endif %}
+  </div>
+  <article class="gt-faq-item is-single">
+    <div class="gt-faq-summary">
+      <span class="gt-faq-q">Q</span>
+      <span><strong>{{ article.title }}</strong>
+      {% if not empty(article.subtitle) %}<small>{{ article.subtitle }}</small>{% endif %}</span>
+    </div>
+    <div class="gt-faq-answer">
+      {% with hide_heading = true %}{% include 'guide/_article.html' %}{% endwith %}
+    </div>
+  </article>
+
+{% elif not groups %}
+  <p class="gt-faq-empty">{{ lang_text('guide.empty') }}</p>
+
+{% else %}
+  {% include 'guide/_feature_strip.html' %}
+  {% if groups|length > 1 %}
+  <nav class="gt-faq-chips">
+    {% for group in groups %}
+    <a class="gt-faq-chip" href="#gt-cat-{{ php_int(group.id) }}">{{ group.name }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  {% for group in groups %}
+  <section class="gt-faq-group" id="gt-cat-{{ php_int(group.id) }}">
+    <h2>{{ group.name }}</h2>
+    {% for item in group.articles %}
+    <details class="gt-faq-item">
+      <summary class="gt-faq-summary">
+        <span class="gt-faq-q">Q</span>
+        <span><strong>{{ item.title }}</strong> {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}
+        {% if not empty(item.subtitle) %}<small>{{ item.subtitle }}</small>{% endif %}</span>
+      </summary>
+      <div class="gt-faq-answer">
+        {% if php_int(item.id) in bodies %}
+          {% with article = bodies[php_int(item.id)], hide_heading = true %}{% include 'guide/_article.html' %}{% endwith %}
+        {% endif %}
+        <a class="gt-faq-permalink" href="{{ link(item) }}">{{ lang_text('guide.permalink') }}</a>
+      </div>
+    </details>
+    {% endfor %}
+  </section>
+  {% endfor %}
+{% endif %}
+
+  <div class="gt-faq-unsolved">
+    <strong>{{ lang_text('guide.unsolved') }}</strong>
+    <span>{{ lang_text('guide.unsolved_body') }}</span>
+    <a href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+  </div>
+</main>

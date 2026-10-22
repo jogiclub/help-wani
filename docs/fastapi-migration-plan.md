@@ -4,7 +4,7 @@
 > 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
 
 - 작성일: 2026-10-22
-- 상태: 진행 중 — 0·1·2단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+- 상태: 진행 중 — 0~3단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
 
 ---
 
@@ -265,6 +265,24 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 
 - `Home`(소개, `lang/(:any)`), `Auth`(login/logout/signup), `Customer`(접속 안내, 만족도 조사, 이어 가기 `chat/{토큰}`), `Download`, `Guide`(공개 가이드, 테마 5종, 새 기능·동영상 모음).
 - 공개 가이드 테마 뷰(`views/guide/themes/*`), `_article`, `_video`(iframe 은 한 곳), `_tabs`, `_collection`.
+- **결과(2026-10-22 완료)**
+  - 경로: `routers/{home,customer,download,guide}.py`, `auth.py` 에 가입 신청. 조직 코드 하나만 받는 `/{org_code}` 는 `main.py` 맨 마지막.
+  - 모델·라이브러리: `guide_model.py`(공개 화면 부분: 조회, 테마, 공개 페이지 구성, 새 기능·동영상 모음, page_data), `guide_matcher.py`(전체),
+    `organization_model.py`(get_active_by_code, insert, update), `settings/guide_match.py`(PHP 설정에서 옮김).
+  - 템플릿: 소개, 가입 신청, 고객 접속, 만족도 조사, 다운로드 불가, 공개 가이드(page, 조각 10개, 테마 5개).
+  - Guide_matcher: PCRE 와 파이썬의 \p{L}\p{N}·\p{Hangul} 판정이 4,388자에서 달라(PCRE Hangul 은 CJK 구두점까지 포함) PHP 에서 전체 코드 포인트를
+    확인해 뽑은 구간 표(`core/data/php_pcre_unicode.json`)를 쓴다. 그리스 문자 Σ 는 PHP 8.2 처럼 글자별로 소문자화. 숫자 낱말은 PHP 배열처럼 정수로 조회.
+    낱말·조각·질문·색인 결과를 PHP 원본과 913개 사례 비교 불일치 0.
+  - CI3 경로 규칙: 앞뒤·겹친 `/` 무시(리다이렉트 없음), 경로 조각 허용 문자(permitted_uri_chars) 밖이면 400.
+  - 검사 규칙: alpha_dash, min_length, max_length, matches 추가. CI3 흐름(required 먼저, 빈 값이면 required/matches 외 건너뜀, 배열 값은 빈 값) 그대로.
+  - PHP round(0.5 는 0 에서 먼 쪽)·number_format·(string) 실수(%.14G) 대응.
+  - 비교 결과: 소개(ko/en/ja), 로그인, 가입, 고객 접속·이어 가기, 만족도 조사, 공개 가이드(테마 5개 × 목록·검색·상세·새 기능·동영상·분류 거르기·[더 보기]),
+    관리자 미리보기(?theme=, 꺼진 모음), 404 가 PHP 와 같음(따옴표 이스케이프 표기 &quot;/&#34; 와 JS 문자열 따옴표만 다름).
+    POST: 만족도(검사 오류, 409, 정상 저장 — xss_clean 결과까지 같음), 가입(검사 오류 7종, 중복 409, 정상 저장 — 저장값 같음, 비밀번호 해시 상호 검증).
+    언어 선택 쿠키와 리다이렉트, 런처 다운로드 헤더·파일 해시 같음.
+  - 시험 데이터: 만족도 2건, 세션 로그 2건, 가입 조직·상담원 각 2건, 감사 로그 10건을 지웠다. 비교를 위해 `webhows` 조직의 테마·모음 설정과
+    글 3개(282~284)의 새 기능 표시를 잠시 바꿨다가 저장해 둔 값(updated_at 포함)으로 되돌렸고, 조회수 3건을 원래 값으로 되돌렸다.
+  - 남은 것: 이미지 업로드 검사(check_uploaded_image)와 가이드 저장·색인·가져오기는 6단계, 고객 위젯 응답은 4단계.
 
 ### 4단계. 상담 위젯 API
 

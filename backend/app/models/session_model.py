@@ -28,12 +28,6 @@ def get_by_id(session_id):
     return db.first_where(TABLE, {'id': int(session_id)})
 
 
-def _like(value):
-    """CI3 like() 대응: ! % _ 를 ! 로 이스케이프하고 ESCAPE '!' 를 붙인다."""
-    escaped = str(value).replace('!', '!!').replace('%', '!%').replace('_', '!_')
-    return '%' + escaped + '%'
-
-
 def search_history(org_id, filters=None, limit=50, offset=0):
     """원격지원 목록 검색 (원격지원 화면이 3초마다 부른다).
 
@@ -44,7 +38,7 @@ def search_history(org_id, filters=None, limit=50, offset=0):
     params = {'org': int(org_id)}
 
     if filters.get('keyword'):
-        params['kw'] = _like(filters['keyword'])
+        params['kw'] = db.like_pattern(filters['keyword'])
         where.append("(s.customer_pc_name LIKE :kw ESCAPE '!' OR s.code LIKE :kw ESCAPE '!' OR a.name LIKE :kw ESCAPE '!')")
 
     if filters.get('status'):

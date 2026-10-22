@@ -1,0 +1,37 @@
+{#-
+  파일 위치: backend/app/templates/guide/_features.html
+  역할: 새 기능 모음 본문 (출시일 최신순, 조직 시간대 기준 월별 묶음) — 모든 테마 공통, PHP views/guide/_features.php 대응
+
+  날짜는 data-i18n-date 로 조직 시간대에 맞춰 화면에서 다시 그린다(CLAUDE.md 3.4).
+-#}
+<header class="guide-collection-head">
+  <h1>{{ lang_text('guide.features_title') }}</h1>
+  <p>{{ lang_text('guide.features_desc') }}</p>
+</header>
+
+{% if not features %}
+  <p class="guide-collection-empty">{{ lang_text('guide.features_empty') }}</p>
+{% else %}
+  {% for group in features %}
+  <section class="guide-feature-month">
+    <h2>{{ group.label }}</h2>
+    <div class="guide-feature-list">
+      {% for item in group['items'] %}
+      <a class="guide-feature-item" href="{{ link(item) }}">
+        <span class="guide-feature-meta">
+          {% with badge_id = item.id %}{% include 'guide/_new_badge.html' %}{% endwith %}
+          {% if not empty(item.feature_label) %}<span class="guide-feature-label">{{ item.feature_label }}</span>{% endif %}
+          <span data-i18n-date="{{ item.feature_date }}" data-i18n-date-style="date"></span>
+        </span>
+        <strong>{{ item.title }}</strong>
+        {% if not empty(item.subtitle) %}<small>{{ item.subtitle }}</small>{% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+
+  {% if more_url != '' %}
+  <a class="guide-more" href="{{ more_url }}">{{ lang_text('guide.load_more') }}</a>
+  {% endif %}
+{% endif %}

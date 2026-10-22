@@ -1,0 +1,15 @@
+{#-
+  파일 위치: backend/app/templates/guide/_feature_strip.html
+  역할: 공개 가이드 첫 화면의 최근 새 기능 띠 — 모든 테마 공통, PHP views/guide/_feature_strip.php 대응
+-#}
+{% if strip %}
+<div class="guide-strip">
+  <span class="guide-strip-label">{{ lang_text('guide.features_strip') }}</span>
+  <span class="guide-strip-items">
+    {% for item in strip %}
+    <a href="{{ link(item) }}">{{ item.title }}</a>
+    {% endfor %}
+  </span>
+  <a class="guide-strip-all" href="{{ base ~ '/features' }}">{{ lang_text('guide.view_all') }}</a>
+</div>
+{% endif %}

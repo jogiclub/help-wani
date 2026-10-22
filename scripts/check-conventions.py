@@ -558,6 +558,100 @@ def check_fastapi():
         ok('FastAPI 포털 설정 확인 (프록시 헤더 끔, PHP 와 같은 환경변수, UTC, sql_mode, 버전 고정, 신뢰 프록시, 쿠키 이름)')
 
 
+def _py_literal(rel, function=None, name=None):
+    """backend 파이썬 파일에서 함수가 돌려주는 값(function) 또는 모듈 상수(name)를 읽는다(의존성 없이 ast 로)."""
+    import ast
+    tree = ast.parse(read(rel))
+    for node in tree.body:
+        if function and isinstance(node, ast.FunctionDef) and node.name == function:
+            for sub in ast.walk(node):
+                if isinstance(sub, ast.Return) and sub.value is not None:
+                    return ast.literal_eval(sub.value)
+        if name and isinstance(node, ast.Assign) and any(getattr(t, 'id', None) == name for t in node.targets):
+            return ast.literal_eval(node.value)
+    return None
+
+
+def _php_config_array(text, key):
+    match = re.search(r"\$config\['" + key + r"'\] = array\((.*?)\);", text, re.S)
+    return re.findall(r"'([^']*)'", re.sub(r'//[^\n]*', '', match.group(1))) if match else None
+
+
+def check_fastapi_screens():
+    """FastAPI 로 옮긴 화면이 PHP 와 같은 규칙을 지키고, 두 서버가 같아야 하는 목록이 어긋나지 않는지 본다(CLAUDE.md 3.3, 3.8, 3.15, 3.19)."""
+    if not os.path.isdir(os.path.join(ROOT, 'backend/app/templates/guide')):
+        ok('FastAPI 화면 없음')
+        return
+
+    problems = []
+    templates = 'backend/app/templates'
+
+    # 1) 테마 목록마다 템플릿이 있고, 모든 테마가 탭과 모음 본문을 부른다. 테마 목록은 PHP 와 같아야 한다.
+    themes = _py_literal('backend/app/models/guide_model.py', function='themes') or {}
+    php_model = read('portal/application/models/Guide_model.php')
+    php_block = re.search(r'function themes\(\).*?return array\((.*?)\);', php_model, re.S)
+    php_themes = re.findall(r"'([a-z]+)'\s*=>\s*array\('name'", php_block.group(1)) if php_block else []
+    if list(themes) != php_themes:
+        problems.append(f'테마 목록이 PHP 와 다릅니다: {list(themes)} / {php_themes}')
+    for key in themes:
+        path = f'{templates}/guide/themes/{key}.html'
+        if not os.path.isfile(os.path.join(ROOT, path)):
+            problems.append(f'테마 "{key}" 의 템플릿 {path} 가 없습니다')
+            continue
+        text = read(path)
+        for part in ('guide/_tabs.html', 'guide/_collection.html'):
+            if part not in text:
+                problems.append(f'{path} 가 {part} 를 부르지 않습니다')
+
+    # 2) 유튜브 iframe 은 _video.html 한 곳에서만, nocookie 주소로만 만든다. 가이드 템플릿은 |safe 로 이스케이프를 끄지 않는다.
+    for rel, full in walk(templates, ('.html',)):
+        text = open(full, encoding='utf-8').read()
+        if 'youtube' in text and '/embed/' in text and not rel.endswith('templates/guide/_video.html'):
+            problems.append(f'{rel} 유튜브 iframe 은 guide/_video.html 을 불러 그립니다')
+        if rel.startswith(templates + '/guide') and '|safe' in text:
+            problems.append(f'{rel} 공개 가이드 템플릿에서 |safe 를 쓰지 않습니다(관리자가 쓴 글을 그대로 내보냄)')
+    if 'youtube-nocookie.com/embed/' not in read(f'{templates}/guide/_video.html'):
+        problems.append('guide/_video.html 이 youtube-nocookie.com/embed/ 주소를 쓰지 않습니다')
+
+    # 3) 모음 주소는 글 주소보다 먼저 등록하고 RESERVED_SLUGS 에 넣는다. 조직 코드 하나만 받는 주소는 맨 마지막에 등록한다.
+    router = read('backend/app/routers/guide.py')
+    article_at = router.find("'/{org_code}/guide/{slug}'")
+    reserved = _py_literal('backend/app/models/guide_model.py', name='RESERVED_SLUGS') or ()
+    for word in re.findall(r"'/\{org_code\}/guide/([a-z][a-z0-9_-]*)'", router):
+        if router.find(f"'/{{org_code}}/guide/{word}'") > article_at:
+            problems.append(f'routers/guide.py: /guide/{word} 는 /guide/{{slug}} 보다 먼저 둡니다')
+        if word not in reserved:
+            problems.append(f'모음 주소 "{word}" 가 guide_model.RESERVED_SLUGS 에 없습니다')
+    includes = re.findall(r'^app\.include_router\((.*?)\)', read('backend/app/main.py'), re.M)
+    if not includes or includes[-1] != 'customer.org_router':
+        problems.append('main.py: 조직 코드 주소(customer.org_router)를 맨 마지막에 등록하지 않았습니다(CLAUDE.md 3.8)')
+
+    # 4) 두 서버가 같아야 하는 목록: 가이드 매칭 설정, 소개 페이지 아이콘. 옮긴 템플릿의 아이콘도 목록에 있어야 한다.
+    php_match = read('portal/application/config/guide_match.php')
+    for key, name in (('suffixes', 'SUFFIXES'), ('stopwords', 'STOPWORDS')):
+        if _php_config_array(php_match, key) != _py_literal('backend/app/settings/guide_match.py', name=name):
+            problems.append(f'settings/guide_match.py {name} 가 PHP config/guide_match.php 와 다릅니다')
+    py_icons = _py_literal('backend/app/routers/home.py', function='landing_icons') or {}
+    py_declared = {v for group in py_icons.values() for v in group.values()}
+    if py_declared != declared_icons():
+        problems.append('routers/home.py landing_icons() 가 PHP Home::landing_icons() 와 다릅니다')
+    used = set()
+    for rel, full in walk(templates, ('.html',)):
+        used |= set(re.findall(r'material-symbols-outlined[^>]*>\s*([a-z][a-z0-9_]+)\s*<', open(full, encoding='utf-8').read()))
+    if used - py_declared:
+        problems.append('템플릿 아이콘이 landing_icons() 에 없습니다: ' + ', '.join(sorted(used - py_declared)))
+
+    # 5) PHP 에서 뽑은 데이터 파일(엔티티 표, PCRE 유니코드 구간)이 있어야 xss_clean 과 가이드 매칭이 PHP 와 같다.
+    for rel in ('backend/app/core/data/php_html5_entities.json', 'backend/app/core/data/php_pcre_unicode.json'):
+        if not os.path.isfile(os.path.join(ROOT, rel)):
+            problems.append(f'{rel} 가 없습니다')
+
+    if problems:
+        fail('FastAPI 화면 규칙 위반', '\n    '.join(problems[:12]))
+    else:
+        ok('FastAPI 화면 규칙 확인 (테마 템플릿·탭, 유튜브 한 곳, 모음/조직 주소 순서, PHP 와 같은 매칭 설정·아이콘, 데이터 파일)')
+
+
 # ------------------------------------------------------------------ 실행 점검
 # ------------------------------------- 3.13 고객에게 보내는 주소
 def check_customer_url():
@@ -879,6 +973,7 @@ def main():
     check_macro()
     check_followup()
     check_fastapi()
+    check_fastapi_screens()
 
     if '--live' in sys.argv:
         check_live()
