@@ -1,10 +1,26 @@
-# 포털 서버 FastAPI 전환 계획
+# 포털 서버 FastAPI 전환 기록
 
 > 파일 위치: docs/fastapi-migration-plan.md
-> 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
+> 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮긴 계획·결정·검증 기록
 
 - 작성일: 2026-10-22
-- 상태: 완료 — 0~10단계(2026-10-22). 시험 서버를 FastAPI 로 전환하고 PHP 를 지웠다. 이 문서는 옮긴 기록으로 남긴다
+- 상태: **완료**(2026-10-22). 0~10단계를 마치고 시험 서버를 FastAPI 로 전환한 뒤 PHP 를 지웠다.
+  지금의 작성 규칙은 `CLAUDE.md`(특히 3.19) 를 따르고, 이 문서는 왜 그렇게 만들었는지 확인하는 기록으로 남긴다.
+
+---
+
+## 0. 요약
+
+| 항목 | 내용 |
+|---|---|
+| 무엇을 | `portal/` 의 CodeIgniter 3 서버 코드(컨트롤러 14, 모델 9, 뷰 53, 경로 약 70개)를 FastAPI 로 다시 작성 |
+| 그대로 둔 것 | 화면 JS/CSS/사전/아이콘(주소와 요청·응답 형식 포함), DB 스키마, 중계 서버, 상담 실시간 서버, 런처 |
+| 방식 | PHP 와 나란히 띄워(같은 DB, 같은 환경변수) 단계마다 같은 요청을 두 서버에 보내 비교하고, 한 번에 전환한 뒤 PHP 를 지움 |
+| 지금 구조 | `web`(PHP 없는 Apache: `/assets`, 웹소켓 경유, 고객 IP, http→https) → `api`(FastAPI) → MySQL (3장) |
+| 비교 규모 | xss_clean 3만4천여 입력, 이메일·URL·CSV·이미지 판별·주소 해석·가이드 검사 등 PHP 원본과 수만 건 비교 불일치 0, 화면·API 쓰기 시나리오 182단계(5단계 63, 6단계 97, 7단계 22) |
+| 커밋 | 기준점 `cfc8070` → 0단계 `231d698` … 9단계(전환) `c487e5f`, 10단계(PHP 제거) `8db4000`, 폴더 정리 `0e8995a` |
+| 되돌리기 | 설정 하나로 PHP 로 돌아가던 장치(`PORTAL_BACKEND`)는 PHP 와 함께 없앴다. 지금은 `8db4000` 이전으로 git 되돌리기 + web 이미지 다시 빌드 |
+| 남은 일 | 런처 실기 확인, 화면 눈 확인, 운영 서버 반영 순서 등(11장) |
 
 ---
 
@@ -13,21 +29,21 @@
 **목표**: `portal/` 의 서버 코드(CodeIgniter 3)를 FastAPI 로 다시 작성한다. 화면(JS/CSS/사전/아이콘)과 DB, 중계 서버(`relay/`),
 상담 실시간 서버(`realtime/`), 런처는 그대로 둔다.
 
-**원칙**
+**원칙**(지킨 결과는 6장)
 
 1. **PHP 는 지우지 않고 나란히 띄운다.** 새 컨테이너 `api` 를 따로 올려 같은 DB 를 쓰게 하고, 기능을 다 옮겨 비교가 끝난 뒤에 전환한다.
-   PHP 제거는 마지막 단계(6장 10단계)이며 전환 후 일정 기간 되돌릴 수 있게 남겨 둔다.
+   PHP 제거는 마지막 단계(10단계)에서 따로 승인받아 했다.
 2. **프런트엔드는 고치지 않는 것이 기본이다.** 주소, 요청 형식(`csrf_test_name` 포함), 응답 형식(`{ result, message, data }`),
-   화면 전역 변수(`XXX_URLS`, `i18n`)를 PHP 와 똑같이 맞춘다. JS 를 고쳐야 한다면 PHP 쪽에서도 동작하게 고친다(전환 전까지 둘 다 돌아야 함).
-3. **DB 스키마는 바꾸지 않는다.** 전환 기간에는 PHP 와 FastAPI 가 같은 DB 를 함께 쓰므로 스키마를 바꾸면 한쪽이 깨진다.
-   꼭 필요하면 양쪽 모두 호환되는 추가(컬럼 추가 등)만 하고 `sql/migrations/` 에 넣는다.
+   화면 전역 변수(`XXX_URLS`, `i18n`)를 PHP 와 똑같이 맞춘다. 전환 뒤에 고친 화면 JS 는 상담 위젯의 실시간 재접속(eeb0140, PHP 쪽도 함께 고침) 하나다.
+3. **DB 스키마는 바꾸지 않는다.** 전환 기간에는 PHP 와 FastAPI 가 같은 DB 를 함께 쓰므로 스키마를 바꾸면 한쪽이 깨진다. 실제로 바꾸지 않았다.
 4. **CLAUDE.md 3장의 규칙은 그대로 옮긴다.** 규칙이 "어느 함수 한 곳을 거친다" 로 정의되어 있으므로
    Python 에서도 같은 이름·같은 책임의 함수 한 곳으로 만든다(예: `Guide_model::save_article()` → `guide_model.save_article()`).
 5. **서명 토큰과 비밀번호는 바이트 단위로 호환**시킨다. 전환 순간 로그인·위젯 토큰·이어 가기 메일 주소가 끊기면 안 된다.
+   (상담원 로그인 세션만은 일부러 공유하지 않아 전환 때 한 번 다시 로그인한다, 5.2)
 
 ---
 
-## 2. 현재 규모 (2026-10-22 기준)
+## 2. 옮기기 전 규모 (2026-10-22, 기준점 cfc8070)
 
 | 구분 | 파일 | 줄 수(대략) |
 |---|---|---|
@@ -39,20 +55,19 @@
 | 뷰 | 53개 PHP 템플릿 | 4,200 |
 | 라우트 | 약 70개 (`config/routes.php`, 마지막 `(:any)` 는 조직 코드) | - |
 
-손대지 않는 것: `portal/assets/` 전체(JS, CSS, 사전, 벤더, 업로드), `relay/`, `realtime/`, `launcher/`, `sql/`.
-
 ---
 
-## 3. 목표 구조
+## 3. 최종 구조
 
 ```
 [브라우저 / 위젯 / 런처]
-        |
-        |  전환 전: :8099 -> web(PHP)        시험: :8098 -> api(FastAPI)
-        |  전환 후: :8099 -> web(Apache, 프록시 전용) -> api
+        |  :8099, https://help.wani.im(cloudflared)
         v
-   api (FastAPI + uvicorn)  ---- MySQL(db, 같은 DB)
-        |  POST /publish                ^  GET /api/realtime/auth, /api/relay/auth
+   web (Apache, PHP 없음)  -- /assets 직접 제공, /realtime-ws·/relay-viewer 경유, mod_remoteip, http->https
+        |  나머지 요청 + X-RemoteHelp-Client-IP(덮어씀)
+        v
+   api (FastAPI + uvicorn) ---- MySQL(db)
+        |  POST /publish                ^  GET /api/realtime/auth, /api/relay/auth (http://web 을 거쳐 api)
         v                               |
    realtime-msg / relay  ---------------+
 ```
@@ -61,67 +76,59 @@
 
 ```
 backend/
-  (Dockerfile 은 기존 관례대로 docker/api/Dockerfile 에 둔다)
-  requirements.txt         (버전 고정)
+  requirements.txt         버전 고정(4장)
+  assets/                  정적 파일(JS, CSS, 사전, 아이콘, 업로드). 주소는 /assets/... (예전 portal/assets)
   app/
     main.py                앱 생성, 미들웨어, 라우터 등록(조직 코드 라우터는 맨 마지막)
-    config.py              .env 읽기 (PHP config/env.php 대응)
-    db.py                  DB 연결
-    core/
-      session.py           로그인 세션 (CI3 ci_session 대응)
-      csrf.py              csrf_test_name 검사 (csrf_exclude_uris 대응)
-      response.py          api_response()
-      deps.py              current_agent / require_admin / require_operator (Agent/Admin/Operator_Controller 대응)
-      templates.py         Jinja2 환경 + 전역 함수(asset_url, base_url, customer_url, __, lang_text, to_timezone ...)
-      i18n.py              i18n_helper 대응, portal/assets/lang/*.json 을 그대로 읽음
-    helpers/app.py         app_helper 대응 (check_uploaded_image, image_file_ext, fetch_external_image ...)
-    models/                Organization / Agent / Session / Chat / Chat_hours / Guide / Macro / Visitor / Log
-    libraries/             realtime / mailer / guide_matcher / chat_greeting / chat_followup
-    settings/              guide_match / guide_samples / holidays / macro (PHP config 배열 대응)
-    routers/               home / auth / customer / guide / download / widget / console / console_macro /
-                           admin / admin_guide / operator / api_launcher / api_relay / api_realtime_auth / org(맨 마지막)
-    templates/             PHP 뷰를 옮긴 Jinja2 템플릿 (views/ 와 같은 폴더 구조)
+    config.py  db.py  static.py
+    core/                  php(PHP 와 같은 결과의 기본 함수), request, input, security(xss_clean), session, csrf,
+                           deps(current_agent / require_admin / require_operator), templates, i18n, errors, response, password, middleware
+      data/                PHP 8.2.34 에서 뽑은 표(HTML5 엔티티, PCRE 유니코드 구간)
+    helpers/               app(asset_url, customer_url, image_file_ext, check_uploaded_image ...), validation, php_filter, php_url, php_csv
+    models/                organization, agent, session, chat, chat_hours, guide, macro, visitor, log
+    libraries/             realtime, mailer, guide_matcher, chat_greeting, chat_followup
+    settings/              guide_match, guide_samples, holidays, macro (예전 PHP config 배열)
+    routers/               home, auth, customer(+org_router 맨 마지막), guide, download, widget, console, console_macro,
+                           admin, admin_guide, operator, api_launcher, api_relay, api_realtime_auth, dev(개발 전용)
+    templates/             PHP 뷰를 옮긴 Jinja2 템플릿(views/ 와 같은 폴더 구조)
+docker/api/Dockerfile      python:3.12.14-slim-bookworm, www-data 로 실행
+docker/web/Dockerfile      debian:trixie-20261005-slim + apache2 (rewrite, headers, proxy, proxy_http, proxy_wstunnel, ssl, remoteip)
+docker/web/apache-vhost.conf
 ```
 
-> 기존 `server/` 는 중계 서버 설치 스크립트 폴더이므로 쓰지 않는다. 폴더 이름은 확인 필요 사항(8장) 참고.
+### 3.2 컨테이너
 
-### 3.2 컨테이너 (`docker-compose.yml` 에 추가)
+| 서비스 | 포트 | 볼륨 | 망 |
+|---|---|---|---|
+| `web` (remotehelp-web) | `8099:80` | `./backend/assets:/var/www/html/assets:ro`, `relay-ca`(읽기) | default, tunnel(10.250.88.2 고정) |
+| `api` (remotehelp-api) | `8098:8000`(개발 직접 접속용) | `./backend/app:/app/app`(개발 중 다시 읽기), `./backend/assets:/srv/assets` | default, tunnel(10.250.88.3 고정) |
 
-| 항목 | 값 |
-|---|---|
-| 서비스 이름 | `api` (container_name `remotehelp-api`) |
-| 포트 | `8098:8000` (기존 8099, 8091, 8443, 13306 과 겹치지 않음) |
-| 환경 변수 | `web` 과 같은 값(DB, 비밀값, REALTIME_*, RELAY_*, PUBLIC_BASE_URL, SMTP_* ...)을 `.env` 에서 받는다. 새 비밀값은 만들지 않는다 |
-| 볼륨 | `./backend:/app`(개발 중 자동 재시작), `./portal/assets:/srv/assets`(정적 파일과 업로드를 PHP 와 공유) |
-| 망 | `default`, `tunnel`(전환 단계에서 cloudflared 가 붙을 수 있게) |
-| 의존 | `db` healthy |
-
-정적 파일(`/assets/...`)은 전환 전까지 FastAPI `StaticFiles` 로 함께 내준다. 전환 후에는 Apache 가 직접 내주는 방식으로 바꿀 수 있다(6장 9단계).
+환경변수는 `docker-compose.yml` 의 `x-portal-env` 한 곳에서 api 가 받는다(전환 기간에는 web 과 함께 받았다).
 
 ---
 
-## 4. 기술 선택
+## 4. 기술 선택 (확정)
 
-정확한 버전과 옵션은 **구현 시점에 공식 문서·PyPI 로 확인해 고정**하고, 확인 결과를 보고서에 남긴다(CLAUDE.md 1장).
+버전은 구현 시점에 PyPI·Docker Hub 에서 확인해 배포 2주 이상 지난 판으로 고정했다(0단계 결과).
 
-| 용도 | 선택(안) | 이유 |
+| 용도 | 선택 | 이유 |
 |---|---|---|
-| 웹 프레임워크 | FastAPI + uvicorn | 요청 사항 |
-| 템플릿 | Jinja2 | PHP 뷰를 서버 렌더링 그대로 옮길 수 있음. 화면 JS 를 바꾸지 않아도 됨 |
-| DB | SQLAlchemy 2 Core + PyMySQL (동기) | 기존 모델이 SQL 중심이라 ORM 매핑보다 Core 가 옮기기 쉬움. 동기 엔드포인트(`def`)로 두고 FastAPI 스레드풀에 맡긴다 |
-| 세션 | 서명 쿠키 또는 DB 세션(5.2) | |
-| 비밀번호 | `bcrypt` | PHP `password_hash(PASSWORD_DEFAULT)` 의 `$2y$` 해시를 그대로 검증 |
-| 폼/파일 | `python-multipart` | Dropzone 업로드, CSV 가져오기 |
-| HTTP 클라이언트 | `httpx` | realtime 발행, 외부 이미지 받기 |
+| 웹 프레임워크 | FastAPI 0.142.4 + uvicorn 0.54.0 (`--no-proxy-headers`) | 요청 사항. 프록시 헤더는 직접 처리(5.7) |
+| 템플릿 | Jinja2 3.1.6 | PHP 뷰를 서버 렌더링 그대로 옮길 수 있음. 화면 JS 를 바꾸지 않아도 됨 |
+| DB | SQLAlchemy 2.1.4 Core + PyMySQL 1.2.3 (동기) | 기존 모델이 SQL 중심이라 Core 가 옮기기 쉬움. 값은 mysqli 처럼 모두 문자열로 받음 |
+| 세션 | 서명 쿠키 `rh_session`(Starlette SessionMiddleware, itsdangerous) | DB 스키마를 바꾸지 않음. PHP 세션과는 공유하지 않음(5.2) |
+| 비밀번호 | `bcrypt` 5.0.0 | PHP `$2y$` 해시를 그대로 검증, 새 해시도 PHP 가 읽을 수 있음(확인) |
+| 폼/파일 | `python-multipart` 0.0.32 | Dropzone 업로드, CSV 가져오기 |
+| HTTP 클라이언트 | `httpx`(실시간 발행), 표준 `http.client`(외부 이미지, IP 고정 접속) | |
 | 메일 | 표준 `smtplib` (시간 제한 10초) | `Mailer` 와 같은 동작 |
-| 시간대 | 표준 `zoneinfo` | `to_timezone()`, `Chat_hours_model` 벽시계 판정 |
-| 이미지 판별 | 파일 머리 바이트 직접 검사 | `image_file_ext()` 와 같은 방식. SVG 거부 유지 |
+| 시간대 | 표준 `zoneinfo` | 서머타임 경계까지 PHP DateTime 과 같은 결과 확인(4단계) |
+| 이미지 판별 | libmagic 5.40 규칙 + getimagesize 판정을 직접 구현 | PHP `finfo` + `getimagesize()` 와 같은 결과(6단계) |
 
 ---
 
-## 5. 반드시 호환시켜야 할 것
+## 5. 반드시 호환시켜야 했던 것
 
-전환 순간 끊기거나 조용히 어긋나는 항목입니다. 각 항목은 PHP 와 FastAPI 가 **같은 입력에 같은 출력**을 내는지 비교해 확인합니다.
+전환 순간 끊기거나 조용히 어긋나는 항목이었습니다. 지금도 같은 동작을 지켜야 하는 이유가 되므로 남겨 둡니다(CLAUDE.md 3.19). 각 항목은 PHP 와 FastAPI 가 **같은 입력에 같은 출력**을 내는지 비교해 확인합니다.
 
 ### 5.1 응답·요청 형식
 
@@ -133,7 +140,7 @@ backend/
 ### 5.2 로그인 세션
 
 - 세션 값: `agent_id`, `locale`, `timezone` 등(`Auth::login` 이 넣는 키를 전수 조사해 맞춘다).
-- 만료 7200초, `SameSite=Lax`, `HttpOnly`.
+- 만료 7200초, `HttpOnly`.
 - **PHP 와 세션을 공유하지 않는다.** CI3 파일 세션(PHP 직렬화)을 Python 에서 읽고 쓰는 것은 복잡하고 위험하다.
   시험 기간(:8098)에는 FastAPI 가 자기 세션을 따로 쓰고, 전환 때 한 번 다시 로그인하게 한다(상담원만 해당, 고객 화면은 세션을 쓰지 않음).
 - 쿠키 이름은 PHP 와 겹치지 않게 한다(같은 호스트의 다른 포트는 쿠키를 공유하므로 `ci_session` 을 덮어쓰면 PHP 로그인이 풀린다).
@@ -170,9 +177,9 @@ PHP `json_encode` 는 기본으로 `/` 를 `\/` 로, 한글을 `\uXXXX` 로 바�
 
 - 고객 IP 는 `CF-Connecting-IP` 를 **cloudflared 고정 주소(10.250.88.5)에서 온 요청일 때만** 믿는다(3.12).
   uvicorn 의 프록시 헤더 옵션은 `X-Forwarded-For` 기반이므로 쓰지 않고, 이 규칙을 직접 구현한다.
-  전환 후 Apache 를 앞에 두면 Apache(`mod_remoteip`)가 복원한 IP 를 FastAPI 로 넘기는 방식을 다시 정한다(6장 9단계).
+  → 전환 뒤에는 Apache(`mod_remoteip`)가 복원한 IP 를 `X-RemoteHelp-Client-IP` 에 덮어써 넘기고 FastAPI 는 web 고정 주소에서 온 것만 믿는다(9단계 결과).
 - 고객에게 보내는 주소는 `customer_url()`(3.13), `PUBLIC_BASE_URL` 기준.
-- 웹소켓 경로 `/realtime-ws`, `/relay-viewer` 는 전환 전까지 Apache 가 맡는다. FastAPI 는 주소만 만들어 준다(`Realtime::ws_url()`, `relay_viewer_ws_url()`).
+- 웹소켓 경로 `/realtime-ws`, `/relay-viewer` 는 전환 뒤에도 Apache 가 맡는다. FastAPI 는 주소만 만들어 준다(`Realtime::ws_url()`, `relay_viewer_ws_url()`).
 
 ### 5.8 라우트 순서
 
@@ -189,9 +196,9 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 - 남는 차이: URL 디코드로 생긴 잘못된 UTF-8 바이트는 U+FFFD 로 바꾼다(PHP 는 그대로 보내 MySQL 이 경고와 함께 잘라 냄).
 ---
 
-## 6. 단계별 작업
+## 6. 단계별 작업과 결과
 
-각 단계는 **옮기기 → PHP 와 비교 → 화면 확인** 순서로 끝낸다. 단계가 끝날 때마다 완료/미완료/확인 필요 사항을 보고한다.
+각 단계는 **옮기기 → PHP 와 비교 → 화면 확인** 순서로 끝냈다. 단계마다 계획(앞부분)과 결과(**결과**)를 함께 남긴다. 단계가 끝날 때마다 완료/미완료/확인 필요 사항을 보고한다.
 
 ### 0단계. 컨테이너와 뼈대
 
@@ -235,8 +242,8 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
   - 남는 차이(영향 없음으로 판단): 실수의 지수 표기(1.0e+20 / 1e+20)와 -0, 존재하지 않는 날짜를 PHP 는 다음 날로 넘기고 여기는 원래 값을 돌려줌,
     작은따옴표 이스케이프(&#039; / &#39;), JS 문자열 따옴표('…' / "…").
   - 시험에 데모 계정을 썼고, 생긴 감사 로그 18건을 지우고 관리자 `last_login_at` 을 되돌렸다(AUTO_INCREMENT 는 417부터).
-  - 개발 전용 `/_dev/layout/*` 은 레이아웃 비교용이며 화면을 다 옮기면 지운다.
-  - **확인 필요**: PHP 는 `post('x', TRUE)` 에서 xss_clean 을 거친다. 3단계부터 입력을 받는 곳마다 같은 처리가 필요한지 정해야 한다(5.9 참고).
+  - 개발 전용 `/_dev/layout/*` 은 레이아웃 비교용이다(`APP_ENV=development` 에서만 열림, 아직 남아 있음 — 남은 일 참고).
+  - 확인 필요였던 xss_clean 처리는 2단계에서 (가) 그대로 옮기기로 정했다(5.9).
 
 ### 2단계. 서버 간 API (화면 없음, 가장 작고 검증 쉬움)
 
@@ -330,8 +337,7 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
   - 시험 데이터: 원격 세션·메모·로그·뷰어 토큰, 대화·메시지·방문자, 매크로·즐겨찾기·사용 기록, 감사 로그를 기준점 뒤 번호로 모두 지우고
     데모 상담원(접속 시각·응대 상태·알림), 기존 대화 27건의 상태와 메시지 읽음 시각을 되돌렸다.
     시험 중 담당 변경·보는 중·메시지 이벤트가 데모 조직 방으로 실시간 발행됐다.
-  - 확인 필요: FastAPI(8098)로 연 원격 화면은 `/relay-viewer` 웹소켓 경유가 없어 브라우저에서 화면을 받을 수 없다(e2e 는 relay 에 직접 붙어 통과).
-    전환 때 Apache 가 앞에 서면(9단계 (가)) 지금처럼 Apache 가 경유한다. https 로 열 때의 `/realtime-ws` 도 같다.
+  - 확인 필요였던 것: FastAPI(8098)로 직접 연 원격 화면은 `/relay-viewer` 웹소켓 경유가 없었다. 9단계에서 Apache 를 앞에 세워 해결했다(`/realtime-ws` 도 같음).
 
 ### 6단계. 조직 관리자 화면
 
@@ -389,7 +395,7 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 - `check-conventions.py` 를 Python 코드에도 적용되게 고친다(아래 7장).
 - 비교에 실제 데이터를 썼다면 원래 값으로 되돌리고 보고한다.
 - **결과(2026-10-22 완료)**
-  - `scripts/compare-portals.py`(8장 6번 결정): 방문자 22 / 조직 관리자 34 / 플랫폼 운영자 7, 모두 63가지 화면·읽기 API·내려받기를 두 서버에 보내
+  - `scripts/compare-portals.py`(8장 6번 결정, PHP 를 지운 10단계에서 함께 지웠다): 방문자 22 / 조직 관리자 34 / 플랫폼 운영자 7, 모두 63가지 화면·읽기 API·내려받기를 두 서버에 보내
     상태 코드, 본문, Location, 내려받기 헤더를 비교한다. 매번 바뀌는 값과 JSON 표기 차이('\/', JS 주소 따옴표)는 맞춘 뒤 비교한다.
     로그인·콘솔 목록·대화 열기·내려받기가 남기는 기록(마지막 로그인/접속 시각, 읽음 처리, 감사 로그)은 api 컨테이너에서 저장했다가 되돌린다.
     결과 63/63 같음. 템플릿 문구 하나를 일부러 바꿔 다름 1건으로 잡히는 것과, 끝난 뒤 기록이 비교 전 값과 같은 것을 확인했다.
@@ -415,6 +421,7 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
     공식 문서 configuring.html 확인). `backend-fastapi.conf`: `/assets`·`/realtime-ws`·`/relay-viewer` 는 `ProxyPass "!"` 로 빼고(첫 규칙이 이김, mod_proxy 문서),
     나머지를 `http://10.250.88.3:8000/`(api tunnel 고정 주소)로 넘긴다. `ProxyPreserveHost On`, `ProxyAddHeaders Off`, `ProxyTimeout 600`.
     `backend-php.conf` 는 비어 있어 예전처럼 PHP 가 처리한다. compose 기본값은 php, 시험 서버 `.env` 는 `PORTAL_BACKEND=fastapi`.
+    (이 선택 장치는 10단계에서 없애고 프록시 설정을 `apache-vhost.conf` 에 바로 넣었다.)
   - 고객 IP: Apache 가 mod_remoteip 로 복원한 `REMOTE_ADDR` 를 `RequestHeader set X-RemoteHelp-Client-IP "expr=%{REMOTE_ADDR}"` 로 덮어써 넘기고,
     FastAPI 는 web tunnel 고정 주소(10.250.88.2)에서 온 이 머리글만 믿는다. web·api 에 tunnel 고정 주소를 줬다.
     확인: help.wani.im 으로 보낸 요청은 실제 공인 IP 로 기록되고 꾸민 머리글은 덮어써짐, 8099·8098 직접 요청은 꾸민 머리글을 무시하고 게이트웨이 주소.
@@ -426,9 +433,9 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
   - 검사: `TRUSTED_PROXY_IP` = compose 의 web tunnel 주소, ProxyPass 대상 = api tunnel 주소, 고객 IP 머리글은 `set`, X-Forwarded-For 미사용,
     세 경로 제외를 확인한다(일부러 어겨 4가지가 잡히는 것 확인).
   - 시험 데이터: 검증 로그인·IP 시험 실패 로그인·e2e 세션과 기록을 지우고 상담원 값과 번호를 되돌렸다(감사 로그 398번까지).
-  - 남은 일: 런처 실기 확인(윈도우, 8099 의 `/api/launcher/*` 가 FastAPI 로 감), 상담원 다시 로그인 안내, 화면 눈 확인. 8098 포트는 비교용으로 열어 두었다.
+  - 남은 일은 맨 아래 '11. 남은 일' 로 모았다.
 
-### 10단계. PHP 제거 (전환 후 문제없음을 확인한 뒤, 따로 승인받아 진행)
+### 10단계. PHP 제거 (따로 승인받아 진행)
 
 - `portal/application`, `portal/system`, `portal/index.php`, `.htaccess`, `docker/web/php.ini` 제거. `portal/assets/` 는 남긴다(폴더 위치 정리는 별도 판단).
 - `docker/web/Dockerfile` 을 PHP 없는 Apache(프록시 전용)로 바꾸거나 (나) 방식이면 `web` 서비스 제거.
@@ -449,49 +456,70 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
     백엔드 파일 머리 주석의 "PHP 무엇 대응" 표기는 지우고, 동작이 같아야 하는 이유를 설명하는 주석(php_int, php_csv 등)은 남겼다.
   - 확인: 8099·help.wani.im 화면과 healthz, 정적 파일, 막은 파일(403), http->https, `/realtime-ws`·`/relay-viewer` 웹소켓 핸드셰이크(101),
     e2e 통과, `check-conventions.sh --live` 통과. e2e 가 만든 세션·기록은 지우고 번호와 상담원 값을 되돌렸다.
+  - 뒤이은 정리: 정적 파일 폴더를 `portal/assets` 에서 `backend/assets` 로 옮겼다(0e8995a, 주소 `/assets/...` 와 DB 의 경로는 그대로,
+    `guide_model.portal_file()` → `asset_file()`). 설계 문서의 PHP 경로·이름도 FastAPI 기준으로 고쳤다(ea1935c, 5ddfa9d).
+    이 문서의 1~10단계 기록에 나오는 `portal/assets` 는 그때의 경로다.
+
+---
 
 ---
 
 ## 7. 규칙 검사(`check-conventions.py`)와 훅
 
-- 현재 검사는 PHP 파일 경로와 함수 이름을 직접 찾는다. 전환 기간에는 **PHP 검사는 그대로 두고 Python 검사를 나란히 추가**한다
-  (예: `has_available_agent()` 직접 호출, `publish_conversation()` 에 담당자 이름, `macros` 직접 수정, `(:any)` 라우트 순서, iframe 한 곳 등).
-- 훅(`scripts/hooks/post-edit-check.py`)의 대상 폴더에 `backend/` 를 추가한다.
-- 검사를 추가할 때마다 일부러 어겨 보고 잡히는지 확인한다(CLAUDE.md 7장).
-- 모든 Python 파일 맨 위에 위치·역할 주석을 단다(docstring 형식).
-
-```python
-"""
-파일 위치: backend/app/models/guide_model.py
-역할: 가이드 글 저장, 검사, 색인, 공개 화면 데이터
-"""
-```
+- 전환 기간에는 PHP 검사를 그대로 두고 Python 검사(`check_fastapi*`)를 나란히 더했다. PHP 와 같아야 하는 목록(설정·아이콘·테마·CSRF 제외 경로)도 대조했다.
+- 10단계에서 백엔드 기준으로 다시 썼다. PHP 파일을 보던 규칙은 같은 내용을 파이썬·템플릿에 적용하고, 전환 전용 대조와 CI3 전용 규칙은 뺐다.
+- 훅(`scripts/hooks/post-edit-check.py`)은 `backend/` 를 포함해 감시한다. 검사를 더할 때마다 일부러 어겨 잡히는지 확인했다(CLAUDE.md 7장).
+- 모든 Python 파일과 템플릿 맨 위에 위치·역할 주석을 단다.
 
 ---
 
-## 8. 확인 필요 사항 (2026-10-22 제안대로 결정)
+## 8. 결정 사항 (2026-10-22, 제안대로 결정)
 
-| 번호 | 질문 | 제안 |
-|---|---|---|
-| 1 | 새 코드 폴더 이름 | `backend/` (기존 `server/` 는 설치 스크립트라 피함) |
-| 2 | 화면 렌더링 방식 | **Jinja2 서버 렌더링**으로 PHP 뷰를 그대로 옮김. 화면을 SPA 로 바꾸는 것은 범위가 훨씬 커지므로 이번 전환에서 하지 않음 |
-| 3 | DB 접근 방식 | SQLAlchemy Core(동기). 비동기(aiomysql)는 이점 대비 옮기는 비용이 큼 |
-| 4 | 전환 경로 | (가) Apache 프록시 유지. 웹소켓·IP 복원·https 전환 설정을 그대로 재사용 |
-| 5 | 전환을 한 번에 할지, 경로별로 나눌지 | **한 번에**. 경로별로 나누면 PHP 와 세션·CSRF 를 공유해야 해서 5.2 의 위험이 생김. 단, 2단계(서버 간 API)는 세션이 없으므로 먼저 따로 전환해도 됨 |
-| 6 | 비교 검증 스크립트(8단계) 작성 여부 | 작성 권장(응답 형식 회귀를 사람이 다 볼 수 없음) |
-| 7 | 운영 배포(Store 출시 일정)와의 순서 | 전환은 시험 서버에서 먼저, 운영 배포 전에 끝낼지 결정 필요 |
-| 8 | 진행 중인 PHP 변경분 | 현재 작업 트리에 커밋되지 않은 PHP 변경이 많음. 옮기기 전에 커밋해 기준점을 고정하길 권장. 전환 기간에 PHP 에 기능을 더하면 Python 에도 같이 넣어야 함 |
+| 번호 | 질문 | 결정 | 결과 |
+|---|---|---|---|
+| 1 | 새 코드 폴더 이름 | `backend/` (기존 `server/` 는 설치 스크립트라 피함) | 그대로. 정적 파일도 `backend/assets` 로 옮김 |
+| 2 | 화면 렌더링 방식 | **Jinja2 서버 렌더링**으로 PHP 뷰를 그대로 옮김(SPA 로 바꾸지 않음) | 그대로 |
+| 3 | DB 접근 방식 | SQLAlchemy Core(동기) | 그대로 |
+| 4 | 전환 경로 | (가) Apache 프록시 유지 | 9단계에서 적용, 10단계에서 PHP 없는 Apache 로 |
+| 5 | 한 번에 / 경로별 | **한 번에**(세션·CSRF 를 PHP 와 공유하지 않기 위해) | 9단계에서 한 번에 전환 |
+| 6 | 비교 검증 스크립트 | 작성 | 8단계 `compare-portals.py`(10단계에서 지움), 쓰기 비교는 단계별 시나리오 |
+| 7 | 운영 배포(Store 출시)와의 순서 | 시험 서버에서 먼저 | 시험 서버 전환 완료. **운영 서버 반영 시점은 아직 정하지 않음**(11장) |
+| 8 | 진행 중인 PHP 변경분 | 옮기기 전에 커밋해 기준점 고정 | 기준점 `cfc8070` |
 
 ---
 
 ## 9. 위험과 대응
 
-| 위험 | 대응 |
+| 위험 | 대응 | 결과 |
+|---|---|---|
+| 전환 기간 중 PHP 에 새 기능이 들어가 두 벌을 고쳐야 함 | 새 기능을 미루고 전환을 앞당김 | 하루 안에 끝냈다. 두 벌을 함께 고친 것은 버그 수정 두 건(외부 이미지 저장, 위젯 재접속) |
+| `Guide_matcher`, `Macro_model` 추천 점수가 미묘하게 달라짐 | 같은 입력 비교 | 불일치 0(3·5단계). 기존 색인을 다시 만들 필요 없음 |
+| `json_encode` / 문자열 함수 차이로 서명·잘라내기 결과가 달라짐 | 토큰 상호 검증, 바이트 비교 | 일치(2·4단계) |
+| 같은 호스트 다른 포트에서 쿠키 충돌 | 쿠키 이름 분리(`rh_session`, `rh_csrf`) | 충돌 없음 |
+| 업로드 폴더 권한(www-data) | `api` 를 www-data 로 실행 | 쓰기 확인(6단계, 폴더 이동 뒤 다시 확인) |
+| 날짜가 통째로 밀림 | DB 세션 `+00:00`, 순수 UTC | 일치 |
+| 런처는 이 환경에서 빌드 불가 | e2e 와 agentsim 으로 확인 | e2e 통과. **실기 확인은 남음** |
+
+---
+
+## 10. 전환 뒤 바뀐 동작
+
+PHP 와 일부러 다르게 둔 것, 또는 PHP 가 오류를 내던 자리에서 FastAPI 가 다르게 답하는 것입니다(자세한 것은 각 단계의 '남는 차이').
+
+- 상담원은 전환 때 한 번 다시 로그인한다(세션 쿠키 `ci_session` → `rh_session`).
+- PHP 가 경고 HTML 이나 500 을 내던 잘못된 입력(배열 값 등)에 FastAPI 는 400/404 JSON 으로 답한다.
+- 8MB 를 넘는 요청: PHP 는 본문을 버려 CSRF 403, FastAPI 는 크기 오류 문구.
+- PHP 쪽에서 찾은 버그 두 가지는 전환 전에 PHP 와 FastAPI 모두 고쳤다: 외부 이미지 저장 때 새 기능 표시가 지워지던 것(6단계),
+  위젯이 만료 토큰으로 3초마다 다시 붙던 것(eeb0140).
+
+---
+
+## 11. 남은 일
+
+| 할 일 | 내용 |
 |---|---|
-| 전환 기간 중 PHP 에 새 기능이 들어가 두 벌을 고쳐야 함 | 전환 기간에는 새 기능을 미루거나 FastAPI 에만 넣고 전환을 앞당김 |
-| `Guide_matcher`, `Macro_model` 추천 점수가 미묘하게 달라짐 | 같은 입력 비교로 일치 확인(6단계) |
-| PHP `json_encode` / 문자열 함수(`mb_*`)와 Python 의 차이로 서명·잘라내기 결과가 달라짐 | 토큰 비교(5.4), 글자 수 제한(소개 500자 등)은 문자 단위로 확인 |
-| 같은 호스트 다른 포트에서 쿠키 충돌 | 쿠키 이름 분리(5.2, 5.3) |
-| 업로드 폴더 권한(www-data) | `api` 컨테이너 실행 사용자와 폴더 소유자를 맞춤 |
-| 날짜가 통째로 밀림 | DB 세션 `+00:00` 고정, Python 에서 순수 UTC 만 사용 |
-| 런처는 이 환경에서 빌드 불가 | 런처 API 는 e2e 와 agentsim 으로 확인하고, 실기 확인은 별도 표시 |
+| 런처 실기 확인 | 윈도우에서 시험 빌드로 코드 검증·원격 화면·종료까지(8099 의 `/api/launcher/*` 가 FastAPI 로 감). 이 환경에서는 빌드할 수 없음 |
+| 화면 눈 확인 | 콘솔·관리·고객·공개 가이드를 브라우저로 열어 메뉴·드로어·모달·실시간 표시 확인(HTML 은 비교로 같음을 확인). 위젯을 2시간 넘게 열어 둔 뒤 실시간 재접속 |
+| 상담원 안내 | 다시 로그인 필요 |
+| 운영 서버 반영 | 운영 배포(Store 출시) 전에 같은 구조로 올릴지와 시점(8장 7번). 운영은 공인 인증서와 `RELAY_VIEWER_WS_URL=wss://<도메인>/viewer` |
+| 정리 | 개발 전용 `/_dev/layout/*`(routers/dev.py, templates/_dev) 를 지울지, 8098 직접 접속 포트를 운영에서 닫을지 |
