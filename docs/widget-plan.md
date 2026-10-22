@@ -38,7 +38,7 @@
 2. 방문자가 위젯에서 메시지 전송 (이름/이메일은 선택)
 3. 상담원 콘솔에서 대화 목록 확인과 응답 (폴링)
 4. 상담원이 모두 오프라인이면 이메일 알림 발송 (대화당 1회)
-5. 대화 이력 저장과 조회 (AG Grid)
+5. 대화 이력 저장과 조회 (wgrid)
 6. 대화 중 원격지원 코드 발급 — 기존 세션 발급 흐름 재사용
 
 ### 2-1. 이후 확장 (MVP 제외)
@@ -58,14 +58,14 @@
          │  Shadow DOM 안에 버블과 대화창을 그린다 (고객사 CSS 와 섞이지 않는다)
          │  AJAX: /api/widget/init, /send, /poll
          ▼
-[포털 — CodeIgniter 3]
+[포털 — FastAPI (backend/)]
    ├─ 테넌시: organizations.widget_key + 허용 도메인 검사
-   ├─ 컨트롤러: Widget(공개) / Console(상담원) / Admin(설정)
+   ├─ 라우터: widget(공개) / console(상담원) / admin(설정)
    └─ 오프라인 시 이메일 알림
          │
          ▼
-[상담원 콘솔 — 기존 layouts/main.php]
-   └─ 대화 목록(AG Grid) + 대화창(폴링) + [원격지원 시작]
+[상담원 콘솔 — layouts/main.html]
+   └─ 대화 목록(wgrid) + 대화창(실시간 + 폴링) + [원격지원 시작]
 ```
 
 ### 3-1. 실시간 통신 — realtime-msg 컨테이너
@@ -145,15 +145,16 @@ messages      id, conversation_id, sender_type ENUM('visitor','agent','system'),
 | 파일 | 내용 |
 |---|---|
 | `backend/assets/js/widget.js` | 임베드 스크립트. Shadow DOM, 자체 CSS, 의존성 없음 |
-| `portal/application/controllers/Widget.php` | 위젯 공개 API |
+| `backend/app/routers/widget.py` | 위젯 공개 API |
 
-라우트 — `$route['(:any)']` **위**에 넣습니다 (`CLAUDE.md` 3.8).
+경로 — `main.py` 에서 조직 코드 라우터(`customer.org_router`)보다 **먼저** 등록합니다 (`CLAUDE.md` 3.8).
 
 ```
-$route['widget.js']                 = 'widget/script';
-$route['api/widget/init']['post']   = 'widget/init';
-$route['api/widget/send']['post']   = 'widget/send';
-$route['api/widget/poll']['get']    = 'widget/poll';
+GET  /widget.js           widget.script
+POST /api/widget/init     widget.init
+POST /api/widget/send     widget.send
+POST /api/widget/contact  widget.contact
+GET  /api/widget/poll     widget.poll    (realtime=1 이면 새 구독 토큰도 내려 준다)
 ```
 
 스니펫 형태:
@@ -172,27 +173,29 @@ $route['api/widget/poll']['get']    = 'widget/poll';
 
 | 파일 | 내용 |
 |---|---|
-| `portal/application/views/console/chat.php` | 대화 목록 + 대화창 |
+| `backend/app/templates/console/chat.html` | 대화 목록 + 대화창 |
 | `backend/assets/js/console/chat.js` | 폴링, 전송, 원격지원 연결 |
 
 ```
-$route['console/chat']                       = 'console/chat';
-$route['console/api/chat/list']              = 'console/api_chat_list';
-$route['console/api/chat/messages/(:num)']   = 'console/api_chat_messages/$1';
-$route['console/api/chat/send']              = 'console/api_chat_send';
-$route['console/api/chat/close']             = 'console/api_chat_close';
+/console/chat                          console.chat
+/console/api/chat/list                 console.api_chat_list
+/console/api/chat/messages/{id}        console.api_chat_messages
+/console/api/chat/send                 console.api_chat_send
+/console/api/chat/close                console.api_chat_close
 ```
 
-- 대기 대화 목록은 AG Grid(`RHGrid.create`, 기본 100개)로 그리고, 컨트롤러에서 `'use_grid' => TRUE`
+(`routers/console.py`, 모두 `Depends(current_agent)`)
+
+- 대기 대화 목록은 wgrid(`RHGrid.create`, 기본 20개)로 그리고, 라우터에서 `'use_grid': True`
   를 넘깁니다. 날짜 열은 `RHGrid.dateTime` 을 씁니다.
-- `layouts/main.php` 메뉴에 "상담 대화" 를 추가합니다. 운영자 메뉴에는 넣지 않습니다.
+- `layouts/main.html` 메뉴에 "상담 대화" 가 있습니다. 운영자 메뉴에는 넣지 않습니다.
 - 대화창은 새 화면이 아니라 같은 화면의 오른쪽 패널입니다. 페이지를 새로 그리지 않습니다.
 
 ### 5-3. 조직 관리
 
-`portal/application/views/console/_widget_settings.php`(상담 대화 > 설정 드로어) — 위젯 켜기/끄기, 스니펫 복사, 색상·위치,
-허용 도메인, 오프라인 알림 주소, 키 재발급. 라우트는 기존 `$route['admin/api/(:any)']` 규칙에
-그대로 걸립니다(`api_widget_save`, `api_widget_regenerate`).
+`backend/app/templates/console/_widget_settings.html`(상담 대화 > 설정 드로어) — 위젯 켜기/끄기, 스니펫 복사, 색상·위치,
+허용 도메인, 오프라인 알림 주소, 키 재발급. 저장은 `routers/admin.py` 의 `/admin/api/widget_save`, `/admin/api/widget_regenerate`
+(조직 관리자만, `Depends(require_admin)`)입니다.
 
 키 재발급과 도메인 변경은 `audit_logs` 에 남깁니다(`CLAUDE.md` 3.7).
 
@@ -239,7 +242,7 @@ $route['console/api/chat/close']             = 'console/api_chat_close';
 | 원본 | 이 저장소 | 이유 |
 |---|---|---|
 | Bootstrap 5.3 | Tailwind + `.btn` `.card` `.form-input` `.badge` `.table` | 3.1. 외부 UI 프레임워크를 쓰지 않는다 |
-| pqGrid | AG Grid Community, 기본 100개 | 3.5 |
+| pqGrid | wgrid 0.1.0 코어, 기본 20개 | 3.5 |
 | `companies` 테이블 신설 | `organizations` 재사용 | 조직·상담원·권한 체계가 이미 있다 |
 | 다국어는 2단계 | **1단계 필수**, ko/en/ja 세 사전 동시 수정 | 3.2. 키가 빠지면 그 언어에서 키가 그대로 보인다 |
 | 시간 언급 없음 | UTC 저장, 표시할 때만 변환 | 3.4 |
@@ -263,8 +266,8 @@ jQuery, AJAX MVC, Toast/Modal, 한국어 화면·커밋은 원본 그대로입�
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 1 | 마이그레이션 + 모델 (`Chat_model`, `Visitor_model`) | 완료 |
-| 2 | `Widget.php` + `widget.js` — 버블 노출과 메시지 전송 | 완료 |
+| 1 | 마이그레이션 + 모델 (`chat_model`, `visitor_model`) | 완료 |
+| 2 | `routers/widget.py` + `widget.js` — 버블 노출과 메시지 전송 | 완료 |
 | 3 | 콘솔 대화 목록/응답 (폴링) | 완료 |
 | 4 | 조직 관리 설정 화면과 스니펫 발급 | 완료 |
 | 5 | 채팅에서 원격지원 코드 발급 연결 | 완료 |
