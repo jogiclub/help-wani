@@ -416,6 +416,7 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 ./scripts/check-conventions.sh --live   # 실행 중인 개발 서버까지 점검
 ./scripts/e2e-test.sh            # 포털 -> 중계 -> 화면 수신까지 전 구간 (LAUNCHER_BASE=http://localhost:8098 이면 런처 API 만 FastAPI 로)
 ./scripts/build-css.sh           # Tailwind 빌드
+python3 scripts/compare-portals.py -v   # FastAPI 전환 비교: PHP(:8099)와 FastAPI(:8098) 응답 비교, 남긴 기록은 되돌림
 ```
 
 작업을 마치기 전에 `check-conventions.sh` 를 통과시킵니다.
