@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/admin.py
-역할: 조직 관리 — 통계, 상담원 관리, 조직 정보·로고, 상담 위젯 설정 API, 상담 운영 시간·휴일·운영 상태 API (PHP controllers/Admin.php 대응)
+역할: 조직 관리 — 통계, 상담원 관리, 조직 정보·로고, 상담 위젯 설정 API, 상담 운영 시간·휴일·운영 상태 API
 
 조직 관리자만 쓴다(Depends(require_admin)). 관리 행위는 audit_logs 에 남긴다(CLAUDE.md 3.7).
 상담 위젯 설정 화면은 상담 대화의 설정 드로어(console/_widget_settings)이며, 여기는 그 저장 API 만 있다.

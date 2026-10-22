@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/session_model.py
-역할: 원격 세션 생성/조회/상태변경, 코드 검증, 뷰어 토큰 발급 및 소진 (PHP models/Session_model.php 대응)
+역할: 원격 세션 생성/조회/상태변경, 코드 검증, 뷰어 토큰 발급 및 소진
 """
 import hmac
 import re

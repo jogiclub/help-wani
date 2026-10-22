@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/log_model.py
-역할: 세션 이벤트 로그와 관리 행위 감사 로그 기록 (PHP models/Log_model.php 대응)
+역할: 세션 이벤트 로그와 관리 행위 감사 로그 기록
 """
 from app import db
 

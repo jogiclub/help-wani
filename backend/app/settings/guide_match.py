@@ -1,9 +1,9 @@
 """
 파일 위치: backend/app/settings/guide_match.py
-역할: 가이드 키워드 매칭 설정 — 가중치, 기준 점수, 조사/불용어 (PHP config/guide_match.php 대응)
+역할: 가이드 키워드 매칭 설정 — 가중치, 기준 점수, 조사/불용어
 
 AI 를 부르지 않고 낱말 색인(guide_terms)만으로 추천한다. 설계는 docs/guide-plan.md 5장.
-전환 기간에는 PHP 설정과 같아야 한다(check-conventions 가 대조한다).
+가중치를 바꾸면 가이드 관리의 [색인 다시 만들기] 를 누른다.
 """
 
 # 출처별 가중치. word = 낱말 그대로, gram = 한글 2글자 조각.

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/api_relay.py
-역할: 중계 서버(relay)가 웹소켓 접속마다 호출하는 토큰 검증 API (PHP controllers/api/Relay.php 대응)
+역할: 중계 서버(relay)가 웹소켓 접속마다 호출하는 토큰 검증 API
 
 GET /api/relay/auth?role=agent|viewer&token=...&ip=...
 성공하면 { result: true, data: { session_id, org_id, role } }. CSRF 검사 제외 경로(api/relay/.*)다.

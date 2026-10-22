@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/settings/__init__.py
-역할: 앱 상수 (PHP application/config/constants.php 의 RH_* 대응)
+역할: 앱 상수
 """
 RH_CODE_TTL = 600             # 코드 유효시간(초)
 RH_VIEWER_TOKEN_TTL = 60      # 뷰어 토큰 유효시간(초)

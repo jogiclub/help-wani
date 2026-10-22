@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/helpers/app.py
-역할: 공통 유틸리티 함수 (PHP helpers/app_helper.php 대응)
+역할: 공통 유틸리티 함수
 
 api_response() 는 app/core/response.py, client_ip() 는 app/core/request.py 에 있다.
 check_uploaded_image(), image_file_ext() 는 PHP finfo(libmagic 5.40) + getimagesize() 판정을 그대로 옮겼다.
@@ -16,7 +16,7 @@ from app.core.request import base_url, site_base
 
 
 def asset_url(path):
-    """포털 JS/CSS 주소에 파일 수정 시각(?v=)을 붙인다(CLAUDE.md 3.1). PHP 와 같은 파일을 보므로 같은 값이 나온다."""
+    """포털 JS/CSS 주소에 파일 수정 시각(?v=)을 붙인다(CLAUDE.md 3.1). 앞단 Apache 가 내주는 파일과 같은 파일을 본다."""
     path = str(path).lstrip('/')
     mtime = 0
     if path.startswith('assets/'):

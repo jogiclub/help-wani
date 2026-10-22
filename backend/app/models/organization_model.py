@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/organization_model.py
-역할: 조직 조회와 설정 (PHP models/Organization_model.php 대응)
+역할: 조직 조회와 설정
 
 지금까지 옮긴 화면에 필요한 함수만 있다. 나머지 함수는 화면을 옮길 때 PHP 와 같은 이름으로 더한다.
 """

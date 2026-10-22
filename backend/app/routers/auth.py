@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/auth.py
-역할: 상담원 로그인/로그아웃 (PHP controllers/Auth.php 대응)
+역할: 상담원 로그인/로그아웃
 
 """
 from fastapi import APIRouter, Depends, Request

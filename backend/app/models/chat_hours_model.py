@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/chat_hours_model.py
-역할: 상담 운영 시간·휴일 저장과 운영 상태 판정 (PHP models/Chat_hours_model.php 대응, docs/chat-operation-plan.md F1~F3)
+역할: 상담 운영 시간·휴일 저장과 운영 상태 판정 (docs/chat-operation-plan.md F1~F3)
 
 운영 시간과 휴일은 "조직 시간대의 벽시계" 값(분, 날짜)으로 저장한다. UTC 로 바꾸지 않는다(CLAUDE.md 3.4 의 유일한 예외).
 판정할 때만 지금 시각을 조직 시간대로 바꿔 비교하고, 밖으로 내보내는 시각은 UTC 로 돌려준다.

@@ -2,7 +2,7 @@
 파일 위치: backend/app/core/security.py
 역할: CI3 입력 정리 — xss_clean(), remove_invisible_characters(), entity_decode() (system/core/Security.php, Common.php 대응)
 
-전환 기간에 PHP 와 FastAPI 가 같은 DB 에 같은 값을 저장하도록 CI3 3.1 의 동작을 그대로 옮겼다(docs/fastapi-migration-plan.md 5.9).
+PHP 시절과 같은 값을 저장하도록 CI3 3.1 의 동작을 그대로 옮겼다(docs/fastapi-migration-plan.md 5.9).
 - CI3 의 정규식은 UTF-8 모드(/u) 없이 바이트 단위로 돈다. 여기서도 UTF-8 바이트에 bytes 정규식을 써서
   \\s, \\w, 대소문자 무시가 PCRE 와 같은 범위(ASCII)가 되게 한다.
 - html_entity_decode(ENT_COMPAT | ENT_HTML5) 의 이름 표는 PHP 8.2.34 에서 뽑은 data/php_html5_entities.json 을 쓴다.

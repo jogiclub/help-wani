@@ -3,8 +3,7 @@
 역할: 상담원 로그인 세션 (CI3 Session 라이브러리 대응)
 
 - Starlette SessionMiddleware(서명 쿠키)를 쓴다. 세션 값은 쿠키에 서명해 담으므로 DB 스키마를 바꾸지 않는다.
-- PHP 세션(ci_session 파일)과 공유하지 않는다. 전환 때 상담원은 한 번 다시 로그인한다(docs/fastapi-migration-plan.md 5.2).
-- 쿠키 이름은 PHP 와 다르게 둔다(같은 호스트의 다른 포트는 쿠키를 함께 씀).
+- 쿠키 이름은 rh_session 이다(PHP 시절 ci_session 과 다르게 두어 전환 때 섞이지 않게 했다).
 - 만료는 CI3 와 같이 마지막 활동부터 7200초. Starlette 는 값이 바뀔 때만 쿠키를 다시 보내므로
   RequestContextMiddleware 가 5분(CI3 sess_time_to_update)마다 활동 시각을 적어 쿠키를 새로 받게 한다.
 - 서명 키는 새 비밀값을 만들지 않고 ENCRYPTION_KEY 에서 용도를 나눠 만든다.

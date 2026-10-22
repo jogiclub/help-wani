@@ -1,11 +1,11 @@
 """
 파일 위치: backend/app/libraries/guide_matcher.py
-역할: 가이드 키워드 매칭 — 문장 정규화, 색인 낱말 생성, 질문으로 가이드 찾기 (PHP libraries/Guide_matcher.php 대응)
+역할: 가이드 키워드 매칭 — 문장 정규화, 색인 낱말 생성, 질문으로 가이드 찾기
 
 외부 API 를 부르지 않는다. 문자열 처리와 guide_terms 색인 조회 한 번으로 끝난다.
 색인과 질문에 같은 정규화를 거쳐야 맞으므로 정규화는 이 파일 한 곳에만 둔다(docs/guide-plan.md 5장).
 
-전환 기간에는 PHP 가 만든 색인을 FastAPI 가 읽고 그 반대도 일어나므로 정규화 결과가 PHP 와 한 글자도 달라서는 안 된다.
+기존 색인(guide_terms)은 PHP 시절에 만들어졌으므로 정규화 결과가 그때와 한 글자도 달라서는 안 된다([색인 다시 만들기] 없이 그대로 맞아야 함).
 - \\p{L}\\p{N}, \\p{Hangul} 은 파이썬 unicodedata 와 PCRE 의 판정이 4천여 글자에서 다르고, PCRE 의 Hangul 은 스크립트 확장
   (CJK 구두점 등)까지 포함한다. 그래서 PHP 8.2.34(PCRE 10.40)에서 전체 코드 포인트를 확인해 뽑은 구간 표를 쓴다.
 - 웹 컨테이너에 intl 이 없어 PHP 는 Normalizer(NFKC)를 건너뛴다. 여기서도 하지 않는다.

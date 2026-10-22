@@ -28,7 +28,6 @@
 .vscode/
 .idea/
 .DS_Store
-portal/application/cache/
 portal/assets/downloads/*.exe
 portal/assets/downloads/*.sha256
 # 조직이 올린 로고 (폴더만 유지)

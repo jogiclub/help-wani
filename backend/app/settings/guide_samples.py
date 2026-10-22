@@ -1,12 +1,12 @@
 """
 파일 위치: backend/app/settings/guide_samples.py
-역할: 가이드 관리를 처음 열 때 만드는 샘플 가이드 10개 (분류, 동의어, 글/이미지/동영상 블록) (PHP config/guide_samples.php 대응)
+역할: 가이드 관리를 처음 열 때 만드는 샘플 가이드 10개 (분류, 동의어, 글/이미지/동영상 블록)
 
 guide_model.seed_samples() 가 읽는다. 샘플은 모두 임시(draft) 상태로 만들어 고객에게 바로 보이지 않는다.
 - 글의 {org}, {phone}, {customer_url} 은 조직 값으로 바뀐다.
 - image 블록의 sample 은 assets/img/guide-samples/ 의 파일이며, 조직 폴더로 복사한 뒤 src 로 바뀐다.
 - video 블록의 영상은 2026-10-21 에 유튜브 oEmbed 로 존재와 퍼가기 허용을 확인한 것이다.
-전환 기간에는 PHP 설정과 같아야 한다(check-conventions 가 대조한다). PHP 설정을 그대로 변환해 만들었다.
+
 """
 
 CATEGORIES = [{'key': 'start', 'name': '시작하기', 'sort_order': 1},

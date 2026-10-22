@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/config.py
-역할: 환경변수(.env / docker environment)를 읽는 공통 함수 (PHP config/env.php 대응)
+역할: 환경변수(.env / docker environment)를 읽는 공통 함수
 """
 import os
 from pathlib import Path
@@ -33,5 +33,5 @@ DB_NAME = env('DB_NAME', 'remotehelp')
 DB_USER = env('DB_USER', 'remotehelp')
 DB_PASS = env('DB_PASS', 'remotehelp')
 
-# portal/assets 를 PHP 와 함께 쓴다(JS, CSS, 사전, 업로드). docker-compose 에서 이 경로로 붙인다.
+# portal/assets(JS, CSS, 사전, 업로드). 앞단 Apache 가 같은 폴더를 내준다. docker-compose 에서 이 경로로 붙인다.
 ASSETS_DIR = Path(env('ASSETS_DIR', '/srv/assets'))

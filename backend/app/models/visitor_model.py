@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/visitor_model.py
-역할: 상담 위젯 방문자 식별과 정보 갱신, 연락처 카드 입력 검사와 저장 (PHP models/Visitor_model.php 대응)
+역할: 상담 위젯 방문자 식별과 정보 갱신, 연락처 카드 입력 검사와 저장
 
 visitors 는 이 모델만 고친다. 입력 검사는 clean_contact() 하나, 휴대폰은 국가번호 허용 목록으로 E.164 로 저장한다(CLAUDE.md 3.18).
 """

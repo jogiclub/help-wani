@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/models/agent_model.py
-역할: 상담원 계정 조회, 등록, 인증 (PHP models/Agent_model.php 대응)
+역할: 상담원 계정 조회, 등록, 인증
 """
 from app import db
 from app.core.password import password_hash, password_verify

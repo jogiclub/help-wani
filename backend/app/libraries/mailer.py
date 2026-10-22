@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/libraries/mailer.py
-역할: SMTP 메일 발송 — 상담 위젯 오프라인 알림, 고객 답장 알림 (PHP libraries/Mailer.php 대응)
+역할: SMTP 메일 발송 — 상담 위젯 오프라인 알림, 고객 답장 알림
 
 접속 정보는 .env 에서 읽는다. SMTP_HOST 가 비어 있으면 발송을 건너뛴다(개발 환경 기본).
 실패해도 예외를 던지지 않고 False 를 돌려준다. 호출한 쪽의 본래 작업(메시지 저장)이 메일 때문에 실패하면 안 된다.

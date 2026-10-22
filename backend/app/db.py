@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/db.py
-역할: MySQL 연결과 쿼리 도우미 (PHP config/database.php, CI3 mysqli 드라이버와 같은 동작)
+역할: MySQL 연결과 쿼리 도우미
 
 PHP 와 같은 DB 를 함께 쓰는 동안 같은 데이터를 다르게 다루면 안 되므로 다음을 PHP 와 맞춘다.
 - 시간대: 저장 기준은 UTC (CLAUDE.md 3.4)

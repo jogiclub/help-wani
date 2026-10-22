@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/widget.py
-역할: 고객사 사이트에 삽입되는 상담 위젯의 공개 API — 스니펫 배포, 메시지 송수신, 연락처 카드 (PHP controllers/Widget.php 대응)
+역할: 고객사 사이트에 삽입되는 상담 위젯의 공개 API — 스니펫 배포, 메시지 송수신, 연락처 카드
 
 이 경로만 로그인 없이 외부 도메인에서 호출된다. 보호 수단은 위젯 키, Origin 허용 목록, 방문자 토큰 세 가지다(CLAUDE.md 3.9).
 CSRF 검사 제외 경로(api/widget/.*)이며, 위젯은 사전 요청을 피하려고 JSON 을 text/plain 으로 보낸다(json_input 이 읽는다).

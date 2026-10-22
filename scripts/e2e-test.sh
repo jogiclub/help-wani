@@ -4,7 +4,7 @@
 set -e
 
 BASE="${BASE:-http://localhost:8099}"
-# 런처 API 만 다른 포털로 보낼 때(FastAPI 전환 비교: LAUNCHER_BASE=http://localhost:8098)
+# 런처 API 만 다른 주소로 보낼 때(예: FastAPI 직접 접속 LAUNCHER_BASE=http://localhost:8098)
 LAUNCHER_BASE="${LAUNCHER_BASE:-$BASE}"
 RELAY_HOSTNAME="${RELAY_HOSTNAME:-localhost}"
 RELAY_PORT="${RELAY_PORT:-8443}"

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/libraries/chat_greeting.py
-역할: 상담 위젯 인사말 — 바로가기 버튼 검사, 변수({visitor_name} {org_name}) 채우기 (PHP libraries/Chat_greeting.php 대응)
+역할: 상담 위젯 인사말 — 바로가기 버튼 검사, 변수({visitor_name} {org_name}) 채우기
 
 인사말은 위젯을 열 때 화면에만 그리고, 방문자가 첫 메시지를 보낼 때 시스템 메시지(meta.type = greeting)로 한 번 저장한다(CLAUDE.md 3.18).
 위젯은 textContent 로 그리므로 HTML 을 받지 않고 글자 그대로 둔다.

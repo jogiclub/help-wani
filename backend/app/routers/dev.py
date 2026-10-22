@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/dev.py
-역할: 개발 환경 전용 확인 화면 (레이아웃을 PHP 와 나란히 비교할 때 쓴다)
+역할: 개발 환경 전용 확인 화면 (레이아웃 자리 표시 화면)
 
 APP_ENV = development 일 때만 등록한다(main.py). 화면을 다 옮기면 지운다(docs/fastapi-migration-plan.md 9단계).
 """

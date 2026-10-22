@@ -29,10 +29,11 @@ Tailwind 재빌드, 다국어 사전 3종 동기화, 아이콘 목록, UTC 시�
 
 | 경로 | 내용 |
 |---|---|
-| `portal/` | CodeIgniter 3 포털 (고객 페이지, 상담원 콘솔, 관리자, API) |
+| `backend/` | FastAPI 포털 (고객 페이지, 상담원 콘솔, 관리자, API). 2026-10-22 에 CodeIgniter 3 에서 옮김 |
+| `portal/assets/` | 정적 파일 (JS, CSS, 사전, 아이콘, 업로드) |
 | `relay/` | Node.js 중계 서버 (세션 짝짓기와 바이너리 중계) |
 | `launcher/` | 고객 런처 (.NET 8 WPF) + 원격제어 엔진 + MSIX 패키징 |
-| `docker/` | 개발용 컨테이너 정의 (web, relay, agentsim) |
+| `docker/` | 개발용 컨테이너 정의 (web = 앞단 Apache, api = FastAPI, relay, realtime, agentsim) |
 | `server/` | 중계 서버 설치 스크립트와 nginx/systemd 설정 |
 | `sql/` | 스키마, 마이그레이션, 개발용 시드 데이터 |
 | `scripts/` | 검증 도구와 빌드 스크립트 |
@@ -89,10 +90,10 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 
 ## 서비스 소개 페이지
 
-`/` 는 방문자용 홍보 페이지입니다(`application/views/home/landing.php`).
+`/` 는 방문자용 홍보 페이지입니다(`backend/app/templates/home/landing.html`).
 로그인한 상태로 들어오면 헤더 버튼이 "콘솔로 이동" 으로 바뀝니다.
 
-- **요금은 `Home::index()` 의 `$pricing` 배열 한 곳에서만 관리합니다.**
+- **요금은 `backend/app/routers/home.py` 의 `pricing` 한 곳에서만 관리합니다.**
   계정 수와 금액을 바꾸면 히어로, 요금 카드, 계정당 단가가 모두 따라 바뀝니다.
 - 문의처는 `.env` 의 `CONTACT_EMAIL` / `CONTACT_PHONE` 으로 설정하며,
   비워 두면 화면에 표시하지 않습니다.
@@ -112,7 +113,7 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 | 항목 | 값 |
 |---|---|
 | 지원 언어 | 한국어(ko), English(en), 日本語(ja) |
-| 사전 위치 | `portal/assets/lang/{locale}.json` (PHP 와 JS 가 같은 파일을 사용) |
+| 사전 위치 | `portal/assets/lang/{locale}.json` (서버와 JS 가 같은 파일을 사용) |
 | 서버 번역 | `lang_text('key', ['org' => '이름'])` |
 | 화면 번역 | `assets/js/i18n.js` — `__('key')`, `data-i18n="key"` 속성 |
 | 방문자 선택 | `/lang/{locale}` → `rh_locale` 쿠키(1년) |
@@ -129,15 +130,15 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 조직마다 시간대가 다르므로 **저장은 UTC, 표시만 조직 시간대로 변환**합니다.
 
 ```
-MySQL  --default-time-zone=+00:00
-PHP    date.timezone = UTC
-표시   서버: to_timezone($utc, $tz)   화면: RHI18n.formatDate(utc)
+MySQL    --default-time-zone=+00:00
+FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py)
+표시     서버: to_timezone(utc, tz)   화면: RHI18n.formatDate(utc)
 ```
 
 운영 서버에 올릴 때 이 두 설정을 반드시 맞춰야 합니다. 기존 데이터가 한국 시각으로
 저장되어 있다면 `sql/migrations/003-locale-timezone.sql` 의 `CONVERT_TZ` 구문으로 옮깁니다.
 
-새 언어를 추가하려면 사전 파일을 하나 더 만들고 `i18n_helper.php` 의
+새 언어를 추가하려면 사전 파일을 하나 더 만들고 `backend/app/core/i18n.py` 의
 `supported_locales()` 에 등록하면 됩니다.
 
 ## 조직 가입 승인

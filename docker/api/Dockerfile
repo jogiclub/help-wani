@@ -1,5 +1,5 @@
 # 파일 위치: docker/api/Dockerfile
-# 역할: FastAPI 포털 컨테이너 (PHP 포털을 옮기는 동안 나란히 띄운다, docs/fastapi-migration-plan.md)
+# 역할: FastAPI 포털 컨테이너 (앞단 Apache(web)가 요청을 넘긴다, docs/fastapi-migration-plan.md)
 FROM python:3.12.14-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

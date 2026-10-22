@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/core/templates.py
-역할: Jinja2 화면 렌더링 (PHP MY_Controller::render() 와 views/ 대응)
+역할: Jinja2 화면 렌더링
 
 - 템플릿은 PHP views/ 와 같은 폴더 구조로 app/templates/ 에 둔다(views/auth/login.php → templates/auth/login.html).
 - 레이아웃이 content_view 를 include 하는 PHP 방식을 그대로 쓴다. render(request, 'auth/login', data, 'layouts/blank').

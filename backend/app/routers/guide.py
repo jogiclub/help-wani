@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/guide.py
-역할: 고객이 보는 공개 가이드 — 목록, 검색, 상세, 새 기능 모음, 동영상 모음 (PHP controllers/Guide.php 대응)
+역할: 고객이 보는 공개 가이드 — 목록, 검색, 상세, 새 기능 모음, 동영상 모음
 
 /{조직코드}/guide 아래 경로다. 고객 화면이므로 조직이 정한 언어를 쓴다(CLAUDE.md 3.2). 공개(published) 글만 보인다.
 화면 모양은 조직이 고른 테마(organizations.guide_theme)를 따른다. 모음 페이지는 조직이 켤 때만 열린다(docs/guide-collections-plan.md).

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/libraries/realtime.py
-역할: 상담 실시간 메시지 서버(realtime-msg)용 구독 토큰 발급/검증과 이벤트 발행 (PHP libraries/Realtime.php 대응)
+역할: 상담 실시간 메시지 서버(realtime-msg)용 구독 토큰 발급/검증과 이벤트 발행
 
 토큰은 서명만으로 검증할 수 있게 만든다(DB 를 쓰지 않는다).
   payload(base64url) . HMAC-SHA256(payload)

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/api_realtime_auth.py
-역할: 실시간 메시지 서버(realtime-msg)가 구독 토큰을 검증할 때 호출하는 API (PHP controllers/api/Realtime_auth.php 대응)
+역할: 실시간 메시지 서버(realtime-msg)가 구독 토큰을 검증할 때 호출하는 API
 
 GET /api/realtime/auth?token=...&ip=...
 성공하면 { result: true, data: { role, org_id, conversation_id, rooms } }.

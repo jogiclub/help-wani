@@ -1,11 +1,10 @@
 """
 파일 위치: backend/app/settings/holidays.py
-역할: 상담 운영 시간 > 휴일 > [공휴일 불러오기] 에 보여 줄 국가별 공휴일 후보 (PHP config/holidays.php 대응)
+역할: 상담 운영 시간 > 휴일 > [공휴일 불러오기] 에 보여 줄 국가별 공휴일 후보
 
 자동으로 휴일에 넣지 않는다. 조직 관리자가 후보에서 골라 추가한다(조직마다 쉬는 날이 다르다).
 음력 공휴일과 대체공휴일 때문에 매년 직접 갱신한다. 한 해가 지나기 전에 다음 해를 추가한다.
 KR 출처: hyunbinseo/holidays-kr (https://holidays.hyunbin.page/{연도}.json, 우주항공청 월력요항 기준), 2026-10-21 에 받은 값.
-전환 기간에는 PHP 설정과 같아야 한다(check-conventions 가 대조한다).
 """
 
 HOLIDAYS = {'KR': {'2026-01-01': '1월 1일',

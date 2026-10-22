@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/core/i18n.py
-역할: 서버 측 번역과 타임존 변환 (PHP i18n_helper 대응, JS 와 같은 사전 파일 portal/assets/lang/*.json 을 쓴다)
+역할: 서버 측 번역과 타임존 변환 (JS 와 같은 사전 파일 portal/assets/lang/*.json 을 쓴다)
 """
 import json
 import re

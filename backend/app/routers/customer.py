@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/customer.py
-역할: 고객 접속 페이지, 팔로업 메일의 상담 대화 이어 가기, 만족도 조사, 런처 다운로드 (PHP controllers/Customer.php, Download.php 대응)
+역할: 고객 접속 페이지, 팔로업 메일의 상담 대화 이어 가기, 만족도 조사, 런처 다운로드
 
 모두 /{조직코드} 로 시작하는 주소다. 조직 코드 하나만 받는 /{org_code} 는 반드시 맨 마지막에 등록한다(CLAUDE.md 3.8, main.py).
 """

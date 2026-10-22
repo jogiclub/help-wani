@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/operator.py
-역할: 플랫폼 운영자 콘솔 — 조직 가입 승인·반려·이용 중지·다시 활성화, 조직 정보 수정, 전체 감사 로그 (PHP controllers/Operator.php 대응)
+역할: 플랫폼 운영자 콘솔 — 조직 가입 승인·반려·이용 중지·다시 활성화, 조직 정보 수정, 전체 감사 로그
 
 플랫폼 운영자(agents.is_super = 1)만 쓴다(Depends(require_operator)). 조직 소속 사용자 메뉴와 분리된 layouts/operator 로 그린다(CLAUDE.md 3.6).
 CI3 는 경로 규칙과 상관없이 메서드를 받으므로 GET/POST 를 모두 받는다.

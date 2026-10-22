@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/api_launcher.py
-역할: 고객 런처용 API — 코드 검증, 상태 보고, 하트비트, 버전 확인 (PHP controllers/api/Launcher.php 대응)
+역할: 고객 런처용 API — 코드 검증, 상태 보고, 하트비트, 버전 확인
 
 CSRF 검사 제외 경로(api/launcher/.*)다. CI3 는 자동 라우팅으로 메서드와 상관없이 이 주소를 받으므로 GET/POST 를 모두 받는다.
 """

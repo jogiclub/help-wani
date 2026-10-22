@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/core/deps.py
-역할: 로그인·권한 검사 의존성 (PHP core/MY_Controller.php 의 Agent_Controller, Admin_Controller, Operator_Controller 대응)
+역할: 로그인·권한 검사 의존성
 
 경로 함수에서 `agent = Depends(current_agent)` 처럼 쓴다. 조직 관리자 화면은 require_admin, 운영자 화면은 require_operator.
 

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/core/input.py
-역할: 요청 값을 PHP $_POST / $_GET 과 같은 모양으로 읽기 (CI3 input->post(), input->get(), json_input() 대응)
+역할: 요청 값을 PHP $_POST / $_GET 과 같은 모양으로 읽기
 
 화면 JS(jQuery $.ajax)는 폼 인코딩으로 보내고 배열은 'ids[]', 중첩은 'hours[1][0][start]' 처럼 이름에 괄호를 쓴다.
 PHP 는 이를 배열로 풀어 주므로 옮긴 코드가 같은 모양을 받도록 여기서 똑같이 푼다.

@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/core/response.py
-역할: 공통 API 응답 { result, message, data } 생성 (PHP api_response() 대응)
+역할: 공통 API 응답 { result, message, data } 생성
 """
 from fastapi.responses import Response
 

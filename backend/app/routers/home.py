@@ -1,6 +1,6 @@
 """
 파일 위치: backend/app/routers/home.py
-역할: 서비스 소개(홍보) 페이지와 방문자 언어 선택 (PHP controllers/Home.php 대응)
+역할: 서비스 소개(홍보) 페이지와 방문자 언어 선택
 """
 from fastapi import APIRouter, Request
 
@@ -22,7 +22,6 @@ def landing_icons():
     """소개 페이지에서 쓰는 Material Symbols 아이콘.
 
     여기에 적은 이름으로 폰트 서브셋을 요청하므로, 아이콘을 추가하면 반드시 이 목록에도 넣어야 화면에 나온다(CLAUDE.md 3.3).
-    PHP Home::landing_icons() 와 같아야 한다(전환 기간).
     """
     return {
         'value': {
@@ -89,7 +88,7 @@ def set_locale(request: Request, locale: str):
 @router.get('/')
 @router.get('/home')
 def index(request: Request):
-    # 요금은 여기 한 곳에서만 관리한다(CLAUDE.md 6장). PHP Home::index() 와 같아야 한다(전환 기간).
+    # 요금은 여기 한 곳에서만 관리한다(CLAUDE.md 6장).
     pricing = {'accounts': 5, 'months': 12, 'price': 220000}
     pricing['per_account_year'] = int(php_round(pricing['price'] / pricing['accounts']))
     pricing['per_account_month'] = int(php_round(pricing['price'] / pricing['accounts'] / pricing['months']))

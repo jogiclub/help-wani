@@ -1,6 +1,6 @@
 {#-
   파일 위치: backend/app/templates/guide/_collection.html
-  역할: 모음 페이지 본문 고르기 (view 가 features 면 새 기능 모음, videos 면 동영상 모음) — PHP views/guide/_collection.php 대응
+  역할: 모음 페이지 본문 고르기 (view 가 features 면 새 기능 모음, videos 면 동영상 모음)
 -#}
 <div class="guide-collection">
 {% include 'guide/_videos.html' if view == 'videos' else 'guide/_features.html' %}

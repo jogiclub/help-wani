@@ -2,7 +2,7 @@
 파일 위치: backend/app/main.py
 역할: FastAPI 포털 앱 생성, 미들웨어·예외 처리·경로 등록, 상태 확인(/healthz)
 
-PHP 포털(web)과 나란히 띄워 같은 DB 를 쓴다. 전환 계획은 docs/fastapi-migration-plan.md.
+앞단 Apache(web)가 /assets 와 웹소켓 경유를 뺀 요청을 넘긴다(docker/web/apache-vhost.conf). PHP 에서 옮긴 기록은 docs/fastapi-migration-plan.md.
 라우터를 더할 때 조직 코드를 받는 라우터({org_code})는 반드시 맨 마지막에 등록한다(CLAUDE.md 3.8).
 """
 import logging

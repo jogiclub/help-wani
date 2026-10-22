@@ -1,8 +1,8 @@
 """
 파일 위치: backend/app/settings/macro.py
-역할: 상담 대화 매크로 설정 — 개수·길이 제한, 파일 등록 제한, 추천 가중치와 기준 점수 (PHP config/macro.php 대응)
+역할: 상담 대화 매크로 설정 — 개수·길이 제한, 파일 등록 제한, 추천 가중치와 기준 점수
 
-설계는 docs/macro-plan.md. 전환 기간에는 PHP 설정과 같아야 한다(check-conventions 가 대조한다).
+설계는 docs/macro-plan.md.
 """
 
 # 개수 제한

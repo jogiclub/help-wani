@@ -4,7 +4,7 @@
 > 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
 
 - 작성일: 2026-10-22
-- 상태: 진행 중 — 0~5단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+- 상태: 완료 — 0~10단계(2026-10-22). 시험 서버를 FastAPI 로 전환하고 PHP 를 지웠다. 이 문서는 옮긴 기록으로 남긴다
 
 ---
 
@@ -433,6 +433,22 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 - `portal/application`, `portal/system`, `portal/index.php`, `.htaccess`, `docker/web/php.ini` 제거. `portal/assets/` 는 남긴다(폴더 위치 정리는 별도 판단).
 - `docker/web/Dockerfile` 을 PHP 없는 Apache(프록시 전용)로 바꾸거나 (나) 방식이면 `web` 서비스 제거.
 - CLAUDE.md 2장 구조 표, 3장 규칙의 PHP 함수 이름, 4장 검증, 6장 결정 표를 Python 기준으로 고친다.
+- **결과(2026-10-22 완료)**
+  - 지운 것: `portal/application`, `portal/system`, `portal/index.php`, `portal/.htaccess` 와 CI3 부속 파일(composer.json, license, readme, .editorconfig, .gitignore),
+    `docker/web/php.ini`, `backend-php.conf`/`backend-fastapi.conf`(처리 서버 선택), `scripts/compare-portals.py`(PHP 비교용). `portal/assets/` 는 남겼다.
+    지운 코드는 git 기록(eeb0140 이전)에 있다.
+  - web 이미지: `debian:trixie-20261005-slim`(Docker Hub 태그 확인, 기존 php:8.2-apache 와 같은 Debian 13) + apt `apache2`, 모듈 rewrite·headers·proxy·
+    proxy_http·proxy_wstunnel·ssl·remoteip. `apache2ctl -D FOREGROUND`. `portal/assets` 만 `/var/www/html/assets` 로 읽기 전용으로 붙이고,
+    프록시 설정을 `apache-vhost.conf` 에 바로 넣었다(`PORTAL_BACKEND` 없앰). 루트 `.htaccess` 가 막던 ini/log/sql/md 는 vhost 의 `FilesMatch` 로 옮겼다.
+  - Tailwind: `@import "tailwindcss" source(none)` + `@source "../../../backend/app"`(데이터 폴더 제외) + `@source "../js"`(v4 문서 detecting-classes 확인).
+    PHP 뷰가 있을 때 결과와 비교해 빠진 선택자 12개는 템플릿·JS 어디서도 클래스로 쓰지 않던 것(설정 파일 글자 등 자동 탐색이 잘못 잡은 것)임을 확인했다.
+  - 규칙 검사(`check-conventions.py`)를 백엔드 기준으로 다시 썼다. PHP 파일을 보던 검사는 같은 규칙을 파이썬·템플릿에 적용하고,
+    PHP 와 같아야 하던 대조(설정·쿠키 이름)와 CI3 전용 규칙(컨트롤러·라이브러리 이름 충돌)은 뺐다. 그리드·Dropzone 플래그 검사는
+    템플릿이 include 하는 템플릿과 싣는 JS 까지 보도록 넓혔다. 일부러 어긴 9가지가 모두 잡히는 것을 확인했다.
+  - CLAUDE.md 를 파이썬 이름 기준으로 고쳤다(2·3·4·5·6장, 3.11 CI3 이름 규칙 삭제, 3.19 를 백엔드 작성 규칙으로). README 도 고쳤다.
+    백엔드 파일 머리 주석의 "PHP 무엇 대응" 표기는 지우고, 동작이 같아야 하는 이유를 설명하는 주석(php_int, php_csv 등)은 남겼다.
+  - 확인: 8099·help.wani.im 화면과 healthz, 정적 파일, 막은 파일(403), http->https, `/realtime-ws`·`/relay-viewer` 웹소켓 핸드셰이크(101),
+    e2e 통과, `check-conventions.sh --live` 통과. e2e 가 만든 세션·기록은 지우고 번호와 상담원 값을 되돌렸다.
 
 ---
 
