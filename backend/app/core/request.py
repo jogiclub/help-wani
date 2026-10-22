@@ -13,9 +13,11 @@ from app import config
 
 current_request = ContextVar('rh_request', default=None)
 
-# Cloudflare Tunnel(cloudflared) 고정 주소. 이 주소에서 온 요청의 CF-Connecting-IP 만 믿는다(CLAUDE.md 3.12).
-# docker-compose.yml 의 cloudflared ipv4_address, apache-vhost.conf 의 RemoteIPInternalProxy 와 같아야 한다(검사가 잡습니다).
-TRUSTED_PROXY_IP = '10.250.88.5'
+# 포털 앞단 Apache(web)의 tunnel 망 고정 주소. 이 주소에서 온 요청의 X-RemoteHelp-Client-IP 만 믿는다(CLAUDE.md 3.12).
+# Apache 가 cloudflared 의 CF-Connecting-IP 를 mod_remoteip 로 복원한 값을 이 머리글에 덮어써(set) 넘긴다
+# (docker/web/backend-fastapi.conf). docker-compose.yml 의 web ipv4_address 와 같아야 한다(검사가 잡습니다).
+TRUSTED_PROXY_IP = '10.250.88.2'
+CLIENT_IP_HEADER = 'x-remotehelp-client-ip'
 
 _HOST_RE = re.compile(r'^[A-Za-z0-9.\-]+(:[0-9]{1,5})?$')
 
@@ -63,12 +65,15 @@ def is_ajax(request=None):
 
 
 def client_ip(request=None):
-    """고객 IP. cloudflared 고정 주소에서 온 요청만 CF-Connecting-IP 를 믿는다. X-Forwarded-For 는 쓰지 않는다."""
+    """고객 IP. 앞단 Apache(web) 고정 주소에서 온 요청만 X-RemoteHelp-Client-IP 를 믿는다. X-Forwarded-For 는 쓰지 않는다.
+
+    8098 로 바로 온 요청(개발 비교용)은 Docker 게이트웨이 주소가 그대로 나온다.
+    """
     request = request or get_request()
     peer = request.client.host if request.client else '0.0.0.0'
 
     if peer == TRUSTED_PROXY_IP:
-        forwarded = request.headers.get('cf-connecting-ip', '').strip()
+        forwarded = request.headers.get(CLIENT_IP_HEADER, '').strip()
         try:
             return str(ipaddress.ip_address(forwarded))
         except ValueError:

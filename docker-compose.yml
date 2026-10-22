@@ -73,7 +73,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    environment: *portal-env
+    environment:
+      <<: *portal-env
+      # 포털을 처리할 서버: php(기본) | fastapi. fastapi 면 Apache 가 앞에 서서 api 로 넘긴다(docker/web/backend-fastapi.conf).
+      # 되돌리려면 .env 에서 php 로 바꾸고 web 을 다시 만든다. relay·realtime-msg 는 계속 http://web 을 부르므로 함께 따라간다.
+      PORTAL_BACKEND: ${PORTAL_BACKEND:-php}
     volumes:
       - ./portal:/var/www/html
       # relay 공개 인증서(뷰어 웹소켓 포털 경유 시 검증용). 개인 키는 포함하지 않는다.
@@ -81,11 +85,13 @@ services:
     ports:
       - "8099:80"
     networks:
-      - default
-      - tunnel
+      default:
+      # FastAPI 는 이 주소에서 온 X-RemoteHelp-Client-IP 만 믿는다(backend/app/core/request.py TRUSTED_PROXY_IP).
+      tunnel:
+        ipv4_address: 10.250.88.2
 
   # FastAPI 포털. PHP 포털(web)을 옮기는 동안 나란히 띄워 같은 DB 를 쓴다(docs/fastapi-migration-plan.md).
-  # 전환 전까지 외부 경로(cloudflared, relay, realtime-msg)는 web 을 그대로 본다.
+  # 외부 경로(cloudflared, relay, realtime-msg)는 계속 web(Apache)을 보고, PORTAL_BACKEND=fastapi 면 Apache 가 여기로 넘긴다.
   api:
     build:
       context: .
@@ -108,8 +114,10 @@ services:
     ports:
       - "8098:8000"
     networks:
-      - default
-      - tunnel
+      default:
+      # Apache(web)가 이 주소로 넘긴다(docker/web/backend-fastapi.conf). 같은 망이라 FastAPI 는 web 주소를 그대로 본다.
+      tunnel:
+        ipv4_address: 10.250.88.3
 
   relay:
     build:

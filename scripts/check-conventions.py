@@ -517,7 +517,7 @@ def check_fastapi():
     web_block = web_block.group(1) if web_block else ''
     if 'x-portal-env: &portal-env' not in compose:
         problems.append('docker-compose.yml: 포털 환경변수 묶음(x-portal-env)이 없습니다')
-    if 'environment: *portal-env' not in web_block:
+    if 'environment: *portal-env' not in web_block and '<<: *portal-env' not in web_block:
         problems.append('docker-compose.yml web: 환경변수를 *portal-env 로 받지 않습니다(api 와 값이 어긋날 수 있음)')
     if '<<: *portal-env' not in api_block:
         problems.append('docker-compose.yml api: 환경변수를 *portal-env 로 받지 않습니다(web 과 값이 어긋날 수 있음)')
@@ -537,13 +537,31 @@ def check_fastapi():
     if loose:
         problems.append('backend/requirements.txt: 버전이 고정되지 않았습니다 — ' + ', '.join(loose))
 
-    # 3.12: 고객 IP 를 믿는 프록시 주소는 cloudflared 고정 주소 하나여야 한다.
+    # 3.12: FastAPI 가 고객 IP 머리글을 믿는 주소는 앞단 Apache(web)의 tunnel 망 고정 주소 하나여야 하고,
+    #       Apache 는 api 의 tunnel 망 고정 주소로 넘기며 고객 IP 머리글을 덮어써야(set) 한다(docker/web/backend-fastapi.conf).
     request_py = os.path.join(ROOT, 'backend/app/core/request.py')
     if os.path.isfile(request_py):
-        trusted = re.search(r"^TRUSTED_PROXY_IP = '([0-9.]+)'", read('backend/app/core/request.py'), re.M)
-        cloudflared = re.search(r'cloudflared:.*?ipv4_address:\s*([0-9.]+)', compose, re.S)
-        if not trusted or not cloudflared or trusted.group(1) != cloudflared.group(1):
-            problems.append('backend/app/core/request.py: TRUSTED_PROXY_IP 가 docker-compose.yml 의 cloudflared 주소와 다릅니다')
+        request_text = read('backend/app/core/request.py')
+        trusted = re.search(r"^TRUSTED_PROXY_IP = '([0-9.]+)'", request_text, re.M)
+        header = re.search(r"^CLIENT_IP_HEADER = '([a-z0-9-]+)'", request_text, re.M)
+        web_ip = re.search(r'\n  web:.*?tunnel:\s*\n\s*ipv4_address:\s*([0-9.]+)', compose, re.S)
+        api_ip = re.search(r'\n  api:.*?tunnel:\s*\n\s*ipv4_address:\s*([0-9.]+)', compose, re.S)
+        if not trusted or not web_ip or trusted.group(1) != web_ip.group(1):
+            problems.append('backend/app/core/request.py: TRUSTED_PROXY_IP 가 docker-compose.yml 의 web tunnel 고정 주소와 다릅니다')
+        backend_conf = os.path.join(ROOT, 'docker/web/backend-fastapi.conf')
+        if os.path.isfile(backend_conf):
+            conf = read('docker/web/backend-fastapi.conf')
+            target = re.search(r'^ProxyPass "/" "http://([0-9.]+):8000/"', conf, re.M)
+            if not target or not api_ip or target.group(1) != api_ip.group(1):
+                problems.append('docker/web/backend-fastapi.conf: ProxyPass 대상이 docker-compose.yml 의 api tunnel 고정 주소와 다릅니다')
+            if not header or not re.search(r'^RequestHeader set ' + re.escape(header.group(1)) + r' "expr=%\{REMOTE_ADDR\}"', conf, re.M | re.I):
+                problems.append('docker/web/backend-fastapi.conf: 고객 IP 머리글을 RequestHeader set 으로 덮어써 넘겨야 합니다(위조 방지)')
+            if 'X-Forwarded-For' in conf.replace('X-Forwarded-For/Host/Server', ''):
+                problems.append('docker/web/backend-fastapi.conf: X-Forwarded-For 로 고객 IP 를 넘기지 않습니다(3.12)')
+            excl = [m for m in re.findall(r'^ProxyPass "([^"]+)" "!"', conf, re.M)]
+            for path in ('/assets', '/realtime-ws', '/relay-viewer'):
+                if path not in excl:
+                    problems.append(f'docker/web/backend-fastapi.conf: {path} 는 Apache 가 맡으므로 ProxyPass ... "!" 로 뺍니다')
 
     # 같은 호스트의 다른 포트는 쿠키를 함께 쓴다. PHP 쿠키 이름(ci_session, csrf_cookie_name)을 쓰면 서로 덮어쓴다.
     for rel in ('backend/app/core/session.py', 'backend/app/core/csrf.py'):

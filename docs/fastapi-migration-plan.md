@@ -410,6 +410,23 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 3. relay·realtime-msg 의 `PORTAL_ORIGIN` 을 `http://api:8000` 으로 바꾼다.
 4. `e2e-test.sh`, `check-conventions.sh --live`, `https://help.wani.im` 외부 접속, 런처 실기 확인(윈도우, 별도 표시).
 5. **되돌리기**: 2·3번 설정만 원래대로 돌리면 PHP 로 복귀한다. 이 기간에 DB 스키마를 바꾸지 않는다.
+- **결과(2026-10-22 시험 서버 전환 완료, (가) 방식)**
+  - `apache-vhost.conf` 가 `Include /etc/apache2/remotehelp/backend-${PORTAL_BACKEND}.conf` 로 처리 서버를 고른다(Apache `${VAR}` 는 기동 전 환경변수로 바뀜,
+    공식 문서 configuring.html 확인). `backend-fastapi.conf`: `/assets`·`/realtime-ws`·`/relay-viewer` 는 `ProxyPass "!"` 로 빼고(첫 규칙이 이김, mod_proxy 문서),
+    나머지를 `http://10.250.88.3:8000/`(api tunnel 고정 주소)로 넘긴다. `ProxyPreserveHost On`, `ProxyAddHeaders Off`, `ProxyTimeout 600`.
+    `backend-php.conf` 는 비어 있어 예전처럼 PHP 가 처리한다. compose 기본값은 php, 시험 서버 `.env` 는 `PORTAL_BACKEND=fastapi`.
+  - 고객 IP: Apache 가 mod_remoteip 로 복원한 `REMOTE_ADDR` 를 `RequestHeader set X-RemoteHelp-Client-IP "expr=%{REMOTE_ADDR}"` 로 덮어써 넘기고,
+    FastAPI 는 web tunnel 고정 주소(10.250.88.2)에서 온 이 머리글만 믿는다. web·api 에 tunnel 고정 주소를 줬다.
+    확인: help.wani.im 으로 보낸 요청은 실제 공인 IP 로 기록되고 꾸민 머리글은 덮어써짐, 8099·8098 직접 요청은 꾸민 머리글을 무시하고 게이트웨이 주소.
+  - 3번(relay·realtime-msg 의 `PORTAL_ORIGIN`)은 바꾸지 않았다. 계속 `http://web` 을 부르고 Apache 가 넘기므로 되돌리기가 `PORTAL_BACKEND` 하나로 끝난다.
+  - 4번 확인: 8099·help.wani.im 의 화면과 healthz 가 FastAPI 로 응답(쿠키 `rh_csrf`), `/assets` 는 Apache, http→https 전환 유지,
+    e2e(기본 주소 8099, relay 인증도 web 경유 FastAPI) 통과, 상담 실시간 웹소켓을 로컬(ws://localhost:8091)과 외부(wss://help.wani.im/realtime-ws) 모두
+    연결해 `ready`(org:1) 수신, `check-conventions.sh --live` 통과.
+  - 5번 되돌리기 시험: `PORTAL_BACKEND=php` 로 web 을 다시 만들자 8099·외부 모두 PHP(`ci_session`)로 응답, 다시 fastapi 로 돌려 FastAPI 응답 확인.
+  - 검사: `TRUSTED_PROXY_IP` = compose 의 web tunnel 주소, ProxyPass 대상 = api tunnel 주소, 고객 IP 머리글은 `set`, X-Forwarded-For 미사용,
+    세 경로 제외를 확인한다(일부러 어겨 4가지가 잡히는 것 확인).
+  - 시험 데이터: 검증 로그인·IP 시험 실패 로그인·e2e 세션과 기록을 지우고 상담원 값과 번호를 되돌렸다(감사 로그 398번까지).
+  - 남은 일: 런처 실기 확인(윈도우, 8099 의 `/api/launcher/*` 가 FastAPI 로 감), 상담원 다시 로그인 안내, 화면 눈 확인. 8098 포트는 비교용으로 열어 두었다.
 
 ### 10단계. PHP 제거 (전환 후 문제없음을 확인한 뒤, 따로 승인받아 진행)
 

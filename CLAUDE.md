@@ -216,12 +216,15 @@ Docker Desktop 은 포트로 들어온 연결의 원래 IP 를 지웁니다(모�
 ```
 고객 --https--> Cloudflare --터널--> cloudflared(10.250.88.5) --> web  (CF-Connecting-IP 복원)
 고객 --http :8099--> web                                                (게이트웨이 IP, 헤더 무시)
+web(10.250.88.2) --X-RemoteHelp-Client-IP(set)--> api(10.250.88.3)      (PORTAL_BACKEND=fastapi 일 때)
 ```
 
 - **신뢰 주소는 cloudflared 고정 주소 하나만** 둡니다(`apache-vhost.conf` 의 `RemoteIPInternalProxy`
   = `docker-compose.yml` 의 `ipv4_address`). 대역으로 넓히면 8099 직접 요청이 tunnel 망 게이트웨이로
   들어와 IP 를 위조할 수 있습니다.
 - `X-Forwarded-For` 는 쓰지 않습니다. Cloudflare 가 고객이 보낸 값 뒤에 덧붙이므로 맨 앞 값을 꾸밀 수 있습니다.
+- FastAPI 로 넘길 때 Apache 는 복원한 주소를 `X-RemoteHelp-Client-IP` 에 **덮어써(set)** 보내고(`docker/web/backend-fastapi.conf`),
+  FastAPI 는 web 의 tunnel 고정 주소에서 온 이 머리글만 믿습니다(`core/request.py` `TRUSTED_PROXY_IP`, 검사가 잡습니다).
 - 브라우저용 웹소켓 주소는 고정하지 않고 접속한 주소로 만듭니다. https 화면은 다른 포트로 붙을 수 없으므로
   포털 경유 경로(`/relay-viewer`, `/realtime-ws`)를 씁니다(`relay_viewer_ws_url()`, `Realtime::ws_url()`).
 
@@ -368,8 +371,10 @@ state      = 운영 중이 아니면 closed / 운영 중이고 응대 가능 상
 
 ### 3.19 FastAPI 전환 기간 — PHP 와 나란히, 같은 DB·같은 환경변수
 
-포털 서버를 FastAPI(`backend/`, 컨테이너 `api`, 포트 8098)로 옮기는 중입니다. 전환 전까지 외부 경로(cloudflared, relay, realtime-msg)는
-PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migration-plan.md`.
+포털 서버를 FastAPI(`backend/`, 컨테이너 `api`, 포트 8098)로 옮겼습니다(2026-10-22 시험 서버 전환). 외부 경로(cloudflared, relay, realtime-msg, 8099)는
+그대로 `web`(Apache)을 보고, **`.env` 의 `PORTAL_BACKEND`(php | fastapi)** 에 따라 Apache 가 PHP 로 처리하거나 FastAPI 로 넘깁니다.
+되돌리려면 `PORTAL_BACKEND=php` 로 바꾸고 `docker compose up -d web` 만 합니다. PHP 제거(10단계) 전까지는 두 쪽이 모두 동작해야 합니다.
+`/assets`, `/realtime-ws`, `/relay-viewer` 는 Apache 가 계속 맡습니다. 계획과 진행 상태는 `docs/fastapi-migration-plan.md`.
 
 - **두 서버가 같은 DB 를 함께 씁니다. 스키마를 바꾸지 않습니다.** 꼭 필요하면 양쪽이 모두 견디는 추가만 합니다.
 - **환경변수는 `docker-compose.yml` 의 `x-portal-env` 한 곳**에 두고 web 과 api 가 함께 받습니다. 한쪽에만 넣으면
@@ -416,7 +421,7 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 ./scripts/check-conventions.sh --live   # 실행 중인 개발 서버까지 점검
 ./scripts/e2e-test.sh            # 포털 -> 중계 -> 화면 수신까지 전 구간 (LAUNCHER_BASE=http://localhost:8098 이면 런처 API 만 FastAPI 로)
 ./scripts/build-css.sh           # Tailwind 빌드
-python3 scripts/compare-portals.py -v   # FastAPI 전환 비교: PHP(:8099)와 FastAPI(:8098) 응답 비교, 남긴 기록은 되돌림
+python3 scripts/compare-portals.py -v   # PHP 와 FastAPI 응답 비교(8099 가 PHP 일 때, PORTAL_BACKEND=php), 남긴 기록은 되돌림
 ```
 
 작업을 마치기 전에 `check-conventions.sh` 를 통과시킵니다.
@@ -451,7 +456,7 @@ docker compose up -d --build
 | http://localhost:8099/demo | 고객 접속 페이지 |
 | https://localhost:8443/healthz | 중계 서버 상태 |
 | http://localhost:8091/healthz | 상담 실시간 메시지 서버 상태 |
-| http://localhost:8098/healthz | FastAPI 포털 상태(전환 중, DB 연결·시간대·sql_mode 표시) |
+| http://localhost:8098/healthz | FastAPI 포털 직접 접속(비교용, DB 연결·시간대·sql_mode 표시). 8099 는 `PORTAL_BACKEND` 에 따라 PHP 또는 FastAPI |
 | https://help.wani.im/ | 시험 서버 외부 주소(Cloudflare Tunnel `remotehelp-help` -> `http://web:80`, `.env` 에 토큰과 `COMPOSE_PROFILES=tunnel`). http 는 Apache 가 https 로 넘긴다 |
 
 윈도우 런처는 이 환경에서 빌드할 수 없습니다. 코드 작성까지만 하고 실기 검증은 별도로 표시합니다.
@@ -471,7 +476,7 @@ docker compose up -d --build
 | 시험 서버 뷰어 연결 | **relay 가 자체 서명 인증서라 상담원 브라우저는 포털 경유로 붙는다.** `.env` 의 `RELAY_VIEWER_WS_URL=auto` 이면 접속한 주소 기준 `ws(s)://<호스트>/relay-viewer`, web(Apache)이 relay 인증서(`relay-ca` 볼륨)로 검증한 wss 로 넘긴다. 런처(`/agent`)는 그대로 8443 직결. 운영은 공인 인증서 + `wss://<도메인>/viewer` |
 | 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
-| 포털 서버 | **CodeIgniter 3 에서 FastAPI 로 옮기는 중.** PHP 와 나란히 띄워 비교한 뒤 한 번에 전환하고, 문제가 없으면 PHP 를 지운다. Jinja2 서버 렌더링, SQLAlchemy Core(동기), 전환 후 Apache 는 프록시로 남김 (`docs/fastapi-migration-plan.md`) |
+| 포털 서버 | **FastAPI 로 전환(2026-10-22, 시험 서버).** Apache(web)가 앞에 서서 넘기고(`PORTAL_BACKEND=fastapi`), 문제가 없으면 PHP 를 지운다(10단계, 따로 승인). Jinja2 서버 렌더링, SQLAlchemy Core(동기) (`docs/fastapi-migration-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
 | 상담 운영 시간 | **1차: 요일별 운영 시간(하루 3구간), 휴일(공휴일 후보는 KR 만), 조직 수동 전환, 상담원 개인 상태, 부재중 자동 응답, 운영 시간 외 위젯(받기/안내만/숨기기). 2차: 답변 속도 안내(직접 지정/실제 기록), 중복 응대 방지(담당 표시·가져오기, 보는 중/입력 중, 새 문의 브라우저 알림 1회), 위젯 전화 버튼, 조직 관리 통계의 상담 숫자.** 모두 조직이 켤 때만 동작(기본 꺼짐) (`docs/chat-operation-plan.md`) |
 | 위젯 인사말·연락처·팔로업 | **인사말 1개(조직 언어) + 변수 + 바로가기 버튼 3개. 연락처 카드(이름/이메일/휴대폰 선택, 필수 모드). 고객이 떠났으면 상담원 답장을 이메일로 알림(기본 켜짐, SMTP 필요)과 14일 이어 가기 주소.** 휴대폰은 저장만 하고 문자/알림톡은 발송 수단이 정해진 뒤. 언어별 인사말과 여러 운영 설정(창구)은 보류 (`docs/widget-ops-plan.md`) |
