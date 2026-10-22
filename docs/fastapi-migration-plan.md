@@ -370,6 +370,16 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 ### 7단계. 플랫폼 운영자
 
 - 조직 가입 관리, 감사 로그.
+- **결과(2026-10-22 완료)**
+  - 경로: `routers/operator.py`(조직 가입 관리 화면·상태 거르기, 감사 로그 1,000건, 조직 정보 수정·승인·반려·중지·다시 활성화). 모두 `Depends(require_operator)`,
+    레이아웃 `layouts/operator`. 템플릿: operator/organizations, operator/audit. 모델: `organization_model` 의 list_for_review·count_by_status·approve·set_status.
+  - 비교: 운영자로 읽기 6가지, 조직 관리자로 들어왔을 때의 거부 3가지(화면 403 오류 페이지, AJAX 403, `operator_access_denied` 감사 기록)가 같음.
+    쓰기 시나리오 22단계(시험 조직 2개를 SQL 로 만들어 반려·승인·중지·운영 조직 중지 거부·다시 활성화·정보 수정·주소 중복 409·허용 목록 밖 값)를
+    PHP → 복원 → FastAPI → 복원으로 실행해 응답(JS 안 주소 따옴표 표기만 다름), 조직·상담원 행, 감사 로그 9건이 같음.
+  - 이로써 PHP routes.php 의 모든 경로가 FastAPI 에 있다. 로그인 없이 42개 주소를 두 서버에 요청해 상태 코드가 모두 같음.
+  - 검사: `check_fastapi_admin` 에 운영자 경로의 `require_operator` 확인을 더했다(일부러 빼 보고 잡히는 것 확인).
+  - 시험 데이터: 시험 조직·상담원·감사 로그를 지우고 자동 증가 번호를 맞췄다. 읽기 시험 로그인으로 바뀐 데모 관리자·운영자의 마지막 로그인 시각은
+    시험 전 마지막 로그인 감사 기록의 시각으로 되돌렸다(데모 관리자는 6단계 스냅샷 값과 같음을 확인). 실제 조직(wani, webhows)은 건드리지 않았다.
 
 ### 8단계. 비교 검증
 

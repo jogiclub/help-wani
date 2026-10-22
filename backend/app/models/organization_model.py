@@ -9,7 +9,7 @@ import secrets
 from urllib.parse import urlsplit
 
 from app import db
-from app.core.php import php_str
+from app.core.php import php_str, utc_str
 from app.core.request import base_url
 from app.helpers.app import customer_url
 
@@ -33,6 +33,53 @@ def insert(data):
 
 
 def update(org_id, data):
+    return db.update(TABLE, data, {'id': int(org_id)})
+
+
+# ------------------------------------------------------------------ 플랫폼 운영자 (조직 가입 관리)
+
+STATUSES = ('pending', 'active', 'rejected', 'suspended')
+
+
+def list_for_review(status=None, limit=200):
+    """운영자 조직 목록. 상담원·원격 세션 수와 대표 관리자(가장 먼저 등록된 admin, owner)를 붙인다."""
+    sql = ('SELECT o.*, (SELECT COUNT(*) FROM agents WHERE org_id = o.id) AS agent_count, '
+           '(SELECT COUNT(*) FROM sessions WHERE org_id = o.id) AS session_count FROM organizations o ')
+    params = {}
+    if status:
+        sql += 'WHERE o.status = :status '
+        params['status'] = status
+    sql += f"ORDER BY FIELD(o.status, 'pending', 'active', 'suspended', 'rejected'), o.created_at DESC LIMIT {int(limit)}"
+
+    rows = db.query(sql, params)
+    for found in rows:
+        found['owner'] = db.row(
+            "SELECT name, email, phone, created_at FROM agents WHERE org_id = :org AND role = 'admin' ORDER BY id ASC LIMIT 1",
+            {'org': int(found.id)})
+    return rows
+
+
+def count_by_status():
+    out = {status: 0 for status in STATUSES}
+    for found in db.query('SELECT status, COUNT(*) AS cnt FROM organizations GROUP BY status'):
+        out[found.status] = int(found.cnt)
+    return out
+
+
+def approve(org_id, operator_id):
+    """조직을 승인(또는 다시 활성화)하고 소속 상담원을 인증된 것으로 둔다."""
+    db.update(TABLE, {'status': 'active', 'approved_at': utc_str(), 'approved_by': int(operator_id),
+                      'status_reason': None}, {'id': int(org_id)})
+    return db.update('agents', {'is_verified': 1}, {'org_id': int(org_id)})
+
+
+def set_status(org_id, status, operator_id, reason=None):
+    if status not in STATUSES:
+        return 0
+    data = {'status': status, 'status_reason': None if reason is None else str(reason)[:300]}
+    if status == 'active':
+        data['approved_at'] = utc_str()
+        data['approved_by'] = int(operator_id)
     return db.update(TABLE, data, {'id': int(org_id)})
 
 

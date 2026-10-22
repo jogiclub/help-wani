@@ -402,7 +402,7 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
   업로드 파일은 `guide_model.portal_file('assets/...')` 로 실제 경로를 얻습니다(api 컨테이너는 `portal/assets` 를 `/srv/assets` 로 붙입니다).
 - 서버가 외부 주소로 요청하는 곳은 `guide_model.fetch_external_image()` 하나입니다. 다른 파일에서 `http.client`·`httpx`·`socket` 등을 쓰면 검사가 잡습니다
   (내부 발행 `libraries/realtime.py` 와 메일 `libraries/mailer.py` 는 예외). 가이드 표(`guide_articles/categories/synonyms/terms`)는 `guide_model` 만 고칩니다.
-- 조직 관리 경로(`routers/admin.py`, `routers/admin_guide.py`)는 모두 `Depends(require_admin)` 입니다. 샘플 가이드·공휴일 후보(`settings/guide_samples.py`, `settings/holidays.py`)는
+- 조직 관리 경로(`routers/admin.py`, `routers/admin_guide.py`)는 모두 `Depends(require_admin)`, 운영자 경로(`routers/operator.py`)는 모두 `Depends(require_operator)` 입니다. 샘플 가이드·공휴일 후보(`settings/guide_samples.py`, `settings/holidays.py`)는
   PHP 설정과 같아야 합니다(검사가 잡습니다). 해마다 공휴일을 갱신할 때 두 곳을 함께 고칩니다.
 - 고객 IP 는 `client_ip()` 하나로 얻습니다. 믿는 프록시 주소(`TRUSTED_PROXY_IP`)는 cloudflared 고정 주소와 같아야 합니다(검사가 잡습니다).
 - 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.

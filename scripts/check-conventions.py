@@ -843,6 +843,13 @@ def check_fastapi_admin():
             if 'Depends(require_admin)' not in match.group(2):
                 problems.append(f"{rel} {match.group(1) or '/'} 는 Depends(require_admin) 로 막습니다")
 
+    # 1-1) 플랫폼 운영자 경로는 모두 운영자만(require_operator) 쓴다(CLAUDE.md 3.6).
+    if os.path.isfile(os.path.join(ROOT, 'backend/app/routers/operator.py')):
+        text = read('backend/app/routers/operator.py')
+        for match in re.finditer(r"@router\.api_route\('([^']*)'.*?\n(?:async )?def \w+\((.*?)\):", text, re.S):
+            if 'Depends(require_operator)' not in match.group(2):
+                problems.append(f"backend/app/routers/operator.py {match.group(1) or '/'} 는 Depends(require_operator) 로 막습니다")
+
     # 2) 가이드 표는 guide_model 만 고친다(검사 clean_article, 색인 rebuild_index 를 함께 처리).
     guide_write = re.compile(r"""db\.(update|insert)\(\s*'guide_(articles|categories|synonyms|terms)'|(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+`?guide_(articles|categories|synonyms|terms)`?\b""", re.I)
     for rel, full in py_files:
@@ -884,7 +891,7 @@ def check_fastapi_admin():
     if problems:
         fail('FastAPI 조직 관리 규칙 위반', '\n    '.join(problems[:12]))
     else:
-        ok('FastAPI 조직 관리 규칙 확인 (require_admin, 가이드 표는 guide_model 만, 외부 요청 한 곳, 업로드 검사, 샘플·공휴일 설정)')
+        ok('FastAPI 조직 관리 규칙 확인 (require_admin, require_operator, 가이드 표는 guide_model 만, 외부 요청 한 곳, 업로드 검사, 샘플·공휴일 설정)')
 
 
 # ------------------------------------------------------------------ 실행 점검
