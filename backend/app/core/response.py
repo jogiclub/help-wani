@@ -2,7 +2,9 @@
 파일 위치: backend/app/core/response.py
 역할: 공통 API 응답 { result, message, data } 생성 (PHP api_response() 대응)
 """
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
+
+from app.core.php import php_json_encode
 
 
 def api_response(result, message='', data=None, status=200):
@@ -14,7 +16,9 @@ def api_response(result, message='', data=None, status=200):
     if data is None or (isinstance(data, (list, tuple)) and len(data) == 0):
         data = {}
 
-    return JSONResponse(
+    # PHP json_encode(..., JSON_UNESCAPED_UNICODE) 와 같은 바이트로 보낸다('/' 는 '\/').
+    body = php_json_encode(
         {'result': bool(result), 'message': '' if message is None else str(message), 'data': data},
-        status_code=status,
+        unescaped_unicode=True,
     )
+    return Response(body, status_code=status, media_type='application/json; charset=utf-8')

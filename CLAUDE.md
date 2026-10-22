@@ -381,6 +381,12 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 - 옮긴 기능은 **주소, 요청 형식(`csrf_test_name`), 응답(`{ result, message, data }`, 빈 data 는 `{}`), 상태 코드**를 PHP 와 똑같이 맞춥니다.
   화면 JS 를 고쳐야 하면 PHP 에서도 동작하게 고칩니다.
 - 3장의 "한 곳을 거친다" 규칙은 파이썬에서도 같은 이름의 함수 한 곳으로 옮깁니다(예: `guide_model.save_article()`).
+- DB 결과는 mysqli 처럼 **모든 값이 문자열**입니다(`app/db.py`). 숫자 비교는 PHP 처럼 `int()` 로 바꿔서 합니다.
+- 응답을 보내고 바로 끝낼 때는 `raise Halt(api_response(...))` 를 씁니다(3.6 의 `_display(); exit;` 대응). 권한은 `Depends(current_agent / require_admin / require_operator)`.
+- 화면은 `render(request, '폴더/뷰', data, 'layouts/...')`, 템플릿은 `backend/app/templates/` 에 PHP views 와 같은 구조로 둡니다.
+  정의되지 않은 변수는 오류가 나므로 PHP `isset()` 은 `is defined` / `|default()` 로 옮기고, `<script>` 안의 값은 `|js` 필터를 씁니다.
+- 세션·CSRF 쿠키 이름은 PHP 와 다르게 둡니다(`rh_session`, `rh_csrf`). 같은 호스트의 다른 포트는 쿠키를 함께 씁니다(검사가 잡습니다).
+- 고객 IP 는 `client_ip()` 하나로 얻습니다. 믿는 프록시 주소(`TRUSTED_PROXY_IP`)는 cloudflared 고정 주소와 같아야 합니다(검사가 잡습니다).
 - 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.
 
 ---

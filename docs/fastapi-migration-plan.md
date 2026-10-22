@@ -4,7 +4,7 @@
 > 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
 
 - 작성일: 2026-10-22
-- 상태: 진행 중 — 0단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+- 상태: 진행 중 — 0·1단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
 
 ---
 
@@ -179,6 +179,13 @@ PHP `json_encode` 는 기본으로 `/` 를 `\/` 로, 한글을 `\uXXXX` 로 바�
 `(:any)` 조직 코드 라우트는 FastAPI 에서도 **맨 마지막에 등록**한다(3.8). `(:any)/guide/features`, `/guide/videos` 는 `(:any)/guide/(:any)` 보다 앞(3.15).
 CI3 의 `(:any)` 는 `/` 를 포함하지 않는 한 구간이므로 FastAPI 경로 매개변수(`{org_code}`)와 같다. `:path` 변환을 쓰지 않는다.
 
+
+### 5.9 xss_clean (확인 필요)
+
+CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속성 제거, `%xx` 반복 해제 등). 결과가 원문과 달라지는 입력에서는
+PHP 와 FastAPI 가 다른 값을 저장한다. 화면 출력은 이미 이스케이프하므로(Jinja 자동 이스케이프, textContent) 보안상 필요는 낮다.
+3단계 시작 전에 (가) CI3 xss_clean 을 그대로 옮긴다, (나) 옮기지 않고 출력 이스케이프에 맡긴다 중 정한다.
+
 ---
 
 ## 6. 단계별 작업
@@ -212,6 +219,23 @@ CI3 의 `(:any)` 는 `/` 를 포함하지 않는 한 구간이므로 FastAPI 경
 - 레이아웃 4종(`layouts/main`, `operator`, `public`, `customer`)과 `_head` 를 Jinja 로 옮김. `render()` 가 넘기던 `i18n`(locale, intl, timezone, messages)과 `app_name`, `use_grid`, `use_dropzone`, `icon_names` 처리.
 - `audit_logs`, `session_logs` 기록(`Log_model`).
 - 완료 기준: 빈 화면 하나가 PHP 와 같은 레이아웃·메뉴·언어로 그려짐.
+- **결과(2026-10-22 완료)** — 세션·CSRF·권한을 실제로 확인하려고 3단계의 로그인/로그아웃을 앞당겨 옮겼다(가입 신청은 3단계 그대로).
+  - 파일: `core/{php,request,i18n,input,errors,csrf,session,middleware,deps,templates,password}.py`, `helpers/{app,validation}.py`,
+    `models/{log,agent,organization}_model.py`(조직은 조회 2개만), `routers/{auth,dev}.py`, `templates/layouts/*`(8개), `templates/auth/login.html`.
+  - DB 값: PyMySQL 에 읽기 변환기를 주지 않아 **모든 값이 mysqli 처럼 문자열**("id":"12", 날짜 문자열)로 온다. 옮긴 코드는 PHP 처럼 int() 로 바꿔 쓴다.
+  - 영향 행 수: SQLAlchemy 가 켜는 FOUND_ROWS 를 꺼서 mysqli 와 같이 '실제로 바뀐 행' 을 센다(같은 값 UPDATE 0건, PHP 와 같음 확인).
+  - 세션: 서명 쿠키 `rh_session`(키는 ENCRYPTION_KEY 에서 파생). 5분마다 활동 시각을 적어 마지막 활동부터 7200초 유지(CI3 와 같음).
+  - CSRF: 쿠키 `rh_csrf`, 이름 `csrf_test_name`, 폼 본문의 토큰만 인정(PHP 는 JSON 본문을 $_POST 로 읽지 않음), SameSite=Strict.
+  - 리다이렉트는 CI3 와 같이 GET 307 / 그 밖 303. 오류 화면(403, 404)은 CI3 화면과 같은 모양.
+  - 응답 JSON 은 PHP json_encode 와 같은 바이트('/' → '\/', U+2028/2029 이스케이프, DEL 그대로, 정수 값 실수는 1).
+  - `valid_email` 정규식은 php-src 8.2.34 소스에서 자동으로 옮겼다. PHP filter_var 와 359개 입력 비교 불일치 0.
+  - 비교 결과(같은 요청을 8099/8098 에): 로그인 화면, CSRF 403, 검사 오류 문구, 비밀번호 오류 401, 로그인 안 한 AJAX 401, 리다이렉트 코드,
+    로그아웃, 운영자 거부 403과 감사 로그 형식이 같음. 방문자 레이아웃은 ko/en/ja 모두 내용이 같고(줄바꿈 위치만 다름) `RH_I18N` 은 바이트 단위로 같음.
+  - 남는 차이(영향 없음으로 판단): 실수의 지수 표기(1.0e+20 / 1e+20)와 -0, 존재하지 않는 날짜를 PHP 는 다음 날로 넘기고 여기는 원래 값을 돌려줌,
+    작은따옴표 이스케이프(&#039; / &#39;), JS 문자열 따옴표('…' / "…").
+  - 시험에 데모 계정을 썼고, 생긴 감사 로그 18건을 지우고 관리자 `last_login_at` 을 되돌렸다(AUTO_INCREMENT 는 417부터).
+  - 개발 전용 `/_dev/layout/*` 은 레이아웃 비교용이며 화면을 다 옮기면 지운다.
+  - **확인 필요**: PHP 는 `post('x', TRUE)` 에서 xss_clean 을 거친다. 3단계부터 입력을 받는 곳마다 같은 처리가 필요한지 정해야 한다(5.9 참고).
 
 ### 2단계. 서버 간 API (화면 없음, 가장 작고 검증 쉬움)
 

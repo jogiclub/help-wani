@@ -537,10 +537,25 @@ def check_fastapi():
     if loose:
         problems.append('backend/requirements.txt: 버전이 고정되지 않았습니다 — ' + ', '.join(loose))
 
+    # 3.12: 고객 IP 를 믿는 프록시 주소는 cloudflared 고정 주소 하나여야 한다.
+    request_py = os.path.join(ROOT, 'backend/app/core/request.py')
+    if os.path.isfile(request_py):
+        trusted = re.search(r"^TRUSTED_PROXY_IP = '([0-9.]+)'", read('backend/app/core/request.py'), re.M)
+        cloudflared = re.search(r'cloudflared:.*?ipv4_address:\s*([0-9.]+)', compose, re.S)
+        if not trusted or not cloudflared or trusted.group(1) != cloudflared.group(1):
+            problems.append('backend/app/core/request.py: TRUSTED_PROXY_IP 가 docker-compose.yml 의 cloudflared 주소와 다릅니다')
+
+    # 같은 호스트의 다른 포트는 쿠키를 함께 쓴다. PHP 쿠키 이름(ci_session, csrf_cookie_name)을 쓰면 서로 덮어쓴다.
+    for rel in ('backend/app/core/session.py', 'backend/app/core/csrf.py'):
+        if os.path.isfile(os.path.join(ROOT, rel)):
+            name = re.search(r"^COOKIE_NAME = '([^']+)'", read(rel), re.M)
+            if not name or name.group(1) in ('ci_session', 'csrf_cookie_name'):
+                problems.append(f'{rel}: 쿠키 이름이 없거나 PHP 와 같습니다(PHP 세션·CSRF 쿠키를 덮어씀)')
+
     if problems:
         fail('FastAPI 전환 규칙 위반', '\n    '.join(problems))
     else:
-        ok('FastAPI 포털 설정 확인 (프록시 헤더 끔, PHP 와 같은 환경변수, UTC, sql_mode, 버전 고정)')
+        ok('FastAPI 포털 설정 확인 (프록시 헤더 끔, PHP 와 같은 환경변수, UTC, sql_mode, 버전 고정, 신뢰 프록시, 쿠키 이름)')
 
 
 # ------------------------------------------------------------------ 실행 점검
