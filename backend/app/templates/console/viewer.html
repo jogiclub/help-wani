@@ -2,105 +2,129 @@
   파일 위치: backend/app/templates/console/viewer.html
   역할: 상담원 원격 화면(자체 캔버스 뷰어)과 원격 메모
   원격 세션은 session_row 로 받는다(session 은 로그인 세션).
+
+  Bootstrap 6 + 왔니. 레이아웃(main.html)이 이 화면에서 사이드바를 70px 로 접는다.
+  화면 캔버스 크기·커서 레이어·고객 정보·메모 모양은 assets/css/wani-remote.css.
 -#}
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
+<div class="row g-5">
 
-  <div class="lg:col-span-3">
-    <div class="card overflow-hidden">
-      <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3">
-        <span class="mr-2 text-sm font-semibold text-slate-700">
-          코드 <span class="font-mono">{{ session_row.code }}</span>
-          <span class="badge badge-gray ml-1" id="viewerStatus">{{ status_label(session_row.status) }}</span>
+  <div class="col-12 lg:col-9 min-w-0">
+    <section class="card overflow-hidden">
+      <div class="rh-viewer-toolbar">
+        <span class="fs-sm fw-semibold fg-2 me-3">
+          코드 <span class="font-monospace">{{ session_row.code }}</span>
+          <span class="badge badge-subtle theme-secondary ms-1" id="viewerStatus">{{ status_label(session_row.status) }}</span>
         </span>
 
-        <div class="flex flex-wrap items-center gap-1">
-          <button class="btn btn-sm btn-secondary" id="btnConnect">연결</button>
-          <button class="btn btn-sm btn-secondary" id="btnFit">화면 맞춤</button>
-          <button class="btn btn-sm btn-secondary" id="btnCad">Ctrl+Alt+Del</button>
-          <button class="btn btn-sm btn-secondary" id="btnClipboard">클립보드</button>
-          <button class="btn btn-sm btn-secondary" id="btnFullscreen">전체화면</button>
-          <select class="form-input btn-sm w-auto py-1" id="selQuality" title="화질">
+        <div class="d-flex flex-wrap align-items-center gap-1">
+          <button type="button" class="btn-solid theme-primary btn-sm" id="btnConnect">
+            <i class="bi bi-plug" aria-hidden="true"></i>연결
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" id="btnFit">
+            <i class="bi bi-aspect-ratio" aria-hidden="true"></i>화면 맞춤
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" id="btnCad">
+            <i class="bi bi-keyboard" aria-hidden="true"></i>Ctrl+Alt+Del
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" id="btnClipboard">
+            <i class="bi bi-clipboard" aria-hidden="true"></i>클립보드
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" id="btnFullscreen">
+            <i class="bi bi-fullscreen" aria-hidden="true"></i>전체화면
+          </button>
+          <select class="form-control form-control-sm w-auto" id="selQuality" title="화질">
             <option value="50,15,100">빠름 (품질 50 / 15fps)</option>
             <option value="70,10,100" selected>기본 (품질 70 / 10fps)</option>
             <option value="90,6,100">선명 (품질 90 / 6fps)</option>
           </select>
         </div>
 
-        <button class="btn btn-sm btn-danger ml-auto" id="btnEnd">원격 종료</button>
+        <button type="button" class="btn-outline theme-danger btn-sm ms-auto" id="btnEnd">
+          <i class="bi bi-x-circle" aria-hidden="true"></i>원격 종료
+        </button>
       </div>
 
-      <div id="screenWrap" class="relative flex items-center justify-center bg-black">
-        <canvas id="screen" class="remote-screen"></canvas>
+      <!-- 크기·최대 높이는 wani-remote.css 의 #screenWrap / .rh-remote-screen. [화면 맞춤] 은 viewer.js 가 캔버스 클래스를 바꾼다. -->
+      <div id="screenWrap" class="position-relative d-flex align-items-center justify-content-center bg-black">
+        <canvas id="screen" class="rh-remote-screen bg-black"></canvas>
         <!-- 고객 PC 의 마우스 위치 표시 (입력을 가로채지 않는다) -->
-        <canvas id="cursorLayer" class="pointer-events-none absolute"></canvas>
+        <canvas id="cursorLayer" class="pe-none position-absolute"></canvas>
       </div>
 
-      <div class="card-footer flex justify-between gap-3">
+      <div class="card-footer d-flex justify-content-between gap-4 fs-sm">
         <span id="viewerMessage">[연결] 을 누르면 고객 화면에 접속합니다.</span>
-        <span id="viewerStats" class="shrink-0 text-xs text-slate-400"></span>
+        <span id="viewerStats" class="flex-shrink-0 fs-xs fg-3"></span>
       </div>
-    </div>
+    </section>
   </div>
 
-  <div class="space-y-4">
-    <div class="card">
-      <div class="card-header">고객 정보</div>
-      <dl class="divide-y divide-slate-100 text-sm">
-        <div class="flex justify-between px-5 py-2.5">
-          <dt class="text-slate-500">PC 이름</dt>
-          <dd class="font-medium text-slate-700">{{ session_row.customer_pc_name if not empty(session_row.customer_pc_name) else '-' }}</dd>
+  <div class="col-12 lg:col-3 vstack gap-5">
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">고객 정보</h2>
+      </div>
+      <dl class="rh-remote-info">
+        <div>
+          <dt>PC 이름</dt>
+          <dd>{{ session_row.customer_pc_name if not empty(session_row.customer_pc_name) else '-' }}</dd>
         </div>
-        <div class="flex justify-between px-5 py-2.5">
-          <dt class="text-slate-500">OS</dt>
-          <dd class="font-medium text-slate-700">{{ session_row.customer_os if not empty(session_row.customer_os) else '-' }}</dd>
+        <div>
+          <dt>OS</dt>
+          <dd>{{ session_row.customer_os if not empty(session_row.customer_os) else '-' }}</dd>
         </div>
-        <div class="flex justify-between px-5 py-2.5">
-          <dt class="text-slate-500">IP</dt>
-          <dd class="font-medium text-slate-700">{{ session_row.customer_ip if not empty(session_row.customer_ip) else '-' }}</dd>
+        <div>
+          <dt>IP</dt>
+          <dd>{{ session_row.customer_ip if not empty(session_row.customer_ip) else '-' }}</dd>
         </div>
-        <div class="flex justify-between px-5 py-2.5">
-          <dt class="text-slate-500">시작</dt>
-          <dd class="font-medium text-slate-700">{{ to_timezone(session_row.started_at, i18n.timezone) }}</dd>
+        <div>
+          <dt>시작</dt>
+          <dd>{{ to_timezone(session_row.started_at, i18n.timezone) }}</dd>
         </div>
       </dl>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="card-header">원격 메모</div>
-      <div class="card-body">
-        <div id="noteList" class="mb-3 space-y-2">
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">원격 메모</h2>
+      </div>
+      <div class="card-body pt-0">
+        <div id="noteList" class="vstack gap-3 mb-4">
           {% for note in notes %}
-          <div class="border-l-2 border-brand-500 pl-3">
-            <div class="text-xs text-slate-400">{{ note.agent_name }} · {{ to_timezone(note.created_at, i18n.timezone) }}</div>
-            <div class="text-sm text-slate-700">{{ nl2br(note.content) }}</div>
+          <div class="rh-remote-note">
+            <div class="fs-xs fg-3">{{ note.agent_name }} · {{ to_timezone(note.created_at, i18n.timezone) }}</div>
+            <div class="fs-sm fg-2">{{ nl2br(note.content) }}</div>
           </div>
           {% endfor %}
         </div>
-        <textarea class="form-input mb-2" id="noteContent" rows="3" placeholder="원격지원 내용을 기록하세요"></textarea>
-        <button class="btn btn-sm btn-primary w-full" id="btnNote">메모 저장</button>
+        <label class="visually-hidden" for="noteContent">원격 메모</label>
+        <textarea class="form-control mb-3" id="noteContent" rows="3" placeholder="원격지원 내용을 기록하세요"></textarea>
+        <button type="button" class="btn-solid theme-primary btn-sm w-100" id="btnNote">
+          <i class="bi bi-check-lg" aria-hidden="true"></i>메모 저장
+        </button>
       </div>
-    </div>
+    </section>
   </div>
 </div>
 
-<!-- 클립보드 전송 모달 -->
-<div id="clipboardModal" data-modal-backdrop
-     class="modal-root fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
-  <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
-    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-      <h2 class="font-semibold text-slate-800">클립보드 보내기</h2>
-      <button type="button" class="text-slate-400 hover:text-slate-600" data-modal-close="clipboardModal">×</button>
-    </div>
-    <div class="p-5">
-      <textarea class="form-input" id="clipboardText" rows="5"></textarea>
-    </div>
-    <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
-      <button class="btn btn-secondary" data-modal-close="clipboardModal">닫기</button>
-      <button class="btn btn-primary" id="btnClipboardSend">고객 PC 로 보내기</button>
-    </div>
+<!-- 클립보드 전송 다이얼로그 (짧은 입력 하나라 드로어가 아니라 다이얼로그) -->
+<dialog class="dialog" id="clipboardModal" aria-labelledby="clipboardModalTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="clipboardModalTitle">클립보드 보내기</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="닫기"></button>
   </div>
-</div>
+  <div class="dialog-body">
+    <textarea class="form-control" id="clipboardText" rows="5" aria-labelledby="clipboardModalTitle"></textarea>
+  </div>
+  <div class="dialog-footer">
+    <button type="button" class="btn-outline theme-secondary" data-bs-dismiss="dialog">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>닫기
+    </button>
+    <button type="button" class="btn-solid theme-primary" id="btnClipboardSend">
+      <i class="bi bi-send" aria-hidden="true"></i>고객 PC 로 보내기
+    </button>
+  </div>
+</dialog>
 
 <script>
 var VIEWER_CONFIG = {

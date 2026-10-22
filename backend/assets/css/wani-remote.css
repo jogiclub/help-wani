@@ -1,0 +1,112 @@
+/**
+ * 파일 위치: backend/assets/css/wani-remote.css
+ * 역할: 원격지원(목록·코드 발급·원격 화면) 화면 전용 모양
+ *
+ * 대상: console/queue, console/viewer
+ * 공통 모양(셸, 패널, 드로어, 배지, wgrid 색)은 wani.css 에 있다. 이 파일은 그 화면에만 필요한 것만 둔다.
+ * 값은 wani.css 의 --wani-* 토큰을 쓴다(색을 새로 만들지 않는다).
+ */
+
+/* ------------------------------------------------------------------ 코드 발급 패널 (console/queue) */
+/* 발급 버튼 / 접속 코드(발급 후에만 보임) / 고객 접속 주소를 한 줄에 둔다. 좁으면 세로로 쌓는다. */
+.rh-code-panel {
+    display: flex;
+    flex-wrap: wrap;
+}
+.rh-code-cell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 20px 24px;
+}
+.rh-code-cell + .rh-code-cell { border-inline-start: 1px solid var(--wani-border); }
+/* Bootstrap 6 유틸리티는 @layer 안이라 위 display:flex 에 진다. 코드 발급 전에 숨기는 d-none 을 여기서 지킨다. */
+.rh-code-cell.d-none { display: none; }
+.rh-code-issue { flex: 0 0 auto; align-items: flex-start; }
+.rh-code-value { flex: 1 1 320px; align-items: center; text-align: center; }
+.rh-code-url { flex: 1 1 280px; }
+
+@media (width < 1024px) {
+    .rh-code-panel { flex-direction: column; }
+    .rh-code-cell { flex-basis: auto; }
+    .rh-code-cell + .rh-code-cell {
+        border-inline-start: 0;
+        border-top: 1px solid var(--wani-border);
+    }
+}
+@media (width < 768px) {
+    .rh-code-cell { padding: 16px 12px; }
+}
+
+/* 고객에게 불러 줄 접속 코드 (예전 Tailwind .code-display: 48px, 굵게, 자간 0.35em) */
+.rh-remote-code {
+    font-family: var(--wani-font-mono);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: 0.35em;
+    /* 자간이 마지막 글자 뒤에도 붙으므로 가운데 정렬이 어긋나지 않게 앞에도 같은 만큼 둔다. */
+    padding-inline-start: 0.35em;
+    color: var(--wani-ink-strong);
+    font-variant-numeric: tabular-nums;
+}
+@media (width < 768px) {
+    .rh-remote-code { font-size: 36px; }
+}
+
+/* 그리드 만족도 별 */
+.rh-remote-stars { color: var(--wani-warning); letter-spacing: 1px; }
+
+/* ------------------------------------------------------------------ 원격 화면 (console/viewer) */
+.rh-viewer-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--wani-border);
+}
+
+/* 캔버스는 원본 해상도로 그리고 화면 안에 들어가게 줄인다. 최대 높이는 헤더·도구 막대·바닥을 뺀 값이다.
+   [화면 맞춤] 은 viewer.js 가 object-fit-contain w-100 h-100 을 붙였다 뗀다. */
+#screenWrap {
+    min-height: 420px;
+    max-height: calc(100vh - 240px);
+}
+.rh-remote-screen {
+    display: block;
+    max-width: 100%;
+    max-height: calc(100vh - 240px);
+    outline: none;
+    cursor: crosshair;
+}
+
+/* 고객 정보 */
+.rh-remote-info {
+    margin: 0;
+    font-size: 14px;
+}
+.rh-remote-info > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--wani-border);
+}
+.rh-remote-info dt { flex-shrink: 0; color: var(--wani-ink-muted); font-weight: 400; }
+.rh-remote-info dd {
+    margin: 0;
+    min-width: 0;
+    color: var(--wani-ink-subtle);
+    font-weight: 500;
+    text-align: end;
+    overflow-wrap: anywhere;
+}
+
+/* 원격 메모 한 건 */
+.rh-remote-note {
+    padding-inline-start: 12px;
+    border-inline-start: 2px solid var(--wani-primary);
+}

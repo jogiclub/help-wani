@@ -29,14 +29,15 @@
     // ------------------------------------------------------------------
 
     function setStatus(text, kind) {
-        var cls = {
-            connecting: 'badge-amber',
-            connected: 'badge-green',
-            error: 'badge-red',
-            ended: 'badge-dark'
-        }[kind] || 'badge-gray';
+        // 배지 톤 이름. 실제 클래스는 common.js 의 RHUi.badge() 가 고른다.
+        var tone = {
+            connecting: 'amber',
+            connected: 'green',
+            error: 'red',
+            ended: 'dark'
+        }[kind] || 'gray';
 
-        $('#viewerStatus').removeClass().addClass('badge ml-1 ' + cls).text(text);
+        $('#viewerStatus').attr('class', window.RHUi.badge(tone) + ' ms-1').text(text);
     }
 
     function setMessage(text) {
@@ -352,7 +353,7 @@
         $('#btnConnect').on('click', connect);
 
         $('#btnFit').on('click', function () {
-            $(canvas).toggleClass('object-contain w-full h-full');
+            $(canvas).toggleClass('object-fit-contain w-100 h-100');
             window.showToast('화면 맞춤을 전환했습니다.', 'info');
         });
 
@@ -419,10 +420,10 @@
 
                 var $list = $('#noteList').empty();
                 (data.notes || []).forEach(function (n) {
-                    $('<div class="border-l-2 border-brand-500 pl-3">')
-                        .append($('<div class="text-xs text-slate-400">')
+                    $('<div class="rh-remote-note">')
+                        .append($('<div class="fs-xs fg-3">')
                             .text(n.agent_name + ' · ' + window.RHI18n.formatDate(n.created_at)))
-                        .append($('<div class="text-sm text-slate-700">').text(n.content))
+                        .append($('<div class="fs-sm fg-2">').text(n.content))
                         .appendTo($list);
                 });
             });

@@ -13,14 +13,15 @@
     var requestSeq = 0;
     var ACTIVE = ['issued', 'verified', 'waiting', 'connected'];
 
+    // 배지 톤 이름. 실제 클래스는 common.js 의 RHUi.badge() 가 고른다.
     var STATUS_CLASS = {
-        issued: 'badge-gray',
-        verified: 'badge-blue',
-        waiting: 'badge-amber',
-        connected: 'badge-green',
-        ended: 'badge-dark',
-        expired: 'badge-gray',
-        canceled: 'badge-gray'
+        issued: 'gray',
+        verified: 'blue',
+        waiting: 'amber',
+        connected: 'green',
+        ended: 'dark',
+        expired: 'gray',
+        canceled: 'gray'
     };
 
     function endSession(id) {
@@ -83,7 +84,7 @@
 
         if (remain <= 0) {
             codeExpiresAt = null;
-            $('#codeRemain').removeClass('badge-gray').addClass('badge-red').text('만료');
+            $('#codeRemain').attr('class', RHUi.badge('red') + ' tabular-nums').text('만료');
         }
     }
 
@@ -92,13 +93,13 @@
             columns: [
                 { title: '일시', key: 'created_at', width: 150,
                   format: RHGrid.shortDateTime },
-                { title: '코드', key: 'code', width: 100, cellClass: 'font-mono font-semibold' },
+                { title: '코드', key: 'code', width: 100, cellClass: 'font-monospace fw-semibold' },
                 {
                     title: '상태', key: 'status', width: 130,
                     // 표시 문구는 서버가 내려준 status_label 을 쓴다.
                     render: function (row, value) {
                         var span = document.createElement('span');
-                        span.className = 'badge ' + (STATUS_CLASS[value] || 'badge-gray');
+                        span.className = RHUi.badge(STATUS_CLASS[value] || 'gray');
                         span.textContent = row.status_label || value;
                         return span;
                     },
@@ -123,7 +124,7 @@
                         if (!value) { return '-'; }
 
                         var span = document.createElement('span');
-                        span.className = 'text-amber-500';
+                        span.className = 'rh-remote-stars';
                         span.textContent = '★'.repeat(value);
                         return span;
                     }
@@ -132,7 +133,7 @@
                     title: '작업', key: '_actions', width: 160, sortable: false, pinned: 'right',
                     render: RHGrid.buttonsRenderer([
                         {
-                            label: '원격 시작', className: 'btn-success',
+                            label: '원격 시작', className: 'success',
                             show: function (row) {
                                 return row.status === 'waiting' || row.status === 'connected';
                             },
@@ -141,12 +142,12 @@
                             }
                         },
                         {
-                            label: '종료', className: 'btn-secondary',
+                            label: '종료', className: 'secondary',
                             show: function (row) { return ACTIVE.indexOf(row.status) !== -1; },
                             onClick: function (row) { endSession(row.id); }
                         },
                         {
-                            label: '보기', className: 'btn-secondary',
+                            label: '보기', className: 'secondary',
                             show: function (row) { return ACTIVE.indexOf(row.status) === -1; },
                             onClick: function (row) {
                                 window.location.href = CONSOLE_URLS.viewer + row.id;
@@ -165,10 +166,10 @@
             var $btn = $(this).prop('disabled', true);
 
             apiPost(CONSOLE_URLS.create, {}, function (data, message) {
-                $('#codeCard').removeClass('hidden');
+                $('#codeCard').removeClass('d-none');
                 $('#codeValue').text(data.code);
                 $('#customerUrl').text(data.customer_url).attr('href', data.customer_url);
-                $('#codeRemain').removeClass('badge-red').addClass('badge-gray');
+                $('#codeRemain').attr('class', RHUi.badge('gray') + ' tabular-nums');
                 codeExpiresAt = Date.now() + (data.expires_in * 1000);
                 tickCode();
                 showToast(message, 'success');

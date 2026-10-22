@@ -2,124 +2,170 @@
   파일 위치: backend/app/templates/console/chat.html
   역할: 상담 위젯 대화 목록(wgrid)과 응답 패널, 운영 상태, 담당/보는 중 표시와 중복 응대 확인, 새 문의 브라우저 알림 설정,
         관리자용 위젯 설정 드로어, 매크로(입력창 / 목록) — PHP views/console/chat.php 대응
+
+  Bootstrap 6 + 왔니(docs/frontend-bootstrap6-plan.md). 위쪽 줄은 운영 상태와 [매크로]·[설정],
+  아래는 3칸(왼쪽 대화 목록 / 가운데 대화 / 오른쪽 추천 가이드)이며 1024px(lg) 미만에서는 세로로 쌓인다.
+  화면 전용 모양(3칸 배치, 말풍선, 매크로 목록)은 assets/css/wani-chat.css 에 있다.
 -#}
 
-<div class="mb-4 flex items-center gap-3">
-  <h1 class="text-xl font-bold text-slate-800">상담 대화</h1>
-  <span id="chatUnread" class="badge badge-red hidden"></span>
-  <span id="chatLive" class="badge badge-gray hidden"></span>
-  <label class="ml-auto flex items-center gap-2 text-sm text-slate-600">
-    <input type="checkbox" id="chatShowClosed" class="rounded border-slate-300">
-    종료된 대화 포함
-  </label>
-  <a class="btn btn-sm btn-secondary" href="{{ base_url('console/macro') }}">매크로</a>
-  {% if is_admin %}
-  <button type="button" class="btn btn-sm btn-secondary" id="btnChatSettings"
-          aria-controls="widgetSettingsDrawer">설정</button>
-  {% endif %}
+<div class="rh-page-header">
+  <div>
+    <nav aria-label="현재 위치">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><span class="breadcrumb-link">CHAT</span></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item" aria-current="page"><span class="breadcrumb-link active">상담 대화</span></li>
+      </ol>
+    </nav>
+    <div class="d-flex flex-wrap align-items-center gap-3">
+      <h1 class="page-title">상담 대화</h1>
+      <span id="chatUnread" class="badge badge-subtle theme-danger d-none"></span>
+      <span id="chatLive" class="badge badge-subtle theme-secondary d-none"></span>
+    </div>
+  </div>
 </div>
 
 <!-- 운영 상태(docs/chat-operation-plan.md F3). 고객 위젯에 보이는 상태와 같다. 목록 폴링이 갱신한다. -->
-<div class="card mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm">
-  <span class="text-slate-500">고객에게 보이는 상태</span>
-  <span id="chatAvailability" class="badge badge-gray"></span>
-  <span id="chatAvailabilityNote" class="text-xs text-slate-500"></span>
-
-  {% if is_admin %}
-  <label class="flex items-center gap-2 sm:ml-auto">
-    <span class="text-slate-500">조직 운영</span>
-    <select id="chatManualState" class="form-input w-auto py-1 text-sm">
-      <option value="auto">운영 시간대로</option>
-      <option value="open">지금 운영</option>
-      <option value="closed">지금 종료</option>
-    </select>
-  </label>
-  {% endif %}
-
-  <label class="flex items-center gap-2 {{ '' if is_admin else 'sm:ml-auto' }}">
-    <span class="text-slate-500">내 상태</span>
-    <select id="chatMyStatus" class="form-input w-auto py-1 text-sm">
-      <option value="available" {{ 'selected' if my_status == 'available' else '' }}>응대 가능</option>
-      <option value="away" {{ 'selected' if my_status == 'away' else '' }}>자리 비움</option>
-      <option value="off" {{ 'selected' if my_status == 'off' else '' }}>응대 종료</option>
-    </select>
-  </label>
-
-  <label class="flex items-center gap-1.5 text-slate-600" title="새 문의가 오면 브라우저 알림을 띄웁니다. 담당이 있는 대화는 담당자에게만 알립니다.">
-    <input type="checkbox" id="chatNotify" class="rounded border-slate-300" {{ 'checked' if notify else '' }}>
-    새 문의 알림
-  </label>
-</div>
-
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-5">
-
-  <div class="card overflow-hidden lg:col-span-3">
-    <div id="chatGrid" style="height: calc(100vh - 316px); min-height: 420px;"></div>
+<section class="card rh-chat-toolbar">
+  <div class="rh-chat-toolbar-status">
+    <span class="fg-3">고객에게 보이는 상태</span>
+    <span id="chatAvailability" class="badge badge-subtle theme-secondary"></span>
+    <span id="chatAvailabilityNote" class="fs-xs fg-3"></span>
   </div>
 
-  <div class="card flex flex-col lg:col-span-2" style="height: calc(100vh - 316px); min-height: 420px;">
+  <div class="rh-chat-toolbar-controls">
+    {% if is_admin %}
+    <label class="rh-chat-select">
+      <span class="fg-3">조직 운영</span>
+      <select id="chatManualState" class="form-control form-control-sm">
+        <option value="auto">운영 시간대로</option>
+        <option value="open">지금 운영</option>
+        <option value="closed">지금 종료</option>
+      </select>
+    </label>
+    {% endif %}
 
-    <div id="chatEmpty" class="flex flex-1 items-center justify-center p-6 text-center text-sm text-slate-400">
+    <label class="rh-chat-select">
+      <span class="fg-3">내 상태</span>
+      <select id="chatMyStatus" class="form-control form-control-sm">
+        <option value="available" {{ 'selected' if my_status == 'available' else '' }}>응대 가능</option>
+        <option value="away" {{ 'selected' if my_status == 'away' else '' }}>자리 비움</option>
+        <option value="off" {{ 'selected' if my_status == 'off' else '' }}>응대 종료</option>
+      </select>
+    </label>
+
+    <div class="form-field" title="새 문의가 오면 브라우저 알림을 띄웁니다. 담당이 있는 대화는 담당자에게만 알립니다.">
+      <input type="checkbox" class="check" id="chatNotify" {{ 'checked' if notify else '' }}>
+      <label for="chatNotify">새 문의 알림</label>
+    </div>
+
+    <div class="rh-chat-toolbar-actions">
+      <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('console/macro') }}">
+        <i class="bi bi-lightning-charge" aria-hidden="true"></i>매크로
+      </a>
+      {% if is_admin %}
+      <button type="button" class="btn-outline theme-secondary btn-sm" id="btnChatSettings"
+              aria-controls="widgetSettingsDrawer">
+        <i class="bi bi-gear" aria-hidden="true"></i>설정
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="rh-chat">
+
+  <!-- 왼쪽: 대화 목록 -->
+  <section class="card overflow-hidden rh-chat-list" aria-label="대화 목록">
+    <div class="rh-chat-list-head">
+      <div class="form-field">
+        <input type="checkbox" class="check" id="chatShowClosed">
+        <label for="chatShowClosed">종료된 대화 포함</label>
+      </div>
+    </div>
+    <div id="chatGrid" class="rh-chat-grid"></div>
+  </section>
+
+  <!-- 가운데: 대화 -->
+  <section class="card overflow-hidden rh-chat-main" aria-label="대화">
+
+    <div id="chatEmpty" class="rh-chat-empty">
       왼쪽 목록에서 대화를 선택하세요.
     </div>
 
-    <div id="chatPanel" class="hidden flex-1 flex-col overflow-hidden">
-      <div class="flex items-start gap-2 border-b border-slate-200 px-4 py-3">
-        <div class="min-w-0">
-          <p id="chatVisitor" class="truncate font-semibold text-slate-800"></p>
-          <p id="chatMeta" class="truncate text-xs text-slate-500"></p>
-          <p class="mt-1 flex flex-wrap items-center gap-1.5 text-xs">
-            <span id="chatAssignee" class="badge badge-gray"></span>
-            <button type="button" id="chatTake" class="hidden text-brand-600 hover:underline">담당 가져오기</button>
-            <button type="button" id="chatRelease" class="hidden text-slate-500 hover:underline">대기 중으로 돌리기</button>
-            <span id="chatPresence" class="text-amber-700"></span>
+    <div id="chatPanel" class="rh-chat-panel d-none">
+      <div class="rh-chat-head">
+        <div class="rh-chat-who">
+          <p id="chatVisitor" class="rh-chat-visitor text-truncate"></p>
+          <p id="chatMeta" class="rh-chat-meta text-truncate"></p>
+          <p class="rh-chat-assign">
+            <span id="chatAssignee" class="badge badge-subtle theme-secondary"></span>
+            <button type="button" id="chatTake" class="btn-text theme-primary btn-xs d-none">담당 가져오기</button>
+            <button type="button" id="chatRelease" class="btn-text theme-secondary btn-xs d-none">대기 중으로 돌리기</button>
+            <span id="chatPresence" class="fg-emphasis-warning"></span>
           </p>
         </div>
-        <div class="ml-auto flex shrink-0 gap-2">
-          <button type="button" id="chatViewer" class="btn btn-sm hidden border border-slate-300 text-slate-600">원격 화면</button>
-          <button type="button" id="chatRemote" class="btn btn-sm btn-primary">원격지원 시작</button>
-          <button type="button" id="chatClose" class="btn btn-sm border border-slate-300 text-slate-600">종료</button>
+        <div class="rh-chat-head-actions">
+          <button type="button" id="chatViewer" class="btn-outline theme-secondary btn-sm d-none">
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>원격 화면
+          </button>
+          <button type="button" id="chatRemote" class="btn-solid theme-primary btn-sm">
+            <i class="bi bi-display" aria-hidden="true"></i>원격지원 시작
+          </button>
+          <button type="button" id="chatClose" class="btn-outline theme-secondary btn-sm">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>종료
+          </button>
         </div>
       </div>
 
-      <div id="chatMessages" class="flex-1 space-y-3 overflow-y-auto bg-slate-50 px-4 py-4"></div>
+      <div id="chatMessages" class="rh-chat-messages"></div>
 
-      <!-- 추천 가이드: 방문자의 최근 메시지로 키워드 매칭(AI 없음). 검색어를 넣으면 직접 찾는다. -->
-      <div class="border-t border-slate-200 px-4 py-2">
-        <div class="flex items-center gap-2">
-          <span class="shrink-0 text-xs font-semibold text-slate-500" id="chatGuideTitle">추천 가이드</span>
-          <input id="chatGuideSearch" class="form-input ml-auto w-44 py-1 text-xs" placeholder="가이드 검색" maxlength="100">
-        </div>
-        <ul id="chatGuideList" class="mt-1 max-h-28 space-y-1 overflow-y-auto"></ul>
-      </div>
-
-      <form id="chatForm" class="relative flex gap-2 border-t border-slate-200 px-4 py-3">
+      <form id="chatForm" class="rh-chat-form">
         <!-- 매크로 목록(docs/macro-plan.md M2). 입력창에서 / 를 치거나 왼쪽 버튼으로 연다. -->
-        <div id="chatMacroPicker" class="absolute bottom-full left-4 right-4 z-20 mb-1 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"></div>
-        <button type="button" id="chatMacroButton" class="btn btn-sm btn-secondary shrink-0 self-stretch px-2.5 font-mono"
+        <div id="chatMacroPicker" class="rh-macro-picker d-none"></div>
+        <button type="button" id="chatMacroButton" class="btn-outline theme-secondary btn-sm rh-chat-macro-btn font-monospace"
                 title="매크로 (입력창에서 / 를 쳐도 열립니다)">/</button>
-        <textarea id="chatInput" rows="2" class="form-input flex-1 resize-none"
+        <textarea id="chatInput" rows="2" class="form-control rh-chat-input"
                   placeholder="답변을 입력하고 Enter 로 보냅니다. 줄바꿈은 Shift+Enter, / 를 치면 매크로."></textarea>
-        <button class="btn btn-primary shrink-0" type="submit">보내기</button>
+        <button class="btn-solid theme-primary flex-shrink-0" type="submit">
+          <i class="bi bi-send" aria-hidden="true"></i>보내기
+        </button>
       </form>
     </div>
 
-  </div>
+  </section>
+
+  <!-- 오른쪽: 추천 가이드. 방문자의 최근 메시지로 키워드 매칭(AI 없음). 검색어를 넣으면 직접 찾는다. -->
+  <aside class="card overflow-hidden rh-chat-guide" aria-labelledby="chatGuideTitle">
+    <div class="rh-chat-guide-head">
+      <h2 class="rh-chat-guide-title" id="chatGuideTitle">추천 가이드</h2>
+      <label class="visually-hidden" for="chatGuideSearch">가이드 검색</label>
+      <input id="chatGuideSearch" class="form-control form-control-sm" placeholder="가이드 검색" maxlength="100">
+    </div>
+    <ul id="chatGuideList" class="rh-chat-guide-list"></ul>
+  </aside>
+
 </div>
 
 <!-- 다른 상담원이 담당인 대화에 보낼 때 묻는다(docs/chat-operation-plan.md F7) -->
-<div id="chatConflictModal" data-modal-backdrop
-     class="modal-root fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
-  <div class="w-full max-w-md rounded-lg bg-white shadow-xl">
-    <div class="px-5 py-4 text-base font-semibold text-slate-800">다른 상담원이 응대 중입니다</div>
-    <div class="px-5 pb-5 text-sm text-slate-600" id="chatConflictBody"></div>
-    <div class="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-5 py-3">
-      <button type="button" class="btn btn-secondary" data-modal-close="chatConflictModal">취소</button>
-      <button type="button" class="btn btn-secondary" id="chatConflictJoin">함께 답하기</button>
-      <button type="button" class="btn btn-primary" id="chatConflictTake">담당 가져오고 보내기</button>
-    </div>
+<dialog class="dialog" id="chatConflictModal" aria-labelledby="chatConflictTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="chatConflictTitle">다른 상담원이 응대 중입니다</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="닫기"></button>
   </div>
-</div>
+  <div class="dialog-body fs-sm fg-2" id="chatConflictBody"></div>
+  <div class="dialog-footer flex-wrap">
+    <button type="button" class="btn-outline theme-secondary" data-bs-dismiss="dialog">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>취소
+    </button>
+    <button type="button" class="btn-outline theme-secondary" id="chatConflictJoin">
+      <i class="bi bi-people" aria-hidden="true"></i>함께 답하기
+    </button>
+    <button type="button" class="btn-solid theme-primary" id="chatConflictTake">
+      <i class="bi bi-check-lg" aria-hidden="true"></i>담당 가져오고 보내기
+    </button>
+  </div>
+</dialog>
 
 <script>
 var CHAT_ME = {{ {'id': php_int(me.id), 'name': me.name, 'role': me.role}|js }};

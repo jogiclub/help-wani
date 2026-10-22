@@ -4,13 +4,15 @@
  *       개인으로 복사, 여러 개 삭제, CSV 파일 등록(Dropzone)
  *
  * 편집 드로어는 macro-editor.js(RHMacroEditor), 검색 순위와 변수 표시는 macro-common.js(RHMacro). (docs/macro-plan.md)
+ * 화면은 Bootstrap 6 + 왔니. 배지·버튼은 RHUi 톤 이름으로 고르고, 숨기기는 d-none 이다.
+ * 매크로 이름·내용은 상담원이 쓴 글이므로 textContent 로만 그린다(CLAUDE.md 3.17).
  */
 (function ($) {
     'use strict';
 
     var UNUSED_DAYS = 90;
     var SCOPE_LABEL = { org: '공용', personal: '개인' };
-    var SCOPE_CLASS = { org: 'badge-blue', personal: 'badge-gray' };
+    var SCOPE_TONE = { org: 'blue', personal: 'gray' };
 
     var conf = window.MACRO_EDITOR || {};
     var rows = MACRO_ROWS;
@@ -58,7 +60,7 @@
     function favoriteButton(row) {
         var btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'text-lg leading-none ' + (row.favorite ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400');
+        btn.className = 'rh-macro-star' + (row.favorite ? ' is-on' : '');
         btn.textContent = row.favorite ? '★' : '☆';
         btn.title = row.favorite ? '즐겨찾기에서 빼기' : '즐겨찾기에 넣기';
         btn.addEventListener('click', function (event) {
@@ -72,21 +74,21 @@
         return [
             { key: '_fav', title: '★', width: 50, sortable: false, filterable: false,
               render: function (row) { return favoriteButton(row); } },
-            { key: 'name', title: '이름', width: 200, tooltip: true, cellClass: 'font-medium text-slate-800' },
+            { key: 'name', title: '이름', width: 200, tooltip: true, cellClass: 'fw-medium fg-1' },
             { key: 'body', title: '내용', flex: 1, width: 260, tooltip: true,
               format: function (v) { return RHMacro.label(v, conf.variables).replace(/\s+/g, ' '); } },
-            { key: 'scope', title: '범위', width: 80, render: RHGrid.badgeRenderer(SCOPE_CLASS, SCOPE_LABEL) },
+            { key: 'scope', title: '범위', width: 80, render: RHGrid.badgeRenderer(SCOPE_TONE, SCOPE_LABEL) },
             { key: 'created_by_name', title: '만든 사람', width: 110, format: function (v) { return v || '-'; } },
             { key: 'use_count', title: '사용', width: 80 },
             { key: 'last_used_at', title: '최근 사용', width: 130, format: RHGrid.shortDateTime },
             { key: 'updated_at', title: '수정', width: 130, format: RHGrid.shortDateTime },
-            { key: '_actions', title: '', width: 190, sortable: false, filterable: false,
+            { key: '_actions', title: '', width: 240, sortable: false, filterable: false, pinned: 'right',
               render: RHGrid.buttonsRenderer([
-                  { label: '고치기', show: function (row) { return row.can_edit; },
+                  { label: '고치기', className: 'secondary', show: function (row) { return row.can_edit; },
                     onClick: function (row) { RHMacroEditor.open({ macro: row }); } },
-                  { label: '개인으로 복사', show: function (row) { return row.scope === 'org'; },
+                  { label: '개인으로 복사', className: 'secondary', show: function (row) { return row.scope === 'org'; },
                     onClick: copyToPersonal },
-                  { label: '삭제', className: 'border border-red-300 text-red-600', show: function (row) { return row.can_edit; },
+                  { label: '삭제', className: 'danger', show: function (row) { return row.can_edit; },
                     onClick: function (row) { removeMacros([row]); } }
               ]) }
         ];
@@ -95,8 +97,8 @@
     function render() {
         var favoriteTab = scope === 'favorite';
 
-        $('#macroGridCard').toggleClass('hidden', favoriteTab);
-        $('#macroFavCard').toggleClass('hidden', !favoriteTab);
+        $('#macroGridCard').toggleClass('d-none', favoriteTab);
+        $('#macroFavCard').toggleClass('d-none', !favoriteTab);
         $('#macroSearch, #macroUnused, #btnMacroDelete').prop('disabled', favoriteTab);
 
         if (favoriteTab) {
@@ -135,29 +137,29 @@
         var favs = favoriteRows();
 
         list.innerHTML = '';
-        $('#macroFavEmpty').toggleClass('hidden', favs.length > 0);
+        $('#macroFavEmpty').toggleClass('d-none', favs.length > 0);
         $('#macroFavCount').text(favs.length + ' / ' + conf.maxFavorites);
 
         favs.forEach(function (row) {
             var li = document.createElement('li');
-            li.className = 'flex cursor-move items-center gap-3 px-4 py-2.5 text-sm hover:bg-slate-50';
+            li.className = 'rh-macro-fav d-flex align-items-center gap-4 px-5 py-3 fs-sm';
             li.draggable = true;
             li.dataset.id = row.id;
 
             var handle = document.createElement('span');
-            handle.className = 'text-slate-300';
+            handle.className = 'rh-macro-handle';
             handle.textContent = '⋮⋮';
 
             var name = document.createElement('span');
-            name.className = 'w-48 shrink-0 truncate font-medium text-slate-800';
+            name.className = 'rh-macro-fav-name flex-shrink-0 text-truncate fw-medium fg-1';
             name.textContent = row.name;
 
             var body = document.createElement('span');
-            body.className = 'min-w-0 flex-1 truncate text-slate-500';
+            body.className = 'min-w-0 flex-grow-1 text-truncate fg-3';
             body.textContent = RHMacro.label(row.body, conf.variables).replace(/\s+/g, ' ');
 
             var badge = document.createElement('span');
-            badge.className = 'badge ' + SCOPE_CLASS[row.scope];
+            badge.className = RHUi.badge(SCOPE_TONE[row.scope]);
             badge.textContent = SCOPE_LABEL[row.scope];
 
             var star = favoriteButton(row);
@@ -246,25 +248,25 @@
     // ------------------------------------------------------------------
 
     function showImportResult(res) {
-        var $box = $('#macroImportResult').empty().removeClass('hidden');
+        var $box = $('#macroImportResult').empty().removeClass('d-none');
         var errors = (res && res.data && res.data.errors) || [];
 
-        $('<p class="font-semibold">').text(res.message || '').appendTo($box);
+        $('<p class="mb-0 fw-semibold">').text(res.message || '').appendTo($box);
 
         if (errors.length) {
-            var $ul = $('<ul class="mt-1 list-disc space-y-0.5 pl-4">').appendTo($box);
+            var $ul = $('<ul class="mt-1 mb-0 ps-5">').appendTo($box);
             errors.slice(0, 100).forEach(function (e) {
                 $('<li>').text((e.row > 0 ? e.row + '행 ' : '') + (e.field ? '[' + e.field + '] ' : '') + e.message).appendTo($ul);
             });
             if (errors.length > 100) {
-                $('<p class="mt-1">').text('… 외 ' + (errors.length - 100) + '건').appendTo($box);
+                $('<p class="mt-1 mb-0">').text('… 외 ' + (errors.length - 100) + '건').appendTo($box);
             }
         }
     }
 
     function bindImport() {
         $('#btnMacroImport').on('click', function () {
-            $('#macroImportResult').addClass('hidden').empty();
+            $('#macroImportResult').addClass('d-none').empty();
             openModal('macroImportModal');
         });
 
@@ -308,8 +310,8 @@
 
         $('#macroTabs').on('click', 'button', function () {
             scope = $(this).data('scope');
-            $('#macroTabs button').removeClass('btn-primary').addClass('btn-ghost');
-            $(this).removeClass('btn-ghost').addClass('btn-primary');
+            $('#macroTabs button').removeClass('active').attr('aria-selected', 'false');
+            $(this).addClass('active').attr('aria-selected', 'true');
             render();
         });
 

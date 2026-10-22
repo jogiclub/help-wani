@@ -3,7 +3,9 @@
  * 역할: 상담 대화 > 설정 드로어 (탭 전환, 스니펫 복사/키 재발급, 인사말 변수·바로가기 버튼·미리보기, 요일별 운영 시간 편집,
  *       휴일 추가/삭제/공휴일 불러오기, 답변 속도·전화 버튼 설정, 연락처 카드·팔로업 메일 설정, 저장)
  *
- * 뷰(views/console/_widget_settings.php)가 WIDGET_URLS, WIDGET_HOURS, WIDGET_HOLIDAYS, WIDGET_OPEN_SETTINGS, WIDGET_GREETING 을 넘긴다.
+ * 뷰(templates/console/_widget_settings.html)가 WIDGET_URLS, WIDGET_HOURS, WIDGET_HOLIDAYS, WIDGET_OPEN_SETTINGS, WIDGET_GREETING 을 넘긴다.
+ * 화면은 Bootstrap 6 + 왔니(<dialog class="drawer">). JS 로 만드는 요소의 클래스도 Bootstrap 6 이름이며, 버튼·배지는 RHUi 톤 이름으로 고른다.
+ * 숨기기는 d-none 이다(Tailwind 의 hidden 이 아님).
  * 운영 시간과 휴일 시각은 조직 시간대의 벽시계 값('HH:MM')이다(docs/chat-operation-plan.md).
  */
 (function ($) {
@@ -58,39 +60,40 @@
         WEEK.forEach(function (day) {
             var weekday = day[0];
             var ranges = hours[weekday] || [];
-            var $row = $('<div class="flex items-start gap-2 rounded-md border border-slate-200 px-2.5 py-1.5"></div>');
+            var $row = $('<div class="rh-ws-day-row"></div>');
+            var checkId = 'widgetHoursDay_' + weekday;
 
-            var $check = $('<label class="flex w-14 shrink-0 items-center gap-1.5 pt-1 text-sm font-medium text-slate-700"></label>')
-                .append($('<input type="checkbox" class="rounded border-slate-300">').prop('checked', ranges.length > 0)
+            var $check = $('<div class="form-field rh-ws-day"></div>')
+                .append($('<input type="checkbox" class="check">').attr('id', checkId).prop('checked', ranges.length > 0)
                     .on('change', function () {
                         hours[weekday] = this.checked ? [DEFAULT_RANGE.slice()] : [];
                         renderHours();
                     }))
-                .append(document.createTextNode(day[1]));
+                .append($('<label class="fs-sm fw-medium"></label>').attr('for', checkId).text(day[1]));
 
-            var $ranges = $('<div class="flex flex-1 flex-col gap-1"></div>');
+            var $ranges = $('<div class="d-flex flex-grow-1 flex-column gap-1 min-w-0"></div>');
 
             if (!ranges.length) {
-                $ranges.append('<span class="pt-1 text-sm text-slate-400">휴무</span>');
+                $ranges.append('<span class="rh-ws-closed fs-sm fg-3">휴무</span>');
             }
 
             ranges.forEach(function (range, index) {
-                var $line = $('<div class="flex items-center gap-1"></div>');
+                var $line = $('<div class="d-flex flex-wrap align-items-center gap-2"></div>');
 
-                $line.append($('<select class="form-input w-auto py-1 text-sm"></select>').html(timeOptions(range[0]))
+                $line.append($('<select class="form-control form-control-sm w-auto" aria-label="시작"></select>').html(timeOptions(range[0]))
                     .on('change', function () { range[0] = this.value; }));
-                $line.append('<span class="text-slate-400">-</span>');
-                $line.append($('<select class="form-input w-auto py-1 text-sm"></select>').html(timeOptions(range[1]))
+                $line.append('<span class="fg-3">-</span>');
+                $line.append($('<select class="form-control form-control-sm w-auto" aria-label="끝"></select>').html(timeOptions(range[1]))
                     .on('change', function () { range[1] = this.value; }));
 
                 if (index > 0) {
-                    $line.append($('<button type="button" class="btn btn-sm btn-ghost" title="이 시간대 지우기">빼기</button>')
+                    $line.append($('<button type="button" title="이 시간대 지우기">빼기</button>').addClass(RHUi.button('ghost'))
                         .on('click', function () {
                             ranges.splice(index, 1);
                             renderHours();
                         }));
                 } else if (ranges.length < MAX_RANGES) {
-                    $line.append($('<button type="button" class="btn btn-sm btn-ghost" title="같은 날 시간대 추가">+ 시간대</button>')
+                    $line.append($('<button type="button" title="같은 날 시간대 추가">+ 시간대</button>').addClass(RHUi.button('ghost'))
                         .on('click', function () {
                             var last = ranges[ranges.length - 1];
                             ranges.push([last[1], last[1] < '23:00' ? addHour(last[1]) : '24:00']);
@@ -130,7 +133,7 @@
         var $list = $('#widgetHolidayList').empty();
 
         if (!holidays.length) {
-            $list.append('<li class="px-3 py-2.5 text-slate-400">등록된 휴일이 없습니다.</li>');
+            $list.append('<li class="px-4 py-3 fg-3">등록된 휴일이 없습니다.</li>');
             return;
         }
 
@@ -142,12 +145,12 @@
             }
 
             var detail = item.mode === 'short' ? '단축 ' + item.start + '-' + item.end : '종일 휴무';
-            var $li = $('<li class="flex items-center gap-2 px-3 py-2"></li>');
+            var $li = $('<li class="d-flex align-items-center gap-3 px-4 py-2"></li>');
 
-            $li.append($('<span class="w-40 shrink-0 font-mono text-xs text-slate-600"></span>').text(period));
-            $li.append($('<span class="min-w-0 flex-1 truncate text-slate-800"></span>').text(item.name));
-            $li.append($('<span class="shrink-0 text-xs text-slate-500"></span>').text(detail));
-            $li.append($('<button type="button" class="btn btn-sm btn-ghost text-red-600">삭제</button>')
+            $li.append($('<span class="rh-ws-period flex-shrink-0 font-monospace fs-xs fg-2"></span>').text(period));
+            $li.append($('<span class="min-w-0 flex-grow-1 text-truncate fg-1"></span>').text(item.name));
+            $li.append($('<span class="flex-shrink-0 fs-xs fg-3"></span>').text(detail));
+            $li.append($('<button type="button">삭제</button>').addClass(RHUi.button('danger'))
                 .on('click', function () { deleteHoliday(item); }));
 
             $list.append($li);
@@ -190,27 +193,28 @@
             var $list = $('#widgetHolidayCandidateList').empty();
 
             if (!data.candidates.length) {
-                $list.append('<li class="text-slate-400">조직 국가의 공휴일 목록이 없습니다. 직접 추가해 주세요.</li>');
+                $list.append('<li class="fg-3">조직 국가의 공휴일 목록이 없습니다. 직접 추가해 주세요.</li>');
             }
 
-            data.candidates.forEach(function (item) {
-                var $label = $('<label class="flex items-center gap-2"></label>');
-                var $check = $('<input type="checkbox" class="rounded border-slate-300">')
+            data.candidates.forEach(function (item, index) {
+                var checkId = 'widgetHolidayCandidate_' + index;
+                var $label = $('<label class="d-flex flex-wrap align-items-center gap-3"></label>').attr('for', checkId);
+                var $check = $('<input type="checkbox" class="check">')
+                    .attr('id', checkId)
                     .data('item', item)
                     .prop('disabled', item.added);
 
-                $label.append($check);
-                $label.append($('<span class="font-mono text-xs text-slate-500"></span>').text(item.date));
+                $label.append($('<span class="font-monospace fs-xs fg-3"></span>').text(item.date));
                 $label.append($('<span></span>').text(item.name));
 
                 if (item.added) {
-                    $label.append('<span class="badge badge-gray">추가됨</span>');
+                    $label.append($('<span>추가됨</span>').addClass(RHUi.badge('gray')));
                 }
 
-                $list.append($('<li></li>').append($label));
+                $list.append($('<li class="form-field"></li>').append($check, $label));
             });
 
-            $('#widgetHolidayCandidates').removeClass('hidden');
+            $('#widgetHolidayCandidates').removeClass('d-none');
         });
     }
 
@@ -231,7 +235,7 @@
             showToast(message, 'success');
             holidays = data.holidays;
             renderHolidays();
-            $('#widgetHolidayCandidates').addClass('hidden');
+            $('#widgetHolidayCandidates').addClass('d-none');
         });
     }
 
@@ -243,13 +247,13 @@
         var $list = $('#widgetGreetingButtons').empty();
 
         greetingButtons.forEach(function (item, index) {
-            var $row = $('<li class="flex items-center gap-2"></li>');
+            var $row = $('<li class="d-flex align-items-center gap-3"></li>');
 
-            $row.append($('<input type="text" class="form-input w-32 py-1 text-sm" maxlength="30" placeholder="버튼 이름">')
+            $row.append($('<input type="text" class="form-control form-control-sm rh-ws-btn-label" maxlength="30" placeholder="버튼 이름" aria-label="버튼 이름">')
                 .val(item.label).on('input', function () { item.label = this.value; renderGreetingPreview(); }));
-            $row.append($('<input type="url" class="form-input flex-1 py-1 text-sm" maxlength="500" placeholder="https://">')
+            $row.append($('<input type="url" class="form-control form-control-sm flex-grow-1 min-w-0" maxlength="500" placeholder="https://" aria-label="버튼 주소">')
                 .val(item.url).on('input', function () { item.url = this.value; }));
-            $row.append($('<button type="button" class="btn btn-sm btn-ghost text-slate-500">삭제</button>')
+            $row.append($('<button type="button">삭제</button>').addClass(RHUi.button('ghost'))
                 .on('click', function () {
                     greetingButtons.splice(index, 1);
                     renderGreetingButtons();
@@ -268,15 +272,15 @@
         var $buttons = $('#widgetGreetingPreviewButtons').empty();
 
         if (!body) {
-            $preview.addClass('text-slate-400').text('인사말이 없으면 이 말풍선은 보이지 않습니다.');
+            $preview.addClass('is-empty').text('인사말이 없으면 이 말풍선은 보이지 않습니다.');
         } else {
-            $preview.removeClass('text-slate-400')
+            $preview.removeClass('is-empty')
                 .text(body.split('{visitor_name}').join('홍길동').split('{org_name}').join(WIDGET_GREETING.orgName));
         }
 
         greetingButtons.forEach(function (item) {
             if ($.trim(item.label)) {
-                $buttons.append($('<span class="rounded-md border border-brand-200 bg-white px-2.5 py-1 text-xs text-brand-700"></span>').text(item.label));
+                $buttons.append($('<span class="rh-ws-chip"></span>').text(item.label));
             }
         });
     }
@@ -337,12 +341,12 @@
     }
 
     function showTab(key) {
-        $('#widgetSettingsDrawer .drawer-tab').each(function () {
-            $(this).toggleClass('is-active', $(this).data('tab') === key)
+        $('#widgetSettingsDrawer [data-tab]').each(function () {
+            $(this).toggleClass('active', $(this).data('tab') === key)
                 .attr('aria-selected', $(this).data('tab') === key ? 'true' : 'false');
         });
         $('#widgetSettingsDrawer [data-tab-panel]').each(function () {
-            $(this).toggleClass('hidden', $(this).data('tab-panel') !== key);
+            $(this).toggleClass('d-none', $(this).data('tab-panel') !== key);
         });
     }
 
@@ -364,7 +368,7 @@
         $('#holidayShortEnd').html(timeOptions('13:00'));
 
         $('#btnChatSettings').on('click', function () { openDrawer('widgetSettingsDrawer'); });
-        $('#widgetSettingsDrawer .drawer-tab').on('click', function () { showTab($(this).data('tab')); });
+        $('#widgetSettingsDrawer [data-tab]').on('click', function () { showTab($(this).data('tab')); });
 
         $('#btnCopySnippet').on('click', function () {
             var $snippet = $('#widgetSnippet');
@@ -408,11 +412,11 @@
 
         $('input[name="holidayMode"]').on('change', function () {
             var short = $('input[name="holidayMode"]:checked').val() === 'short';
-            $('#holidayShortTimes').toggleClass('hidden', !short).toggleClass('flex', short);
+            $('#holidayShortTimes').toggleClass('d-none', !short).toggleClass('d-flex', short);
         });
         $('#btnHolidayAdd').on('click', addHoliday);
         $('#btnHolidayCandidates').on('click', loadCandidates);
-        $('#btnHolidayCandidatesClose').on('click', function () { $('#widgetHolidayCandidates').addClass('hidden'); });
+        $('#btnHolidayCandidatesClose').on('click', function () { $('#widgetHolidayCandidates').addClass('d-none'); });
         $('#btnHolidayCandidatesAdd').on('click', addCandidates);
 
         $('#btnSaveWidget').on('click', save);

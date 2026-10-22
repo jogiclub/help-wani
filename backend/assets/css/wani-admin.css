@@ -1,0 +1,42 @@
+/**
+ * 파일 위치: backend/assets/css/wani-admin.css
+ * 역할: 조직 관리(통계·상담원 관리·조직 정보) 화면 전용 모양
+ *
+ * 대상: admin/dashboard, admin/agents, admin/organization
+ * 공통 모양(셸, 패널, 드로어, 배지, wgrid 색)은 wani.css 에 있다. 이 파일은 그 화면에만 필요한 것만 둔다.
+ * 값은 wani.css 의 --wani-* 토큰을 쓴다(색을 새로 만들지 않는다).
+ */
+
+/* ------------------------------------------------------------------ 조직 관리 통계 (admin/dashboard) */
+/* 숫자 칸: 이름 12px 흐린 글자, 값 24px/700 */
+.rh-stat-label { color: var(--wani-ink-muted); font-size: 12px; }
+.rh-stat-value {
+    margin-top: 4px;
+    color: var(--wani-ink-strong);
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 막대 목록: 이름 | 막대(.progress) | 값 */
+.rh-bar-row {
+    display: grid;
+    grid-template-columns: 160px minmax(0, 1fr) 48px;
+    align-items: center;
+    gap: 12px;
+}
+.rh-bar-row.is-date { grid-template-columns: 96px minmax(0, 1fr) 48px; }
+.rh-bar-label { color: var(--wani-ink-subtle); font-size: 12px; font-variant-numeric: tabular-nums; }
+.rh-bar-value { color: var(--wani-ink); font-size: 14px; text-align: end; font-variant-numeric: tabular-nums; }
+.rh-bar { --bs-progress-height: 12px; --bs-progress-box-shadow: none; }
+@media (width < 768px) {
+    .rh-bar-row { grid-template-columns: 110px minmax(0, 1fr) 40px; gap: 8px; }
+    .rh-bar-row.is-date { grid-template-columns: 84px minmax(0, 1fr) 40px; }
+}
+
+/* ------------------------------------------------------------------ 조직 정보 (admin/organization) */
+/* 한 줄 폼이라 너무 넓게 퍼지지 않게 폭을 줄인다. */
+.rh-form-card { width: 100%; max-width: 720px; }
+/* 로고 미리보기: 높이 56px, 너비 160px 까지(d-none 으로 숨기므로 display 는 주지 않는다) */
+.rh-logo-preview { max-height: 56px; max-width: 160px; }

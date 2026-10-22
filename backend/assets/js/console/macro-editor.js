@@ -2,7 +2,8 @@
  * 파일 위치: assets/js/console/macro-editor.js
  * 역할: 매크로 편집 드로어(만들기/고치기) — 범위 선택, 글자 수, 변수 넣기, 저장
  *
- * 마크업은 views/console/_macro_edit.php, 설정은 그 뷰가 넘기는 MACRO_EDITOR.
+ * 마크업은 templates/console/_macro_edit.html 의 Bootstrap 6 드로어, 설정은 그 뷰가 넘기는 MACRO_EDITOR.
+ * 숨기기는 d-none 이다.
  *
  * 사용 예
  *   RHMacroEditor.open({ macro: row });                       // 고치기
@@ -41,17 +42,17 @@
 
         // 고칠 때는 범위를 바꾸지 않는다.
         if (macro) {
-            $('#macroScopeField').addClass('hidden');
-            $('#macroScopeFixed').removeClass('hidden')
+            $('#macroScopeField').addClass('d-none');
+            $('#macroScopeFixed').removeClass('d-none')
                 .text('범위: ' + (macro.scope === 'org' ? '공용(조직의 모든 상담원)' : '개인(나만)'));
         } else {
             var scope = options.scope === 'org' && conf.isAdmin ? 'org' : 'personal';
-            $('#macroScopeField').removeClass('hidden');
-            $('#macroScopeFixed').addClass('hidden');
+            $('#macroScopeField').removeClass('d-none');
+            $('#macroScopeFixed').addClass('d-none');
             $('input[name="macroScope"][value="' + scope + '"]').prop('checked', true);
         }
 
-        $('#macroHint').toggleClass('hidden', !options.hint).text(options.hint || '');
+        $('#macroHint').toggleClass('d-none', !options.hint).text(options.hint || '');
 
         updateCounts();
         openDrawer('macroEditDrawer');

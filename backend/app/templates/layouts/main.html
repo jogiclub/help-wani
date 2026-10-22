@@ -2,71 +2,89 @@
   파일 위치: backend/app/templates/layouts/main.html
   역할: 조직 소속 사용자(상담원, 조직 관리자) 레이아웃
 
-  상단 메뉴. 순서는 가이드, 상담 대화, 원격지원. 조직 관리 하위 화면(상담원 관리, 조직 정보)도 관리자에게는 여기 바로 둔다.
-  상담 위젯 설정은 상담 대화 화면의 설정 드로어에 있다.
-  조직 관리(/admin 통계) 자체는 메뉴에 두지 않고 왼쪽 위 서비스 이름을 누르면 열린다.
-  [주소, 이름, 현재 화면 여부]. '|' 는 구분선.
+  Bootstrap 6 + 왔니 앱 셸(docs/frontend-bootstrap6-plan.md 3.2). 헤더 60px, 사이드바 200px.
+  1280px(Bootstrap 6 xl) 미만에서는 사이드바가 왼쪽 드로어가 되고 헤더의 메뉴 버튼으로 연다.
+  사이드바 구역: OVERVIEW(조직 관리 통계, 관리자) / CHAT(상담 대화) / REMOTE(원격지원) / SETTING(가이드·상담원 관리·조직 정보, 관리자).
+  상담 위젯 설정은 상담 대화 화면의 설정 드로어, 매크로는 상담 대화의 [매크로] 버튼에 있다.
+  원격 화면(console/session/{id})은 화면을 넓게 쓰도록 사이드바를 접어(70px) 연다.
+  메뉴 항목은 [주소, 이름, 아이콘(bootstrap-icons), 현재 화면 여부], 구역 이름은 문자열.
 -#}
+{%- set ui_kit = 'bootstrap' -%}
 {%- set is_super = session.get('is_super', false) -%}
 {%- set uri = uri_string() -%}
 {%- set is_admin = session.get('agent_role') == 'admin' -%}
 {#- 상담원은 /admin 에 들어갈 수 없으므로 원격지원으로 보낸다. -#}
 {%- set home_url = 'admin' if is_admin else 'console' -%}
+{%- set collapsed = uri.startswith('console/session') -%}
 {%- set menu = [] -%}
-{#- 가이드는 관리자만 고칠 수 있으므로 관리자에게만 맨 앞에 둔다. -#}
 {%- if is_admin -%}
-  {%- set _ = menu.append(['admin/guide', '가이드', uri == 'admin/guide' or uri.startswith('admin/guide/')]) -%}
+  {%- set _ = menu.append('OVERVIEW') -%}
+  {%- set _ = menu.append(['admin', '조직 관리 통계', 'bar-chart-line', uri == 'admin']) -%}
 {%- endif -%}
-{%- set _ = menu.append(['console/chat', '상담 대화', uri == 'console/chat' or uri.startswith('console/chat/')]) -%}
+{%- set _ = menu.append('CHAT') -%}
+{%- set _ = menu.append(['console/chat', '상담 대화', 'chat-dots', uri == 'console/chat' or uri.startswith('console/chat/') or uri.startswith('console/macro')]) -%}
+{%- set _ = menu.append('REMOTE') -%}
 {#- console/session/{id} (원격 화면)은 원격지원에서 들어가므로 원격지원에 불을 켠다. -#}
-{%- set _ = menu.append(['console', '원격지원', uri == 'console' or uri.startswith('console/session')]) -%}
+{%- set _ = menu.append(['console', '원격지원', 'display', uri == 'console' or uri.startswith('console/session')]) -%}
 {%- if is_admin -%}
-  {%- set _ = menu.append('|') -%}
-  {%- set _ = menu.append(['admin/agents', '상담원 관리', uri == 'admin/agents' or uri.startswith('admin/agents/')]) -%}
-  {%- set _ = menu.append(['admin/organization', '조직 정보', uri == 'admin/organization' or uri.startswith('admin/organization/')]) -%}
+  {%- set _ = menu.append('SETTING') -%}
+  {%- set _ = menu.append(['admin/guide', '가이드', 'journal-text', uri == 'admin/guide' or uri.startswith('admin/guide/')]) -%}
+  {%- set _ = menu.append(['admin/agents', '상담원 관리', 'people', uri == 'admin/agents' or uri.startswith('admin/agents/')]) -%}
+  {%- set _ = menu.append(['admin/organization', '조직 정보', 'building', uri == 'admin/organization' or uri.startswith('admin/organization/')]) -%}
 {%- endif -%}
 <!doctype html>
-<html lang="{{ i18n.locale }}">
+<html lang="{{ i18n.locale }}" data-bs-theme="light">
 <head>
 {% include 'layouts/_head.html' %}
 </head>
-<body class="min-h-screen">
+<body class="rh-app">
 
-<header class="bg-slate-900 text-white">
-  <div class="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3">
-    <a class="text-lg font-bold" href="{{ base_url(home_url) }}"
-       {{ 'title="조직 관리"'|safe if is_admin else '' }}>{{ app_name }}</a>
+<header class="rh-header">
+  <button type="button" class="btn-icon xl:d-none" data-bs-toggle="drawer" data-bs-target="#rhSidebar"
+          aria-controls="rhSidebar" aria-label="메뉴 열기">
+    <i class="bi bi-list fs-xl" aria-hidden="true"></i>
+  </button>
+  <a class="rh-brand" href="{{ base_url(home_url) }}">{{ app_name }}</a>
+  <span class="rh-header-org d-none sm:d-inline">{{ session.get('org_name', '') }}</span>
 
-    <nav class="hidden flex-wrap gap-1 sm:flex">
-      {% for item in menu %}
-        {% if item == '|' %}
-          <span class="mx-1 my-1.5 w-px bg-slate-700" aria-hidden="true"></span>
-        {% else %}
-          <a class="rounded px-3 py-1.5 text-sm {{ 'bg-slate-800 text-white' if item[2] else 'text-slate-300 hover:bg-slate-800 hover:text-white' }}"
-             href="{{ base_url(item[0]) }}"{{ ' aria-current="page"'|safe if item[2] else '' }}>{{ item[1] }}</a>
-        {% endif %}
-      {% endfor %}
-    </nav>
-
-    <div class="ml-auto flex items-center gap-3">
-      <span class="hidden text-sm text-slate-300 md:inline">
-        {{ session.get('org_name', '') }} ·
-        {{ session.get('agent_name', '') }}
-      </span>
-      {% if is_super %}
-      <!-- 운영자 계정만 보이는 콘솔 전환 링크. 메뉴 자체는 분리되어 있다. -->
-      <a class="btn btn-sm border border-amber-400/60 text-amber-300 hover:bg-amber-400/10"
-         href="{{ base_url('operator') }}">운영자 콘솔</a>
-      {% endif %}
-      <a class="btn btn-sm border border-slate-600 text-slate-200 hover:bg-slate-800"
-         href="{{ base_url('logout') }}">로그아웃</a>
-    </div>
+  <div class="rh-header-end">
+    <span class="rh-header-user d-none md:d-inline">{{ session.get('agent_name', '') }}</span>
+    {% if is_super %}
+    <!-- 운영자 계정만 보이는 콘솔 전환 링크. 메뉴 자체는 분리되어 있다. -->
+    <a class="btn-outline theme-warning btn-sm" href="{{ base_url('operator') }}">
+      <i class="bi bi-shield-lock" aria-hidden="true"></i><span class="d-none sm:d-inline">운영자 콘솔</span>
+    </a>
+    {% endif %}
+    <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('logout') }}">
+      <i class="bi bi-box-arrow-right" aria-hidden="true"></i><span class="d-none sm:d-inline">로그아웃</span>
+    </a>
   </div>
 </header>
 
-<main class="mx-auto {{ 'max-w-full' if fluid|default(false) else 'max-w-7xl' }} px-4 py-6">
+<div class="rh-body{{ ' is-collapsed' if collapsed else '' }}">
+  <dialog class="xl:drawer drawer-start rh-sidebar" id="rhSidebar" tabindex="-1" aria-labelledby="rhSidebarTitle">
+    <div class="drawer-header">
+      <h2 class="drawer-title" id="rhSidebarTitle">메뉴</h2>
+      <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="닫기"></button>
+    </div>
+    <nav class="drawer-body" aria-label="주 메뉴">
+      {% for item in menu %}
+        {% if item is string %}
+          <div class="rh-menu-section">{{ item }}</div>
+        {% else %}
+          <a class="rh-menu-link{{ ' is-active' if item[3] else '' }}" href="{{ base_url(item[0]) }}"
+             {{- ' aria-current="page"'|safe if item[3] else '' }}>
+            <i class="bi bi-{{ item[2] }}" aria-hidden="true"></i><span class="rh-menu-text">{{ item[1] }}</span>
+          </a>
+        {% endif %}
+      {% endfor %}
+    </nav>
+  </dialog>
+
+  <main class="rh-main" id="main">
 {% include content_view %}
-</main>
+  </main>
+</div>
 
 {% include 'layouts/_partials.html' %}
 </body>

@@ -123,11 +123,12 @@
         popup.innerHTML = '';
 
         var list = document.createElement('div');
-        list.className = 'max-h-72 overflow-y-auto py-1';
+        // 모양은 wani-chat.css 의 .rh-macro-* 에 있다.
+        list.className = 'rh-macro-list';
 
         if (!items.length) {
             var empty = document.createElement('p');
-            empty.className = 'px-3 py-4 text-center text-sm text-slate-400';
+            empty.className = 'rh-macro-empty';
             empty.textContent = macros.length ? '맞는 매크로가 없습니다.' : '아직 매크로가 없습니다. 아래 [매크로 관리] 에서 만들어 보세요.';
             list.appendChild(empty);
         }
@@ -138,7 +139,7 @@
             if (item.section !== lastSection) {
                 lastSection = item.section;
                 var head = document.createElement('div');
-                head.className = 'px-3 pb-0.5 pt-2 text-[11px] font-semibold text-slate-400';
+                head.className = 'rh-macro-section';
                 head.textContent = item.section === '즐겨찾기' ? '★ 즐겨찾기' : item.section;
                 list.appendChild(head);
             }
@@ -146,19 +147,18 @@
             var row = document.createElement('button');
             row.type = 'button';
             row.dataset.index = index;
-            row.className = 'flex w-full items-baseline gap-3 px-3 py-1.5 text-left text-sm '
-                + (index === active ? 'bg-brand-50' : 'hover:bg-slate-50');
+            row.className = 'rh-macro-item' + (index === active ? ' is-active' : '');
 
             var name = document.createElement('span');
-            name.className = 'w-40 shrink-0 truncate font-medium text-slate-800';
+            name.className = 'rh-macro-name';
             name.textContent = item.macro.name;
 
             var body = document.createElement('span');
-            body.className = 'min-w-0 flex-1 text-slate-500 ' + (index === active ? 'line-clamp-3 whitespace-pre-wrap' : 'truncate');
+            body.className = 'rh-macro-body';
             body.textContent = RHMacro.label(item.macro.body, conf.variables);
 
             var scope = document.createElement('span');
-            scope.className = 'shrink-0 text-[11px] text-slate-400';
+            scope.className = 'rh-macro-scope';
             scope.textContent = item.macro.scope === 'org' ? '공용' : '개인';
 
             row.appendChild(name);
@@ -168,12 +168,11 @@
         });
 
         var foot = document.createElement('div');
-        foot.className = 'flex items-center gap-3 border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400';
+        foot.className = 'rh-macro-foot';
         foot.appendChild(document.createTextNode('↑↓ 이동 · Enter 넣기 · Esc 닫기'));
 
         if (opts.manageUrl) {
             var manage = document.createElement('a');
-            manage.className = 'ml-auto text-brand-600 hover:underline';
             manage.href = opts.manageUrl;
             manage.target = '_blank';
             manage.rel = 'noopener';
@@ -192,7 +191,7 @@
         if (!open) {
             open = true;
             active = 0;
-            opts.popup.classList.remove('hidden');
+            opts.popup.classList.remove('d-none');
             load(false);
             loadSuggestions(opts.context().conversationId);
         }
@@ -202,7 +201,7 @@
     function hide() {
         open = false;
         token = null;
-        opts.popup.classList.add('hidden');
+        opts.popup.classList.add('d-none');
     }
 
     // ------------------------------------------------------------------

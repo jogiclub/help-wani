@@ -4,6 +4,8 @@
  *
  * 블록은 [{type:'text',text}, {type:'image',src,caption}, {type:'video',url|youtube_id,caption}] 로 보낸다.
  * 서버(Guide_model::clean_article)가 같은 검사를 다시 하므로 여기서는 입력 편의만 맡는다.
+ *
+ * Bootstrap 6 화면(layouts/main.html). 블록 버튼 클래스는 RHUi 톤 이름으로 고른다(common.js).
  */
 (function ($) {
     'use strict';
@@ -33,28 +35,43 @@
     // 블록
     // ------------------------------------------------------------------
 
+    /** 아이콘(Bootstrap Icons)을 앞에 둔 버튼. 글자가 없으면 title 을 aria-label 로도 쓴다. */
+    function toolButton(tone, icon, text, title) {
+        var $btn = $('<button type="button">').addClass(RHUi.button(tone))
+            .append($('<i aria-hidden="true">').addClass('bi bi-' + icon));
+
+        if (text) {
+            $btn.append(document.createTextNode(text));
+        }
+        if (title) {
+            $btn.attr({ title: title, 'aria-label': title });
+        }
+
+        return $btn;
+    }
+
     function toolbar(type) {
-        var $bar = $('<div class="mb-2 flex items-center gap-1">');
-        $bar.append($('<span class="mr-auto text-xs font-semibold text-slate-500">').text(TYPE_LABEL[type]));
-        $bar.append('<button type="button" class="btn btn-sm btn-ghost" data-move="-1" title="위로">↑</button>');
-        $bar.append('<button type="button" class="btn btn-sm btn-ghost" data-move="1" title="아래로">↓</button>');
-        $bar.append('<button type="button" class="btn btn-sm btn-ghost text-red-600" data-remove>삭제</button>');
+        var $bar = $('<div class="d-flex align-items-center gap-1 mb-3">');
+        $bar.append($('<span class="me-auto fs-xs fw-semibold fg-3">').text(TYPE_LABEL[type]));
+        $bar.append(toolButton('ghost', 'arrow-up', '', '위로').attr('data-move', '-1'));
+        $bar.append(toolButton('ghost', 'arrow-down', '', '아래로').attr('data-move', '1'));
+        $bar.append(toolButton('danger', 'trash', '삭제').attr('data-remove', ''));
 
         return $bar;
     }
 
     function textBlock(block) {
-        var $el = $('<div class="guide-block rounded-lg border border-slate-200 p-3" data-type="text">').append(toolbar('text'));
-        $el.append($('<textarea class="form-input" rows="5" data-field="text" maxlength="5000">').val(block.text || ''));
+        var $el = $('<div class="guide-block rh-guide-block" data-type="text">').append(toolbar('text'));
+        $el.append($('<textarea class="form-control" rows="5" data-field="text" maxlength="5000" aria-label="글">').val(block.text || ''));
 
         return $el;
     }
 
     function imageBlock(block) {
-        var $el = $('<div class="guide-block rounded-lg border border-slate-200 p-3" data-type="image">').append(toolbar('image'));
+        var $el = $('<div class="guide-block rh-guide-block" data-type="image">').append(toolbar('image'));
         var $src = $('<input type="hidden" data-field="src">').val(block.src || '');
         var $drop = $('<div class="image-drop">');
-        var $img = $('<img class="max-h-48 max-w-full rounded" alt="">');
+        var $img = $('<img class="rh-guide-block-img rounded-3" alt="">');
         var $hint = $('<span class="image-drop-hint">').text('이미지를 여기로 끌어다 놓거나 눌러서 선택하세요');
 
         if (block.src) {
@@ -62,12 +79,12 @@
             $img.attr('src', /^https:\/\//i.test(block.src) ? block.src : GUIDE_URLS.assetBase + block.src)
                 .attr('referrerpolicy', 'no-referrer');
         } else {
-            $img.addClass('hidden');
+            $img.addClass('d-none');
         }
 
         $drop.append($img, $hint);
         $el.append($src, $drop);
-        $el.append($('<input class="form-input mt-2" data-field="caption" maxlength="200" placeholder="설명 (선택)">').val(block.caption || ''));
+        $el.append($('<input class="form-control mt-3" data-field="caption" maxlength="200" placeholder="설명 (선택)" aria-label="설명">').val(block.caption || ''));
 
         // Dropzone 은 DOM 에 붙은 뒤에 만든다(addBlock 에서 호출).
         $el.data('setup', function () {
@@ -77,7 +94,7 @@
                 maxMb: 2,
                 onSuccess: function (data) {
                     $src.val(data.src);
-                    $img.attr('src', data.url).removeClass('hidden');
+                    $img.attr('src', data.url).removeClass('d-none');
                     dirty = true;
                 }
             });
@@ -87,20 +104,20 @@
     }
 
     function videoBlock(block) {
-        var $el = $('<div class="guide-block rounded-lg border border-slate-200 p-3" data-type="video">').append(toolbar('video'));
+        var $el = $('<div class="guide-block rh-guide-block" data-type="video">').append(toolbar('video'));
         var start = block.youtube_id ? 'https://www.youtube.com/watch?v=' + block.youtube_id : (block.url || '');
-        var $url = $('<input class="form-input font-mono text-sm" data-field="url" placeholder="https://www.youtube.com/watch?v=... 또는 https://youtu.be/...">').val(start);
-        var $state = $('<div class="form-help">');
+        var $url = $('<input class="form-control font-monospace fs-sm" data-field="url" aria-label="유튜브 주소" placeholder="https://www.youtube.com/watch?v=... 또는 https://youtu.be/...">').val(start);
+        var $state = $('<div class="form-text">');
 
         function update() {
             var id = youtubeId($url.val());
 
             if (!$.trim($url.val())) {
-                $state.removeClass('text-red-600').text('유튜브 영상 주소를 붙여 넣으세요. (watch, youtu.be, shorts 주소)');
+                $state.removeClass('fg-danger').text('유튜브 영상 주소를 붙여 넣으세요. (watch, youtu.be, shorts 주소)');
             } else if (id) {
-                $state.removeClass('text-red-600').text('영상 ' + id + ' 을(를) 넣습니다. 고객 화면에서는 누를 때 재생됩니다.');
+                $state.removeClass('fg-danger').text('영상 ' + id + ' 을(를) 넣습니다. 고객 화면에서는 누를 때 재생됩니다.');
             } else {
-                $state.addClass('text-red-600').text('유튜브 주소를 알아보지 못했습니다.');
+                $state.addClass('fg-danger').text('유튜브 주소를 알아보지 못했습니다.');
             }
         }
 
@@ -108,7 +125,7 @@
         update();
 
         $el.append($url, $state);
-        $el.append($('<input class="form-input mt-2" data-field="caption" maxlength="200" placeholder="설명 (선택)">').val(block.caption || ''));
+        $el.append($('<input class="form-control mt-3" data-field="caption" maxlength="200" placeholder="설명 (선택)" aria-label="설명">').val(block.caption || ''));
 
         return $el;
     }

@@ -1,97 +1,142 @@
 {#-
   파일 위치: backend/app/templates/console/macro.html
   역할: 상담 대화 매크로 관리 — 목록(wgrid), 즐겨찾기 순서, 편집 드로어(_macro_edit), CSV 양식/내려받기/올리기
+  Bootstrap 6 + 왔니. 범위 탭은 nav-pills, CSV 등록은 다이얼로그(<dialog class="dialog">) 안의 Dropzone.
 -#}
 
-<div class="mb-4 flex flex-wrap items-center gap-2">
-  <h1 class="text-xl font-bold text-slate-800">매크로</h1>
-  <a class="text-sm text-brand-600 hover:underline" href="{{ base_url('console/chat') }}">상담 대화로 돌아가기</a>
-  <div class="ml-auto flex flex-wrap gap-2">
-    <a class="btn btn-sm btn-secondary" href="{{ base_url('console/macro/template') }}">양식 받기</a>
-    <button type="button" class="btn btn-sm btn-secondary" id="btnMacroImport">파일로 등록</button>
-    {% if macro_editor.isAdmin %}
-    <a class="btn btn-sm btn-secondary" href="{{ base_url('console/macro/export?scope=org') }}">공용 내려받기</a>
-    {% endif %}
-    <a class="btn btn-sm btn-secondary" href="{{ base_url('console/macro/export?scope=personal') }}">개인 내려받기</a>
-    <button type="button" class="btn btn-sm btn-primary" id="btnMacroNew">새 매크로</button>
+<div class="rh-page-header">
+  <div>
+    <nav aria-label="현재 위치">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><span class="breadcrumb-link">CHAT</span></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item"><a class="breadcrumb-link" href="{{ base_url('console/chat') }}">상담 대화</a></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item" aria-current="page"><span class="breadcrumb-link active">매크로</span></li>
+      </ol>
+    </nav>
+    <h1 class="page-title">매크로</h1>
+  </div>
+  <div class="rh-page-actions">
+    <a class="btn-text theme-secondary btn-sm" href="{{ base_url('console/chat') }}">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>상담 대화로 돌아가기
+    </a>
   </div>
 </div>
 
-<div class="alert alert-info mb-4 text-sm">
-  상담 대화 입력창에서 <b>/</b> 를 치면 매크로 목록이 열립니다. 고르면 입력창에 채워지며, 고친 뒤 보내면 됩니다.
-  <b>공용</b>은 조직의 모든 상담원이 쓰고 조직 관리자만 고칩니다. <b>개인</b>은 나만 보고 씁니다.
-</div>
-
-<div class="card mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm">
-  <nav class="flex gap-1" id="macroTabs">
-    <button type="button" class="btn btn-sm btn-primary" data-scope="all">전체</button>
-    <button type="button" class="btn btn-sm btn-ghost" data-scope="org">공용</button>
-    <button type="button" class="btn btn-sm btn-ghost" data-scope="personal">개인</button>
-    <button type="button" class="btn btn-sm btn-ghost" data-scope="favorite">즐겨찾기</button>
-  </nav>
-  <label class="flex items-center gap-1.5 text-slate-600">
-    <input type="checkbox" id="macroUnused" class="rounded border-slate-300">
-    90일 이상 안 쓴 것
-  </label>
-  <input class="form-input w-full py-1 text-sm sm:ml-auto sm:w-64" id="macroSearch" placeholder="이름·내용·키워드 검색" maxlength="100">
-  <button type="button" class="btn btn-sm border border-red-300 text-red-600" id="btnMacroDelete">선택 삭제</button>
+<div class="alert theme-primary mb-5 fs-sm" role="note">
+  <div>
+    상담 대화 입력창에서 <b>/</b> 를 치면 매크로 목록이 열립니다. 고르면 입력창에 채워지며, 고친 뒤 보내면 됩니다.
+    <b>공용</b>은 조직의 모든 상담원이 쓰고 조직 관리자만 고칩니다. <b>개인</b>은 나만 보고 씁니다.
+  </div>
 </div>
 
 <!-- 높이를 주지 않는다. 그리드는 한 쪽 개수(20/50/100...)만큼의 행 높이로 늘어난다. -->
-<div class="card overflow-hidden" id="macroGridCard">
-  <div id="macroGrid"></div>
-</div>
-
-<!-- 즐겨찾기 탭: 끌어서 순서를 바꾼다. 이 순서가 입력창 / 목록 맨 위 순서다. -->
-<div class="card hidden" id="macroFavCard">
-  <div class="card-header flex items-center justify-between">
-    <span>즐겨찾기 <span class="text-xs font-normal text-slate-500" id="macroFavCount"></span></span>
-    <span class="text-xs font-normal text-slate-500">끌어서 순서를 바꾸면 바로 저장됩니다.</span>
+<section class="card overflow-hidden">
+  <div class="card-header">
+    <h2 class="card-title">매크로 목록</h2>
+    <div class="card-actions">
+      <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('console/macro/template') }}">
+        <i class="bi bi-file-earmark-arrow-down" aria-hidden="true"></i><span class="btn-label">양식 받기</span>
+      </a>
+      <button type="button" class="btn-outline theme-secondary btn-sm" id="btnMacroImport">
+        <i class="bi bi-upload" aria-hidden="true"></i><span class="btn-label">파일로 등록</span>
+      </button>
+      {% if macro_editor.isAdmin %}
+      <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('console/macro/export?scope=org') }}">
+        <i class="bi bi-download" aria-hidden="true"></i><span class="btn-label">공용 내려받기</span>
+      </a>
+      {% endif %}
+      <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('console/macro/export?scope=personal') }}">
+        <i class="bi bi-download" aria-hidden="true"></i><span class="btn-label">개인 내려받기</span>
+      </a>
+      <button type="button" class="btn-solid theme-primary btn-sm" id="btnMacroNew">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i><span class="btn-label">새 매크로</span>
+      </button>
+    </div>
   </div>
-  <ul class="divide-y divide-slate-100" id="macroFavList"></ul>
-  <p class="hidden p-6 text-center text-sm text-slate-400" id="macroFavEmpty">
-    즐겨찾기한 매크로가 없습니다. 목록의 ☆ 를 누르면 넣을 수 있습니다({{ php_int(macro_editor.maxFavorites) }}개까지).
-  </p>
-</div>
+
+  <div class="rh-macro-toolbar border-top fs-sm">
+    <div class="nav nav-pills" id="macroTabs" role="tablist" aria-label="범위">
+      <button type="button" class="nav-link active" data-scope="all" aria-selected="true">전체</button>
+      <button type="button" class="nav-link" data-scope="org" aria-selected="false">공용</button>
+      <button type="button" class="nav-link" data-scope="personal" aria-selected="false">개인</button>
+      <button type="button" class="nav-link" data-scope="favorite" aria-selected="false">즐겨찾기</button>
+    </div>
+    <div class="form-field">
+      <input type="checkbox" class="check" id="macroUnused">
+      <label class="fg-2" for="macroUnused">90일 이상 안 쓴 것</label>
+    </div>
+    <input class="form-control form-control-sm rh-macro-search" id="macroSearch" placeholder="이름·내용·키워드 검색" maxlength="100" aria-label="매크로 검색">
+    <button type="button" class="btn-outline theme-danger btn-sm" id="btnMacroDelete">
+      <i class="bi bi-trash" aria-hidden="true"></i>선택 삭제
+    </button>
+  </div>
+
+  <div class="border-top" id="macroGridCard">
+    <div id="macroGrid"></div>
+  </div>
+
+  <!-- 즐겨찾기 탭: 끌어서 순서를 바꾼다. 이 순서가 입력창 / 목록 맨 위 순서다. -->
+  <div class="d-none border-top" id="macroFavCard">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 px-5 py-3 bg-1 fs-xs fg-3">
+      <span class="fs-sm fw-semibold fg-1">즐겨찾기 <span class="fs-xs fw-normal fg-3 tabular-nums" id="macroFavCount"></span></span>
+      <span>끌어서 순서를 바꾸면 바로 저장됩니다.</span>
+    </div>
+    <ul class="list-unstyled mb-0 border-top" id="macroFavList"></ul>
+    <p class="d-none mb-0 p-7 text-center fs-sm fg-3" id="macroFavEmpty">
+      즐겨찾기한 매크로가 없습니다. 목록의 ☆ 를 누르면 넣을 수 있습니다({{ php_int(macro_editor.maxFavorites) }}개까지).
+    </p>
+  </div>
+</section>
 
 <!-- CSV 파일로 등록 -->
-<div id="macroImportModal" data-modal-backdrop
-     class="modal-root fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
-  <div class="w-full max-w-lg rounded-lg bg-white shadow-xl">
-    <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-      <h2 class="font-semibold text-slate-800">파일로 등록</h2>
-      <button type="button" class="text-slate-400 hover:text-slate-600" data-modal-close="macroImportModal">×</button>
-    </div>
-    <div class="space-y-4 p-5 text-sm">
-      <div>
-        <span class="form-label">어디에 넣을까요</span>
-        <div class="flex gap-4">
-          {% if macro_editor.isAdmin %}
-          <label class="flex items-center gap-1.5"><input type="radio" name="macroImportScope" value="org"> 공용</label>
-          {% endif %}
-          <label class="flex items-center gap-1.5"><input type="radio" name="macroImportScope" value="personal" checked> 개인</label>
-        </div>
-      </div>
-      <div>
-        <span class="form-label">같은 이름이 이미 있으면</span>
-        <div class="space-y-1">
-          <label class="flex items-center gap-1.5"><input type="radio" name="macroImportMode" value="skip" checked> 건너뛰기 — 기존 매크로를 그대로 둡니다</label>
-          <label class="flex items-center gap-1.5"><input type="radio" name="macroImportMode" value="overwrite"> 덮어쓰기 — 내용과 키워드를 파일 값으로 바꿉니다(사용 횟수·즐겨찾기는 유지)</label>
-        </div>
-      </div>
-      <!-- 끌어다 놓거나 눌러서 고른다(Dropzone.js, assets/js/image-drop.js). 고르면 바로 올라간다. -->
-      <div class="image-drop" id="macroImportDrop">
-        <span class="image-drop-hint">CSV 파일을 여기로 끌어다 놓거나 눌러서 선택하세요 ({{ php_int(import_mb) }}MB, {{ import_rows|number_format }}행 이하)</span>
-      </div>
-      <div class="form-help">
-        첫 줄은 머리글 <code>name, content, keywords</code> 입니다. [양식 받기] 파일에 이어 쓰면 됩니다.
-        한 칸 안의 줄바꿈은 엑셀에서 Alt+Enter 로 넣습니다.
-        <b>한 행이라도 오류가 있으면 아무것도 저장하지 않고</b> 오류 행을 알려 드립니다.
-      </div>
-      <div id="macroImportResult" class="hidden max-h-48 overflow-y-auto rounded border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600"></div>
-    </div>
+<dialog class="dialog" id="macroImportModal" aria-labelledby="macroImportTitle">
+  <div class="dialog-header">
+    <h2 class="dialog-title" id="macroImportTitle">파일로 등록</h2>
+    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="닫기"></button>
   </div>
-</div>
+  <div class="dialog-body d-flex flex-column gap-5 fs-sm">
+    <div>
+      <span class="form-label">어디에 넣을까요</span>
+      <div class="d-flex flex-wrap gap-5">
+        {% if macro_editor.isAdmin %}
+        <div class="form-field">
+          <input type="radio" class="radio" name="macroImportScope" id="macroImportScope_org" value="org">
+          <label for="macroImportScope_org">공용</label>
+        </div>
+        {% endif %}
+        <div class="form-field">
+          <input type="radio" class="radio" name="macroImportScope" id="macroImportScope_personal" value="personal" checked>
+          <label for="macroImportScope_personal">개인</label>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="form-label">같은 이름이 이미 있으면</span>
+      <div class="d-flex flex-column gap-2">
+        <div class="form-field">
+          <input type="radio" class="radio" name="macroImportMode" id="macroImportMode_skip" value="skip" checked>
+          <label for="macroImportMode_skip">건너뛰기 — 기존 매크로를 그대로 둡니다</label>
+        </div>
+        <div class="form-field">
+          <input type="radio" class="radio" name="macroImportMode" id="macroImportMode_overwrite" value="overwrite">
+          <label for="macroImportMode_overwrite">덮어쓰기 — 내용과 키워드를 파일 값으로 바꿉니다(사용 횟수·즐겨찾기는 유지)</label>
+        </div>
+      </div>
+    </div>
+    <!-- 끌어다 놓거나 눌러서 고른다(Dropzone.js, assets/js/image-drop.js). 고르면 바로 올라간다. -->
+    <div class="image-drop" id="macroImportDrop">
+      <span class="image-drop-hint">CSV 파일을 여기로 끌어다 놓거나 눌러서 선택하세요 ({{ php_int(import_mb) }}MB, {{ import_rows|number_format }}행 이하)</span>
+    </div>
+    <div class="form-text mt-0">
+      첫 줄은 머리글 <code>name, content, keywords</code> 입니다. [양식 받기] 파일에 이어 쓰면 됩니다.
+      한 칸 안의 줄바꿈은 엑셀에서 Alt+Enter 로 넣습니다.
+      <b>한 행이라도 오류가 있으면 아무것도 저장하지 않고</b> 오류 행을 알려 드립니다.
+    </div>
+    <div id="macroImportResult" class="d-none rh-macro-import-result"></div>
+  </div>
+</dialog>
 
 {% include 'console/_macro_edit.html' %}
 

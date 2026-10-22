@@ -19,12 +19,13 @@
     var MESSAGE_INTERVAL_MS = 3000;
     var MESSAGE_INTERVAL_LIVE_MS = 30000;
 
-    var STATUS_CLASS = { open: 'badge-green', closed: 'badge-gray' };
+    /** 배지 톤 이름(common.js 의 RHUi.badge 가 화면 방식에 맞는 클래스로 바꾼다) */
+    var STATUS_CLASS = { open: 'green', closed: 'gray' };
     var STATUS_LABEL = { open: '진행 중', closed: '종료' };
 
     /** 고객 위젯에 보이는 운영 상태(Chat_hours_model::availability) */
     var AVAILABILITY_LABEL = { open: '상담 가능', away: '응대 가능 상담원 없음', closed: '운영 시간 외' };
-    var AVAILABILITY_CLASS = { open: 'badge-green', away: 'badge-amber', closed: 'badge-gray' };
+    var AVAILABILITY_CLASS = { open: 'green', away: 'amber', closed: 'gray' };
 
     var grid = null;
     var current = null;
@@ -63,16 +64,16 @@
                 title: '방문자', key: 'visitor_name', width: 140, flex: 1, align: 'left',
                 render: function (row, value) {
                     var wrap = document.createElement('div');
-                    wrap.className = 'flex h-full min-w-0 items-center gap-2';
+                    wrap.className = 'd-flex h-100 min-w-0 align-items-center gap-3';
 
                     var name = document.createElement('span');
-                    name.className = 'truncate';
+                    name.className = 'text-truncate';
                     name.textContent = value || '이름 없음';
                     wrap.appendChild(name);
 
                     if (row.unread > 0) {
                         var badge = document.createElement('span');
-                        badge.className = 'badge badge-red';
+                        badge.className = RHUi.badge('red');
                         badge.textContent = row.unread;
                         wrap.appendChild(badge);
                     }
@@ -107,7 +108,7 @@
      */
     function renderPageUrl(row, value) {
         var wrap = document.createElement('div');
-        wrap.className = 'flex h-full min-w-0 items-center';
+        wrap.className = 'd-flex h-100 min-w-0 align-items-center';
 
         if (!value) {
             wrap.textContent = '-';
@@ -126,12 +127,12 @@
             el.href = parsed.href;
             el.target = '_blank';
             el.rel = 'noopener noreferrer';
-            el.className = 'truncate text-brand-600 hover:underline';
+            el.className = 'text-truncate';
             // 링크를 눌러도 대화가 선택되지 않게 한다.
             el.addEventListener('click', function (e) { e.stopPropagation(); });
         } else {
             el = document.createElement('span');
-            el.className = 'truncate';
+            el.className = 'text-truncate';
         }
 
         el.textContent = label;
@@ -159,9 +160,9 @@
             var $badge = $('#chatUnread');
 
             if (data.unread_total > 0) {
-                $badge.text('미확인 ' + data.unread_total + '건').removeClass('hidden');
+                $badge.text('미확인 ' + data.unread_total + '건').removeClass('d-none');
             } else {
-                $badge.addClass('hidden');
+                $badge.addClass('d-none');
             }
 
             // 선택한 대화의 요약 정보도 함께 갱신한다.
@@ -186,8 +187,7 @@
     function renderAvailability(av) {
         var $badge = $('#chatAvailability');
 
-        $badge.removeClass('badge-green badge-amber badge-gray')
-            .addClass(AVAILABILITY_CLASS[av.state] || 'badge-gray');
+        $badge.attr('class', RHUi.badge(AVAILABILITY_CLASS[av.state] || 'gray'));
 
         var label = AVAILABILITY_LABEL[av.state] || av.state;
 
@@ -265,25 +265,25 @@
         $('#chatMeta').text(meta.join(' · ') || '연락처 없음');
 
         var closed = current.status !== 'open';
-        $('#chatViewer').toggleClass('hidden', !current.session_id);
+        $('#chatViewer').toggleClass('d-none', !current.session_id);
         $('#chatClose').prop('disabled', closed);
         $('#chatRemote').prop('disabled', closed);
         $('#chatInput').prop('disabled', closed);
 
         var owner = current.assigned_agent_id;
         var mine = owner === CHAT_ME.id;
-        var $assignee = $('#chatAssignee').removeClass('badge-gray badge-blue badge-amber');
+        var $assignee = $('#chatAssignee');
 
         if (!owner) {
-            $assignee.addClass('badge-gray').text('담당 없음 · 대기 중');
+            $assignee.attr('class', RHUi.badge('gray')).text('담당 없음 · 대기 중');
         } else if (mine) {
-            $assignee.addClass('badge-blue').text('담당: 나');
+            $assignee.attr('class', RHUi.badge('blue')).text('담당: 나');
         } else {
-            $assignee.addClass('badge-amber').text('담당: ' + (current.agent_name || '다른 상담원'));
+            $assignee.attr('class', RHUi.badge('amber')).text('담당: ' + (current.agent_name || '다른 상담원'));
         }
 
-        $('#chatTake').toggleClass('hidden', closed || !owner || mine);
-        $('#chatRelease').toggleClass('hidden', closed || !owner || !(mine || CHAT_ME.role === 'admin'));
+        $('#chatTake').toggleClass('d-none', closed || !owner || mine);
+        $('#chatRelease').toggleClass('d-none', closed || !owner || !(mine || CHAT_ME.role === 'admin'));
         renderPresence();
     }
 
@@ -504,7 +504,8 @@
         var bubble = document.createElement('div');
         var time = document.createElement('div');
 
-        bubble.className = 'inline-block max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm';
+        // 말풍선 모양은 wani-chat.css(.rh-msg / .rh-bubble). 보낸 사람에 따라 줄 클래스만 다르다.
+        bubble.className = 'rh-bubble';
 
         if (message.meta && message.meta.type === 'guide') {
             fillGuideCard(bubble, message);
@@ -519,18 +520,15 @@
             bubble.textContent = message.body;
         }
 
-        time.className = 'mt-1 text-[11px] text-slate-400';
+        time.className = 'rh-msg-time';
         time.textContent = RHI18n.formatDate(message.created_at, 'datetime');
 
         if (message.sender === 'agent') {
-            row.className = 'text-right';
-            bubble.className += ' bg-blue-600 text-white';
+            row.className = 'rh-msg rh-msg-agent';
         } else if (message.sender === 'system') {
-            row.className = 'text-center';
-            bubble.className += ' border border-amber-200 bg-amber-50 text-amber-900';
+            row.className = 'rh-msg rh-msg-system';
         } else {
-            row.className = 'text-left';
-            bubble.className += ' border border-slate-200 bg-white text-slate-800';
+            row.className = 'rh-msg rh-msg-visitor';
         }
 
         row.appendChild(bubble);
@@ -538,10 +536,9 @@
 
         // 상담원이 직접 쓴 글은 매크로로 저장할 수 있다(docs/macro-plan.md M4). 카드와 자동 응답은 빼고.
         if (message.sender === 'agent' && !message.meta && window.RHMacroEditor) {
-            row.className += ' group';
             var save = document.createElement('button');
             save.type = 'button';
-            save.className = 'ml-2 hidden text-[11px] text-brand-600 hover:underline group-hover:inline';
+            save.className = 'rh-msg-save';
             save.textContent = '매크로로 저장';
             save.addEventListener('click', function () { saveAsMacro(message.body); });
             time.appendChild(save);
@@ -568,11 +565,11 @@
     function fillGuideCard(bubble, message) {
         var meta = message.meta;
         var label = document.createElement('div');
-        label.className = 'text-[11px] opacity-75';
+        label.className = 'rh-bubble-label';
         label.textContent = message.sender === 'system' ? '자동 추천됨' : '보낸 가이드';
 
         var title = document.createElement('a');
-        title.className = 'block font-semibold underline';
+        title.className = 'rh-bubble-link';
         title.textContent = meta.title || meta.url;
         title.target = '_blank';
         title.rel = 'noopener';
@@ -646,11 +643,11 @@
         var $list = $('#chatGuideList').empty();
 
         if (!items.length) {
-            var $empty = $('<li class="text-xs text-slate-400">')
+            var $empty = $('<li class="rh-guide-empty">')
                 .text(q ? '맞는 가이드가 없습니다.' : '방문자 메시지에 맞는 가이드가 없습니다.');
 
             if (CHAT_URLS.guideAdmin) {
-                $empty.append(' ').append($('<a class="text-brand-600 hover:underline">')
+                $empty.append(' ').append($('<a>')
                     .attr('href', CHAT_URLS.guideAdmin).attr('target', '_blank').text('가이드'));
             }
 
@@ -661,16 +658,16 @@
         var closed = current.status !== 'open';
 
         items.forEach(function (item) {
-            var $li = $('<li class="flex items-center gap-2 text-sm">');
-            var $link = $('<a class="min-w-0 flex-1 truncate text-slate-700 hover:underline" target="_blank" rel="noopener">')
+            var $li = $('<li class="rh-guide-item">');
+            var $link = $('<a class="min-w-0 flex-grow-1 text-truncate" target="_blank" rel="noopener">')
                 .attr('href', item.url).attr('title', item.subtitle || item.title).text(item.title);
-            var $btn = $('<button type="button" class="btn btn-sm shrink-0">')
-                .addClass(item.sent ? 'btn-ghost' : 'btn-secondary')
+            var $btn = $('<button type="button">')
+                .attr('class', RHUi.button(item.sent ? 'ghost' : 'secondary') + ' flex-shrink-0')
                 .text(item.sent ? '다시 보내기' : '보내기')
                 .prop('disabled', closed)
                 .on('click', function () { sendGuide(item, $btn); });
 
-            $li.append($link, $('<span class="shrink-0 text-[11px] text-slate-400">').text(item.score ? item.score + '점' : ''), $btn);
+            $li.append($link, $('<span class="rh-guide-score">').text(item.score ? item.score + '점' : ''), $btn);
             $list.append($li);
         });
     }
@@ -729,8 +726,8 @@
         current = row;
         lastId = 0;
         $('#chatMessages').empty();
-        $('#chatEmpty').addClass('hidden');
-        $('#chatPanel').removeClass('hidden').addClass('flex');
+        $('#chatEmpty').addClass('d-none');
+        $('#chatPanel').removeClass('d-none');
         renderHeader();
         $('#chatGuideSearch').val('');
         $('#chatGuideList').empty();
@@ -903,10 +900,8 @@
 
     function setLiveBadge(on) {
         $('#chatLive')
-            .toggleClass('badge-green', on)
-            .toggleClass('badge-gray', !on)
-            .text(on ? '실시간 연결됨' : '연결 확인 중')
-            .removeClass('hidden');
+            .attr('class', RHUi.badge(on ? 'green' : 'gray'))
+            .text(on ? '실시간 연결됨' : '연결 확인 중');
     }
 
     function restartTimers() {
@@ -924,7 +919,7 @@
             columns: columns(),
             rows: CHAT_ROWS,
             rowId: function (row) { return row.id; },
-            rowClass: function () { return 'cursor-pointer'; },
+            rowClass: function () { return 'rh-clickable'; },
             onRowClicked: function (row) { select(row); }
         });
 

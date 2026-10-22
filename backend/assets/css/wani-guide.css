@@ -1,0 +1,134 @@
+/**
+ * 파일 위치: backend/assets/css/wani-guide.css
+ * 역할: 가이드 관리(목록·편집) 화면 전용 모양
+ *
+ * 대상: admin/guide, admin/guide_edit
+ * 공통 모양(셸, 패널, 드로어, 배지, wgrid 색)은 wani.css 에 있다. 이 파일은 그 화면에만 필요한 것만 둔다.
+ * 값은 wani.css 의 --wani-* 토큰을 쓴다(색을 새로 만들지 않는다).
+ */
+
+/* ------------------------------------------------------------------ 목록 (admin/guide) */
+/* 제목 칸 링크: 평소에는 본문 색, 올리면 primary + 밑줄 */
+.rh-guide-title-link {
+    color: var(--wani-ink);
+    text-decoration: none;
+}
+.rh-guide-title-link:hover {
+    color: var(--wani-primary);
+    text-decoration: underline;
+}
+
+/* 분류 정렬 순서 칸(숫자 몇 자리) */
+.rh-guide-sort {
+    flex: 0 0 88px;
+    width: 88px;
+}
+
+/* guide.json 올리기 결과 상자 */
+.rh-guide-import-result { max-height: 12rem; }
+.rh-guide-import-result p:last-child { margin-bottom: 0; }
+
+/* 공개 페이지 구성: 상위 스위치 아래 하위 항목 들여쓰기, 왼쪽 라벨 폭 */
+.rh-option-group { padding-inline-start: 24px; }
+.rh-option-label {
+    flex: 0 0 96px;
+    margin: 0;
+}
+
+/* 공개 페이지 테마 고르기: 고른 항목은 primary 테두리 + 연한 배경 */
+.rh-theme-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--wani-border);
+    border-radius: var(--wani-radius-lg);
+    cursor: pointer;
+    transition: border-color .15s, background-color .15s;
+}
+.rh-theme-option:hover { border-color: var(--wani-primary-focus-border); }
+.rh-theme-option:has(:checked) {
+    border-color: var(--wani-primary);
+    background: var(--wani-primary-bg-subtle);
+}
+
+/* ------------------------------------------------------------------ 테마 미니 그림 (.theme-thumb-{키}) */
+/* 공개 가이드 테마(guide_model.themes(): card, docs, portal, faq, dark)의 모양을 64x44 안에 줄여 그린다.
+   예전 tailwind.src.css 의 같은 이름 규칙을 --wani-* 토큰으로 옮겼다. 테마를 더하면 여기도 더한다. */
+.theme-thumb {
+    --thumb-line: var(--wani-border);
+    --thumb-line-strong: color-mix(in srgb, var(--wani-secondary) 45%, var(--wani-surface));
+    position: relative;
+    display: block;
+    flex-shrink: 0;
+    width: 64px;
+    height: 44px;
+    overflow: hidden;
+    border: 1px solid var(--wani-border);
+    border-radius: var(--wani-radius-sm);
+    background: var(--wani-surface-muted);
+}
+.theme-thumb i {
+    position: absolute;
+    display: block;
+    border-radius: 2px;
+}
+
+/* 카드형: 가운데 줄 세 개 */
+.theme-thumb-card i:nth-child(1) { left: 16px; right: 16px; top: 6px; height: 8px; background: var(--thumb-line-strong); }
+.theme-thumb-card i:nth-child(2),
+.theme-thumb-card i:nth-child(3) { left: 16px; right: 16px; height: 8px; background: var(--wani-surface); box-shadow: 0 0 0 1px var(--thumb-line-strong); }
+.theme-thumb-card i:nth-child(2) { top: 20px; }
+.theme-thumb-card i:nth-child(3) { top: 32px; }
+
+/* 문서형: 위 막대 + 왼쪽 목차 + 본문 */
+.theme-thumb-docs i:nth-child(1) { left: 0; right: 0; top: 0; height: 8px; background: var(--wani-surface); box-shadow: 0 0 0 1px var(--thumb-line-strong); }
+.theme-thumb-docs i:nth-child(2) { left: 0; top: 8px; bottom: 0; width: 16px; background: var(--wani-surface); box-shadow: 0 0 0 1px var(--thumb-line); }
+.theme-thumb-docs i:nth-child(3) { left: 24px; right: 6px; top: 14px; bottom: 6px; background: var(--wani-surface); box-shadow: 0 0 0 1px var(--thumb-line-strong); }
+
+/* 포털형: 강조색 머리 + 아래 두 칸 */
+.theme-thumb-portal i:nth-child(1) { left: 0; right: 0; top: 0; height: 16px; background: var(--wani-primary); }
+.theme-thumb-portal i:nth-child(2),
+.theme-thumb-portal i:nth-child(3) { top: 20px; bottom: 6px; width: 24px; background: var(--wani-surface); box-shadow: 0 0 0 1px var(--thumb-line-strong); }
+.theme-thumb-portal i:nth-child(2) { left: 6px; }
+.theme-thumb-portal i:nth-child(3) { right: 6px; }
+
+/* FAQ형: 어두운 제목 + 질문 줄 셋 + 강조 점 */
+.theme-thumb-faq i:nth-child(1) { left: 8px; right: 8px; top: 6px; height: 8px; background: var(--wani-secondary-utility); }
+.theme-thumb-faq i:nth-child(2) {
+    left: 8px; right: 8px; top: 20px; height: 1px;
+    background: var(--wani-secondary);
+    box-shadow: 0 6px 0 var(--wani-secondary), 0 12px 0 var(--wani-secondary);
+}
+.theme-thumb-faq i:nth-child(3) { right: 8px; top: 16px; width: 4px; height: 4px; background: var(--wani-primary); }
+
+/* 어두운 테마: 어두운 바탕 + 밝은 강조 점 */
+.theme-thumb-dark {
+    border-color: var(--wani-secondary-utility);
+    background: var(--wani-ink-strong);
+}
+.theme-thumb-dark i:nth-child(1) { left: 8px; top: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--wani-primary-focus-border); }
+.theme-thumb-dark i:nth-child(2) {
+    left: 8px; right: 8px; top: 20px; height: 1px;
+    background: var(--wani-ink-subtle);
+    box-shadow: 0 6px 0 var(--wani-ink-subtle), 0 12px 0 var(--wani-ink-subtle);
+}
+.theme-thumb-dark i:nth-child(3) { left: 20px; right: 24px; top: 6px; height: 8px; background: var(--wani-ink-muted); }
+
+/* ------------------------------------------------------------------ 편집 (admin/guide_edit) */
+/* 본문 블록 하나(글/이미지/동영상). 카드 안이므로 카드를 겹치지 않고 테두리 상자로 나눈다. */
+.rh-guide-block {
+    padding: 12px;
+    border: 1px solid var(--wani-border);
+    border-radius: var(--wani-radius-lg);
+    background: var(--wani-surface);
+}
+.rh-guide-block-img {
+    max-width: 100%;
+    max-height: 12rem;
+}
+
+/* 페이지 머리 동작 버튼: 768px 미만에서는 패널 머리처럼 아이콘만 남긴다 */
+@media (width < 768px) {
+    .rh-guide-actions .btn-label { display: none; }
+}

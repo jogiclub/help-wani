@@ -2,16 +2,19 @@
  * 파일 위치: assets/js/admin/guide.js
  * 역할: 가이드 관리 목록(wgrid, 새 기능만 거르기), 외부 이미지 저장, 매칭 시험, 분류/동의어 관리, guide.json 올리기,
  *       공개 페이지 테마와 구성(새 기능 모음, 동영상 모음)
+ *
+ * Bootstrap 6 화면(layouts/main.html). 분류·동의어는 드로어(openDrawer), guide.json 올리기는 다이얼로그(openModal).
+ * 배지·버튼 클래스는 RHUi 톤 이름으로 고른다(common.js).
  */
 (function ($) {
     'use strict';
 
-    var STATUS_CLASS = { published: 'badge-green', draft: 'badge-gray' };
+    var STATUS_CLASS = { published: 'green', draft: 'gray' };
     var STATUS_LABEL = { published: '공개', draft: '임시' };
 
     var grid = null;
 
-    /** 가져오기가 끝났으면 모달을 닫을 때 새 목록을 불러온다 */
+    /** 가져오기가 끝났으면 다이얼로그를 닫을 때 새 목록을 불러온다 */
     var importDone = false;
 
     function reloadSoon() {
@@ -24,17 +27,17 @@
 
     function titleRenderer(row, value) {
         var wrap = document.createElement('div');
-        wrap.className = 'flex min-w-0 flex-col justify-center leading-tight';
+        wrap.className = 'rh-cell-stack d-flex flex-column justify-content-center';
 
         var link = document.createElement('a');
-        link.className = 'truncate font-medium text-slate-800 hover:text-brand-600 hover:underline';
+        link.className = 'text-truncate fw-medium rh-guide-title-link';
         link.href = GUIDE_URLS.edit + row.id;
         link.textContent = value;
         wrap.appendChild(link);
 
         if (row.subtitle) {
             var sub = document.createElement('span');
-            sub.className = 'truncate text-xs text-slate-400';
+            sub.className = 'text-truncate rh-cell-sub';
             sub.textContent = row.subtitle;
             wrap.appendChild(sub);
         }
@@ -49,15 +52,15 @@
         }
 
         var wrap = document.createElement('div');
-        wrap.className = 'flex min-w-0 flex-col justify-center leading-tight';
+        wrap.className = 'rh-cell-stack d-flex flex-column justify-content-center';
 
         var badge = document.createElement('span');
-        badge.className = 'badge badge-blue w-fit';
+        badge.className = RHUi.badge('blue') + ' w-fit';
         badge.textContent = '새 기능' + (row.feature_label ? ' ' + row.feature_label : '');
         wrap.appendChild(badge);
 
         var date = document.createElement('span');
-        date.className = 'mt-0.5 text-xs text-slate-400';
+        date.className = 'rh-cell-sub mt-1';
         date.textContent = row.feature_date || '공개 전';
         wrap.appendChild(date);
 
@@ -116,16 +119,16 @@
                     title: '관리', key: '_actions', width: 230, sortable: false, pinned: 'right',
                     render: RHGrid.buttonsRenderer([
                         {
-                            label: '보기', className: 'btn-secondary',
+                            label: '보기', className: 'secondary',
                             show: function (row) { return row.status === 'published'; },
                             onClick: function (row) { window.open(row.public_url, '_blank', 'noopener'); }
                         },
                         {
-                            label: '공개/임시', className: 'btn-secondary',
+                            label: '공개/임시', className: 'secondary',
                             onClick: toggleStatus
                         },
                         {
-                            label: '삭제', className: 'btn-ghost text-red-600',
+                            label: '삭제', className: 'danger',
                             onClick: removeArticle
                         }
                     ])
@@ -152,12 +155,12 @@
         }
 
         apiGet(GUIDE_URLS.matchTest + '?q=' + encodeURIComponent(q), function (data) {
-            $('#matchTerms').text('찾은 낱말: ' + (data.terms.length ? data.terms.join(', ') : '없음')).removeClass('hidden');
+            $('#matchTerms').text('찾은 낱말: ' + (data.terms.length ? data.terms.join(', ') : '없음')).removeClass('d-none');
 
             var $list = $('#matchResults').empty();
 
             if (!data.results.length) {
-                $list.append($('<li class="text-slate-400">').text('맞는 가이드가 없습니다. 키워드나 동의어를 추가해 보세요.'));
+                $list.append($('<li class="fg-3">').text('맞는 가이드가 없습니다. 키워드나 동의어를 추가해 보세요.'));
                 return;
             }
 
@@ -167,11 +170,11 @@
                 if (item.score >= data.min.widget) { where.push('위젯'); }
                 if (item.score >= data.min.console) { where.push('콘솔'); }
 
-                var $li = $('<li class="flex items-center gap-2 rounded border border-slate-200 px-3 py-2">');
-                $li.append($('<a class="min-w-0 flex-1 truncate hover:underline">')
+                var $li = $('<li class="d-flex align-items-center gap-3 rounded-3 border px-4 py-3">');
+                $li.append($('<a class="min-w-0 flex-grow-1 text-truncate">')
                     .attr('href', GUIDE_URLS.edit + item.id).text(item.title));
-                $li.append($('<span class="badge badge-blue shrink-0">').text(item.score + '점'));
-                $li.append($('<span class="shrink-0 text-xs text-slate-400">')
+                $li.append($('<span>').addClass(RHUi.badge('blue') + ' flex-shrink-0').text(item.score + '점'));
+                $li.append($('<span class="flex-shrink-0 fs-xs fg-3">')
                     .text(where.length ? where.join('·') + ' 추천' : '검색만'));
                 $list.append($li);
             });
@@ -186,16 +189,16 @@
         var $list = $('#categoryList').empty();
 
         if (!GUIDE_CATEGORIES.length) {
-            $list.append($('<p class="text-sm text-slate-400">').text('분류가 없습니다.'));
+            $list.append($('<p class="fs-sm fg-3 mb-0">').text('분류가 없습니다.'));
             return;
         }
 
         GUIDE_CATEGORIES.forEach(function (category) {
-            var $row = $('<div class="flex gap-2">');
-            var $name = $('<input class="form-input flex-1" maxlength="60">').val(category.name);
-            var $sort = $('<input class="form-input w-20" type="number" title="정렬 순서">').val(category.sort_order);
+            var $row = $('<div class="d-flex align-items-center gap-3">');
+            var $name = $('<input class="form-control flex-grow-1 min-w-0" maxlength="60" aria-label="분류 이름">').val(category.name);
+            var $sort = $('<input class="form-control rh-guide-sort" type="number" title="정렬 순서" aria-label="정렬 순서">').val(category.sort_order);
 
-            var $save = $('<button type="button" class="btn btn-sm btn-secondary shrink-0">저장</button>').on('click', function () {
+            var $save = $('<button type="button">').addClass(RHUi.button('secondary') + ' flex-shrink-0').text('저장').on('click', function () {
                 apiPost(GUIDE_URLS.categorySave, { id: category.id, name: $name.val(), sort_order: $sort.val() },
                     function (data, message) {
                         showToast(message, 'success');
@@ -203,7 +206,7 @@
                     });
             });
 
-            var $remove = $('<button type="button" class="btn btn-sm btn-ghost shrink-0 text-red-600">삭제</button>').on('click', function () {
+            var $remove = $('<button type="button">').addClass(RHUi.button('danger') + ' flex-shrink-0').text('삭제').on('click', function () {
                 showConfirmModal('분류 삭제', '"' + category.name + '" 분류를 삭제할까요? 그 분류의 가이드는 분류 없음으로 남습니다.', function () {
                     apiPost(GUIDE_URLS.categoryDelete, { id: category.id }, function (data, message) {
                         showToast(message, 'success');
@@ -221,16 +224,16 @@
     // ------------------------------------------------------------------
 
     function showImportResult(data, message) {
-        var $box = $('#importResult').empty().removeClass('hidden');
+        var $box = $('#importResult').empty().removeClass('d-none');
 
-        $box.append($('<p class="font-semibold text-slate-700">').text(message));
+        $box.append($('<p class="fw-semibold fg-1 mb-1">').text(message));
 
         (data.skipped || []).forEach(function (item) {
-            $box.append($('<p class="text-red-600">').text('건너뜀 ' + (item.slug || '-') + ': ' + item.reason));
+            $box.append($('<p class="fg-danger mb-1">').text('건너뜀 ' + (item.slug || '-') + ': ' + item.reason));
         });
 
         (data.warnings || []).forEach(function (text) {
-            $box.append($('<p class="text-amber-700">').text(text));
+            $box.append($('<p class="fg-emphasis-warning mb-1">').text(text));
         });
 
         showToast(message, 'success');
@@ -249,9 +252,9 @@
             onSuccess: showImportResult
         });
 
-        // 결과를 읽고 닫으면(닫기 버튼 또는 바탕) 새 목록을 보여준다.
-        $('#importModal').on('click', function (event) {
-            if (importDone && (event.target === this || $(event.target).is('[data-modal-close]'))) {
+        // 결과를 읽고 닫으면(닫기 버튼, 바탕, ESC) 새 목록을 보여준다. Bootstrap Dialog 가 닫힌 뒤 내는 이벤트다.
+        document.getElementById('importModal').addEventListener('hidden.bs.dialog', function () {
+            if (importDone) {
                 reloadSoon();
             }
         });
@@ -329,7 +332,7 @@
 
         $('#btnCategories').on('click', function () {
             renderCategories();
-            openModal('categoryModal');
+            openDrawer('categoryModal');
         });
 
         $('#btnAddCategory').on('click', function () {
@@ -342,29 +345,32 @@
             });
         });
 
-        $('#btnSynonyms').on('click', function () { openModal('synonymModal'); });
+        $('#btnSynonyms').on('click', function () { openDrawer('synonymModal'); });
 
         $('#btnSaveSynonyms').on('click', function () {
             apiPost(GUIDE_URLS.synonymsSave, { synonyms: $('#synonymText').val() }, function (data, message) {
                 showToast(message, 'success');
-                closeModal('synonymModal');
+                closeDrawer('synonymModal');
             });
         });
 
         $('#btnImport').on('click', function () {
-            $('#importResult').addClass('hidden').empty();
+            $('#importResult').addClass('d-none').empty();
             openModal('importModal');
         });
 
         $('#btnLocalizeImages').on('click', function () {
             var $btn = $(this);
+            // 버튼 안의 아이콘은 두고 글자(.btn-label)만 바꾼다.
+            var $label = $btn.find('.btn-label');
 
             showConfirmModal('외부 이미지를 본 서버로 저장',
                 '가이드에 들어 있는 외부 이미지(https 주소)를 받아 우리 조직 폴더에 저장하고 글의 주소를 바꿉니다. '
                 + '이미지가 많으면 시간이 걸릴 수 있습니다. 진행할까요?',
                 function () {
-                    var label = $btn.text();
-                    $btn.prop('disabled', true).text('저장하는 중...');
+                    var label = $label.text();
+                    $btn.prop('disabled', true);
+                    $label.text('저장하는 중...');
 
                     apiPost(GUIDE_URLS.localizeImages, {}, function (data, message) {
                         if (data.failed_count > 0) {
@@ -375,7 +381,10 @@
                         } else {
                             showToast(message, 'success');
                         }
-                    }).always(function () { $btn.prop('disabled', false).text(label); });
+                    }).always(function () {
+                        $btn.prop('disabled', false);
+                        $label.text(label);
+                    });
                 });
         });
 
@@ -387,8 +396,8 @@
                 showToast(message, 'success');
                 // '사용 중' 표시를 고른 테마로 옮긴다.
                 $('[data-theme-current]').remove();
-                $('input[name="guideTheme"][value="' + data.theme + '"]').closest('label').find('.font-semibold')
-                    .append(' <span class="badge badge-green ml-1" data-theme-current>사용 중</span>');
+                $('input[name="guideTheme"][value="' + data.theme + '"]').closest('label').find('.fw-semibold')
+                    .append(' ', $('<span data-theme-current>').addClass(RHUi.badge('green') + ' ms-1').text('사용 중'));
             }).always(function () { $btn.prop('disabled', false); });
         });
 

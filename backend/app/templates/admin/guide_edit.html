@@ -1,6 +1,8 @@
 {#-
   파일 위치: backend/app/templates/admin/guide_edit.html
   역할: 가이드 편집 (제목, 부제목, 주소, 키워드, 분류, 상태, 새 기능 표시, 본문 블록: 글/이미지/유튜브 동영상)
+
+  Bootstrap 6 + 왔니. 본문 블록은 guide-edit.js 가 그린다. 화면 전용 모양은 assets/css/wani-guide.css.
 -#}
 {%- set a = article -%}
 {%- set initial = {
@@ -8,67 +10,96 @@
     'status': a.status if a else 'draft',
     'blocks': a.blocks if a else [{'type': 'text', 'text': ''}],
 } -%}
-<div class="mb-4 flex flex-wrap items-center gap-2">
-  <a class="btn btn-sm btn-ghost" href="{{ base_url('admin/guide') }}">← 목록</a>
-  <h1 class="mr-auto text-xl font-bold text-slate-800">{{ '가이드 편집' if a else '새 가이드' }}</h1>
-  {% if a %}
-  <a class="btn btn-sm btn-secondary" href="{{ base_url('admin/guide/preview/' ~ php_int(a.id)) }}" target="_blank" rel="noopener">미리보기</a>
-  {% endif %}
-  <button type="button" class="btn btn-sm btn-primary" id="btnSaveGuide">저장</button>
+<div class="rh-page-header">
+  <div>
+    <nav aria-label="현재 위치">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><span class="breadcrumb-link">SETTING</span></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item"><a class="breadcrumb-link" href="{{ base_url('admin/guide') }}">가이드</a></li>
+        <li class="breadcrumb-divider"></li>
+        <li class="breadcrumb-item" aria-current="page"><span class="breadcrumb-link active">{{ '가이드 편집' if a else '새 가이드' }}</span></li>
+      </ol>
+    </nav>
+    <h1 class="page-title">{{ '가이드 편집' if a else '새 가이드' }}</h1>
+  </div>
+  <div class="rh-page-actions">
+    <a class="btn-text theme-secondary btn-sm" href="{{ base_url('admin/guide') }}">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i>목록
+    </a>
+    {% if a %}
+    <a class="btn-outline theme-secondary btn-sm" href="{{ base_url('admin/guide/preview/' ~ php_int(a.id)) }}" target="_blank" rel="noopener">
+      <i class="bi bi-eye" aria-hidden="true"></i>미리보기
+    </a>
+    {% endif %}
+    <button type="button" class="btn-solid theme-primary btn-sm" id="btnSaveGuide">
+      <i class="bi bi-check-lg" aria-hidden="true"></i>저장
+    </button>
+  </div>
 </div>
 
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+<div class="row g-5">
 
-  <div class="space-y-4 lg:col-span-2">
-    <div class="card">
-      <div class="card-body space-y-4">
+  <div class="col-12 lg:col-8 vstack gap-5">
+    <section class="card">
+      <div class="card-body vstack gap-5">
         <div>
           <label class="form-label" for="guideTitle">제목</label>
-          <input class="form-input" id="guideTitle" maxlength="100" value="{{ a.title if a else '' }}"
+          <input class="form-control" id="guideTitle" maxlength="100" value="{{ a.title if a else '' }}"
                  placeholder="예) 프린터가 연결되지 않을 때">
         </div>
         <div>
           <label class="form-label" for="guideSubtitle">부제목</label>
-          <input class="form-input" id="guideSubtitle" maxlength="200" value="{{ a.subtitle if a else '' }}"
+          <input class="form-control" id="guideSubtitle" maxlength="200" value="{{ a.subtitle if a else '' }}"
                  placeholder="목록과 검색 결과에 함께 보입니다">
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="card-header">본문</div>
-      <div class="card-body space-y-3">
-        <div id="blockList" class="space-y-3"></div>
-        <div class="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-          <button type="button" class="btn btn-sm btn-secondary" data-add-block="text">+ 글</button>
-          <button type="button" class="btn btn-sm btn-secondary" data-add-block="image">+ 이미지</button>
-          <button type="button" class="btn btn-sm btn-secondary" data-add-block="video">+ 유튜브 동영상</button>
+    <section class="card">
+      <div class="card-header">
+        <h2 class="card-title">본문</h2>
+      </div>
+      <div class="card-body vstack gap-4">
+        <div id="blockList" class="vstack gap-4"></div>
+        <div class="d-flex flex-wrap gap-3 border-top pt-4">
+          <button type="button" class="btn-outline theme-secondary btn-sm" data-add-block="text">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>글
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" data-add-block="image">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>이미지
+          </button>
+          <button type="button" class="btn-outline theme-secondary btn-sm" data-add-block="video">
+            <i class="bi bi-plus-lg" aria-hidden="true"></i>유튜브 동영상
+          </button>
         </div>
-        <div class="form-help">글은 HTML 을 쓸 수 없고 그대로 보입니다. https:// 로 시작하는 주소는 링크가 됩니다.
+        <div class="form-text mt-0">글은 HTML 을 쓸 수 없고 그대로 보입니다. https:// 로 시작하는 주소는 링크가 됩니다.
           이미지는 PNG, JPG, WEBP 2MB 이하. 블록은 50개까지 넣을 수 있습니다.</div>
       </div>
-    </div>
+    </section>
   </div>
 
-  <div class="space-y-4">
-    <div class="card">
-      <div class="card-body space-y-4">
+  <div class="col-12 lg:col-4 vstack gap-5">
+    <section class="card">
+      <div class="card-body vstack gap-5">
         <div>
           <span class="form-label">상태</span>
-          <div class="flex gap-4 text-sm">
-            <label class="flex items-center gap-2">
-              <input type="radio" name="guideStatus" value="draft" {{ 'checked' if initial['status'] == 'draft' else '' }}> 임시
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="radio" name="guideStatus" value="published" {{ 'checked' if initial['status'] == 'published' else '' }}> 공개
-            </label>
+          <div class="d-flex gap-5 fs-sm">
+            <div class="form-field">
+              <input type="radio" class="radio" name="guideStatus" value="draft" id="guideStatusDraft" {{ 'checked' if initial['status'] == 'draft' else '' }}>
+              <label for="guideStatusDraft">임시</label>
+            </div>
+            <div class="form-field">
+              <input type="radio" class="radio" name="guideStatus" value="published" id="guideStatusPublished" {{ 'checked' if initial['status'] == 'published' else '' }}>
+              <label for="guideStatusPublished">공개</label>
+            </div>
           </div>
-          <div class="form-help">공개한 가이드만 고객 페이지에 보이고 상담 중에 추천됩니다.</div>
+          <div class="form-text">공개한 가이드만 고객 페이지에 보이고 상담 중에 추천됩니다.</div>
         </div>
 
         <div>
           <label class="form-label" for="guideCategory">분류</label>
-          <select class="form-input" id="guideCategory">
+          <select class="form-control" id="guideCategory">
             <option value="0">분류 없음</option>
             {% for c in categories %}
             <option value="{{ php_int(c.id) }}" {{ 'selected' if (a and php_int(a.category_id) == php_int(c.id)) else '' }}>{{ c.name }}</option>
@@ -78,57 +109,58 @@
 
         <div>
           <label class="form-label" for="guideSort">정렬 순서</label>
-          <input class="form-input" id="guideSort" type="number" value="{{ php_int(a.sort_order) if a else 0 }}">
-          <div class="form-help">작은 숫자가 위에 보입니다.</div>
+          <input class="form-control" id="guideSort" type="number" value="{{ php_int(a.sort_order) if a else 0 }}">
+          <div class="form-text">작은 숫자가 위에 보입니다.</div>
         </div>
 
         <div>
           <label class="form-label" for="guideSlug">주소</label>
-          <div class="text-xs break-all text-slate-400">{{ guide_base }}</div>
-          <input class="form-input font-mono text-sm" id="guideSlug" maxlength="60" value="{{ a.slug if a else '' }}"
+          <div class="fs-xs text-break fg-3 mb-1">{{ guide_base }}</div>
+          <input class="form-control font-monospace fs-sm" id="guideSlug" maxlength="60" value="{{ a.slug if a else '' }}"
                  placeholder="printer-connect">
-          <div class="form-help">영문 소문자, 숫자, 하이픈(-), 밑줄(_). 비워 두면 번호로 접속합니다.
+          <div class="form-text">영문 소문자, 숫자, 하이픈(-), 밑줄(_). 비워 두면 번호로 접속합니다.
             guide.json 을 병합으로 올릴 때 같은 주소의 글을 덮어씁니다.</div>
           {% if not empty(public_url) %}
-          <a class="mt-1 block truncate text-xs text-brand-600 hover:underline" id="guidePublicLink"
+          <a class="d-block text-truncate fs-xs mt-1" id="guidePublicLink"
              href="{{ public_url }}" target="_blank" rel="noopener">{{ public_url }}</a>
           {% endif %}
         </div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
-      <div class="card-body space-y-3">
-        <label class="flex items-center gap-2 text-sm font-semibold text-slate-800">
-          <input type="checkbox" id="guideIsFeature" {{ 'checked' if (a and php_int(a.is_feature) == 1) else '' }}> 새 기능으로 표시
-        </label>
-        <div class="space-y-3" id="featureFields">
+    <section class="card">
+      <div class="card-body vstack gap-4">
+        <div class="form-field">
+          <input type="checkbox" class="check" id="guideIsFeature" {{ 'checked' if (a and php_int(a.is_feature) == 1) else '' }}>
+          <label class="fs-sm fw-semibold fg-1" for="guideIsFeature">새 기능으로 표시</label>
+        </div>
+        <div class="vstack gap-4" id="featureFields">
           <div>
             <label class="form-label" for="guideFeatureDate">출시일</label>
-            <input class="form-input" id="guideFeatureDate" type="date" value="{{ feature_date }}">
-            <div class="form-help">조직 시간대({{ timezone }}) 기준 날짜입니다.
+            <input class="form-control" id="guideFeatureDate" type="date" value="{{ feature_date }}">
+            <div class="form-text">조직 시간대({{ timezone }}) 기준 날짜입니다.
               비우면 처음 공개한 날{{ '(' ~ published_on ~ ')' if published_on != '' else '' }}을 씁니다.</div>
           </div>
           <div>
             <label class="form-label" for="guideFeatureLabel">버전</label>
-            <input class="form-input" id="guideFeatureLabel" maxlength="30" value="{{ a.feature_label if a else '' }}"
+            <input class="form-control" id="guideFeatureLabel" maxlength="30" value="{{ a.feature_label if a else '' }}"
                    placeholder="예) v2.3 (선택)">
           </div>
         </div>
-        <div class="form-help">공개 가이드의 <b>새 기능</b> 모음에 출시일 최신순으로 보입니다.
+        <div class="form-text mt-0">공개 가이드의 <b>새 기능</b> 모음에 출시일 최신순으로 보입니다.
           모음은 가이드 관리의 "공개 페이지 구성" 에서 켭니다.</div>
       </div>
-    </div>
+    </section>
 
-    <div class="card">
+    <section class="card">
       <div class="card-body">
         <label class="form-label" for="guideKeywords">키워드</label>
-        <textarea class="form-input" id="guideKeywords" rows="3"
+        <textarea class="form-control" id="guideKeywords" rows="3"
                   placeholder="프린터, 인쇄, 출력, printer">{{ a.keywords if a else '' }}</textarea>
-        <div class="form-help">쉼표로 나눠 20개까지. <b>고객이 실제로 쓰는 말</b>을 적을수록 상담 중에 정확히 추천됩니다.
+        <div class="form-text">쉼표로 나눠 20개까지. <b>고객이 실제로 쓰는 말</b>을 적을수록 상담 중에 정확히 추천됩니다.
           키워드는 고객 화면에 보이지 않습니다.</div>
       </div>
-    </div>
+    </section>
   </div>
 </div>
 
