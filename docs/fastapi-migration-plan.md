@@ -89,7 +89,7 @@ backend/
     libraries/             realtime, mailer, guide_matcher, chat_greeting, chat_followup
     settings/              guide_match, guide_samples, holidays, macro (예전 PHP config 배열)
     routers/               home, auth, customer(+org_router 맨 마지막), guide, download, widget, console, console_macro,
-                           admin, admin_guide, operator, api_launcher, api_relay, api_realtime_auth, dev(개발 전용)
+                           admin, admin_guide, operator, api_launcher, api_relay, api_realtime_auth
     templates/             PHP 뷰를 옮긴 Jinja2 템플릿(views/ 와 같은 폴더 구조)
 docker/api/Dockerfile      python:3.12.14-slim-bookworm, www-data 로 실행
 docker/web/Dockerfile      debian:trixie-20261005-slim + apache2 (rewrite, headers, proxy, proxy_http, proxy_wstunnel, ssl, remoteip)
@@ -242,7 +242,7 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
   - 남는 차이(영향 없음으로 판단): 실수의 지수 표기(1.0e+20 / 1e+20)와 -0, 존재하지 않는 날짜를 PHP 는 다음 날로 넘기고 여기는 원래 값을 돌려줌,
     작은따옴표 이스케이프(&#039; / &#39;), JS 문자열 따옴표('…' / "…").
   - 시험에 데모 계정을 썼고, 생긴 감사 로그 18건을 지우고 관리자 `last_login_at` 을 되돌렸다(AUTO_INCREMENT 는 417부터).
-  - 개발 전용 `/_dev/layout/*` 은 레이아웃 비교용이다(`APP_ENV=development` 에서만 열림, 아직 남아 있음 — 남은 일 참고).
+  - 개발 전용 `/_dev/layout/*` 은 레이아웃 비교용이었다(`APP_ENV=development` 에서만 열림). 전환 뒤 지웠다.
   - 확인 필요였던 xss_clean 처리는 2단계에서 (가) 그대로 옮기기로 정했다(5.9).
 
 ### 2단계. 서버 간 API (화면 없음, 가장 작고 검증 쉬움)
@@ -522,4 +522,4 @@ PHP 와 일부러 다르게 둔 것, 또는 PHP 가 오류를 내던 자리에�
 | 화면 눈 확인 | 콘솔·관리·고객·공개 가이드를 브라우저로 열어 메뉴·드로어·모달·실시간 표시 확인(HTML 은 비교로 같음을 확인). 위젯을 2시간 넘게 열어 둔 뒤 실시간 재접속 |
 | 상담원 안내 | 다시 로그인 필요 |
 | 운영 서버 반영 | 운영 배포(Store 출시) 전에 같은 구조로 올릴지와 시점(8장 7번). 운영은 공인 인증서와 `RELAY_VIEWER_WS_URL=wss://<도메인>/viewer` |
-| 정리 | 개발 전용 `/_dev/layout/*`(routers/dev.py, templates/_dev) 를 지울지, 8098 직접 접속 포트를 운영에서 닫을지 |
+| 정리 | 8098 직접 접속 포트를 운영에서 닫을지(개발 전용 `/_dev/layout/*` 은 지웠다) |

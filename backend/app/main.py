@@ -18,7 +18,7 @@ from app.core.errors import Halt, show_404
 from app.core.middleware import RequestContextMiddleware
 from app.core.response import api_response
 from app.routers import (admin, admin_guide, api_launcher, api_realtime_auth, api_relay, auth, console, console_macro,
-                         customer, dev, guide, home, operator, widget)
+                         customer, guide, home, operator, widget)
 from app.static import AssetFiles
 
 logger = logging.getLogger('remotehelp')
@@ -82,9 +82,6 @@ app.include_router(console_macro.router)
 app.include_router(admin.router)
 app.include_router(admin_guide.router)
 app.include_router(operator.router)
-
-if config.APP_ENV == 'development':
-    app.include_router(dev.router)
 
 # 조직 코드로 시작하는 주소. 공개 가이드의 모음 주소가 글 주소보다 먼저다(routers/guide.py 안의 순서).
 app.include_router(guide.router)
