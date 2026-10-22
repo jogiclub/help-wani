@@ -75,3 +75,15 @@ def client_ip(request=None):
             pass
 
     return peer
+
+
+def get_request_header(name, xss=False, request=None):
+    """CI3 input->get_request_header(name, xss_clean) 대응. 없으면 None."""
+    request = request or get_request()
+    value = request.headers.get(name)
+    if value is None:
+        return None
+    if xss:
+        from app.core.security import xss_clean
+        return xss_clean(value)
+    return value

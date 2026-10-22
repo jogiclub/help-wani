@@ -17,7 +17,7 @@ from app.core.csrf import CSRFMiddleware, verify_csrf
 from app.core.errors import Halt, show_404
 from app.core.middleware import RequestContextMiddleware
 from app.core.response import api_response
-from app.routers import auth, dev
+from app.routers import api_launcher, api_realtime_auth, api_relay, auth, dev
 from app.static import AssetFiles
 
 logger = logging.getLogger('remotehelp')
@@ -67,6 +67,9 @@ def healthz():
     return api_response(True, '', {'db': True, **info})
 
 
+app.include_router(api_launcher.router)
+app.include_router(api_relay.router)
+app.include_router(api_realtime_auth.router)
 app.include_router(auth.router)
 
 if config.APP_ENV == 'development':

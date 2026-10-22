@@ -386,6 +386,10 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 - 화면은 `render(request, '폴더/뷰', data, 'layouts/...')`, 템플릿은 `backend/app/templates/` 에 PHP views 와 같은 구조로 둡니다.
   정의되지 않은 변수는 오류가 나므로 PHP `isset()` 은 `is defined` / `|default()` 로 옮기고, `<script>` 안의 값은 `|js` 필터를 씁니다.
 - 세션·CSRF 쿠키 이름은 PHP 와 다르게 둡니다(`rh_session`, `rh_csrf`). 같은 호스트의 다른 포트는 쿠키를 함께 씁니다(검사가 잡습니다).
+- 입력은 PHP 와 같은 모양으로 읽습니다. `$this->input->post()` → `Depends(post_data)`, `input->get()` → `Depends(query_data)`,
+  `json_input()` → `Depends(json_input)`, `post('x', TRUE)` → `post.xss('x')`(CI3 xss_clean 을 그대로 옮긴 `core/security.py`).
+  PHP 의 `(int)` `(string)` `empty()` 는 `php_int` `php_str` `php_empty` 로 옮깁니다(파이썬 `int()`·`bool()` 과 결과가 다릅니다).
+- Tailwind 는 `backend/` 를 읽지 않습니다(`tailwind.src.css` 의 `@source not`). backend 템플릿에만 쓰는 새 클래스는 PHP 를 지울 때 `@source` 를 바꾼 뒤 씁니다.
 - 고객 IP 는 `client_ip()` 하나로 얻습니다. 믿는 프록시 주소(`TRUSTED_PROXY_IP`)는 cloudflared 고정 주소와 같아야 합니다(검사가 잡습니다).
 - 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.
 
@@ -396,7 +400,7 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 ```bash
 ./scripts/check-conventions.sh   # 이 문서의 규칙을 자동 점검
 ./scripts/check-conventions.sh --live   # 실행 중인 개발 서버까지 점검
-./scripts/e2e-test.sh            # 포털 -> 중계 -> 화면 수신까지 전 구간
+./scripts/e2e-test.sh            # 포털 -> 중계 -> 화면 수신까지 전 구간 (LAUNCHER_BASE=http://localhost:8098 이면 런처 API 만 FastAPI 로)
 ./scripts/build-css.sh           # Tailwind 빌드
 ```
 

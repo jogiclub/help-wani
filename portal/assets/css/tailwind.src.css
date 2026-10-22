@@ -8,6 +8,9 @@
 /* 클래스 추출 대상 (PHP 뷰와 JS 에서 쓰는 클래스명을 수집한다) */
 @source "../../application/views";
 @source "../js";
+/* FastAPI 포털(backend/)은 빼 둔다. 파이썬 코드와 데이터(엔티티 표의 &ring; 등)가 클래스로 잘못 잡힌다.
+   지금 backend 템플릿은 PHP 뷰와 같은 클래스만 쓴다. PHP 를 지울 때 ../../../backend/app/templates 를 @source 로 바꾼다. */
+@source not "../../../backend";
 
 @theme {
     --color-brand-50:  #eef5ff;

@@ -7,7 +7,7 @@
 import json
 import math
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # PHP 는 JSON_UNESCAPED_UNICODE 가 없어도 DEL(\x7f)을 \u007f 로 바꾸지 않는다. 앞의 역슬래시 개수가 짝수일 때만 진짜 이스케이프다.
 _DEL_ESCAPE = re.compile(r'(?<!\\)((?:\\\\)*)\\u007f')
@@ -105,3 +105,85 @@ def htmlspecialchars(value):
     """PHP htmlspecialchars(ENT_QUOTES, UTF-8) / CI3 html_escape() 와 같은 결과. 작은따옴표는 &#039;."""
     return (str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
             .replace('"', '&quot;').replace("'", '&#039;'))
+
+
+def utc_str(offset_seconds=0):
+    """PHP date('Y-m-d H:i:s', time() + offset) (UTC)."""
+    return php_date('Y-m-d H:i:s', datetime.now(timezone.utc) + timedelta(seconds=offset_seconds))
+
+
+def strtotime_utc(value):
+    """DB 의 'Y-m-d H:i:s' 문자열을 유닉스 시각으로(PHP strtotime, date.timezone = UTC). 해석할 수 없으면 None."""
+    try:
+        moment = datetime.fromisoformat(str(value).strip())
+    except ValueError:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    return int(moment.timestamp())
+
+
+def php_str(value):
+    """PHP (string) 변환. None → '', True → '1', False → '', 배열 → 'Array'."""
+    if value is None or value is False:
+        return ''
+    if value is True:
+        return '1'
+    if isinstance(value, float):
+        # PHP 는 precision = 14 (%.14G). 지수 표기는 가수에 .0 을 붙이고 지수를 채우지 않는다(1.0E+14, 1.0E-5).
+        text = '%.14G' % value
+        if 'E' in text:
+            mantissa, exponent = text.split('E')
+            if '.' not in mantissa:
+                mantissa += '.0'
+            text = mantissa + 'E' + ('-' if exponent.startswith('-') else '+') + str(int(exponent.lstrip('+-')))
+        return text
+    if isinstance(value, (list, dict, tuple)):
+        return 'Array'
+    return str(value)
+
+
+_PHP_INT_MAX = 9223372036854775807
+_NUMERIC_PREFIX = re.compile(r'[ \t\n\r\v\f]*([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)')
+
+
+def php_int(value):
+    """PHP (int) 변환. '12abc' → 12, '1e3' → 1000, 'abc' → 0, 배열 → 비었으면 0 아니면 1. 범위를 넘으면 PHP_INT_MAX/MIN."""
+    if value is None or value is False:
+        return 0
+    if value is True:
+        return 1
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return 0
+        number = int(value)
+    elif isinstance(value, (list, dict, tuple)):
+        return 1 if value else 0
+    else:
+        match = _NUMERIC_PREFIX.match(str(value))
+        if not match:
+            return 0
+        text = match.group(1)
+        if re.fullmatch(r'[+-]?\d+', text):
+            number = int(text)
+        else:
+            parsed = float(text)
+            if math.isnan(parsed) or math.isinf(parsed):
+                return 0
+            number = int(parsed)
+    return max(-_PHP_INT_MAX - 1, min(_PHP_INT_MAX, number))
+
+
+def php_empty(value):
+    """PHP empty() 대응. None, False, 0, 0.0, '', '0', 빈 배열이 비어 있는 값이다."""
+    if value is None or value is False:
+        return True
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value == 0
+    if isinstance(value, str):
+        return value in ('', '0')
+    if isinstance(value, (list, dict, tuple)):
+        return len(value) == 0
+    return False

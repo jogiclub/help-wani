@@ -4,6 +4,8 @@
 set -e
 
 BASE="${BASE:-http://localhost:8099}"
+# 런처 API 만 다른 포털로 보낼 때(FastAPI 전환 비교: LAUNCHER_BASE=http://localhost:8098)
+LAUNCHER_BASE="${LAUNCHER_BASE:-$BASE}"
 RELAY_HOSTNAME="${RELAY_HOSTNAME:-localhost}"
 RELAY_PORT="${RELAY_PORT:-8443}"
 RELAY="${RELAY:-https://$RELAY_HOSTNAME:$RELAY_PORT}"
@@ -37,7 +39,7 @@ CODE="$(echo "$CREATE_RES" | grep -oP '"code":"\K[0-9]{6}')"
 SESSION_ID="$(echo "$CREATE_RES" | grep -oP '"session_id":\K[0-9]+')"
 
 say "3. 런처 코드 검증 (에이전트 토큰 발급)"
-VERIFY_RES="$(curl -s -X POST "$BASE/api/launcher/verify" \
+VERIFY_RES="$(curl -s -X POST "$LAUNCHER_BASE/api/launcher/verify" \
     -H 'Content-Type: application/json' \
     -d "{\"code\":\"$CODE\",\"pc_name\":\"E2E-TEST-PC\",\"os_version\":\"Windows 11 23H2\",\"launcher_version\":\"1.0.0\"}")"
 echo "$VERIFY_RES"
@@ -45,11 +47,11 @@ AGENT_TOKEN="$(echo "$VERIFY_RES" | grep -oP '"agent_token":"\K[a-f0-9]{64}')"
 SECRET="$(echo "$VERIFY_RES" | grep -oP '"launcher_secret":"\K[a-f0-9]{64}')"
 
 say "4. 같은 코드 재사용 차단 확인"
-curl -s -X POST "$BASE/api/launcher/verify" -H 'Content-Type: application/json' \
+curl -s -X POST "$LAUNCHER_BASE/api/launcher/verify" -H 'Content-Type: application/json' \
     -d "{\"code\":\"$CODE\"}" | head -c 200; echo
 
 say "5. 런처 상태 보고 (waiting)"
-curl -s -X POST "$BASE/api/launcher/status" -H 'Content-Type: application/json' \
+curl -s -X POST "$LAUNCHER_BASE/api/launcher/status" -H 'Content-Type: application/json' \
     -d "{\"session_id\":$SESSION_ID,\"launcher_secret\":\"$SECRET\",\"status\":\"waiting\"}"; echo
 
 say "6. 고객 PC 에이전트 기동 (중계 서버 접속)"
@@ -86,7 +88,7 @@ docker compose --profile test run --rm --entrypoint python3 agentsim \
 say "12. 상담원 종료 후 런처 heartbeat 의 terminate 확인"
 curl -s -b "$JAR" -X POST "$BASE/console/api/session/end" \
     -d "session_id=$SESSION_ID" -d "$CSRF_NAME=$CSRF_HASH"; echo
-curl -s "$BASE/api/launcher/heartbeat?session_id=$SESSION_ID&launcher_secret=$SECRET"; echo
+curl -s "$LAUNCHER_BASE/api/launcher/heartbeat?session_id=$SESSION_ID&launcher_secret=$SECRET"; echo
 
 say "13. 중계 서버 상태"
 curl -sk "$RELAY/healthz"; echo

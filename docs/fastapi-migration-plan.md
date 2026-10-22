@@ -4,7 +4,7 @@
 > 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
 
 - 작성일: 2026-10-22
-- 상태: 진행 중 — 0·1단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+- 상태: 진행 중 — 0·1·2단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
 
 ---
 
@@ -180,12 +180,13 @@ PHP `json_encode` 는 기본으로 `/` 를 `\/` 로, 한글을 `\uXXXX` 로 바�
 CI3 의 `(:any)` 는 `/` 를 포함하지 않는 한 구간이므로 FastAPI 경로 매개변수(`{org_code}`)와 같다. `:path` 변환을 쓰지 않는다.
 
 
-### 5.9 xss_clean (확인 필요)
+### 5.9 xss_clean — (가) 그대로 옮김 (2026-10-22 결정)
 
-CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속성 제거, `%xx` 반복 해제 등). 결과가 원문과 달라지는 입력에서는
-PHP 와 FastAPI 가 다른 값을 저장한다. 화면 출력은 이미 이스케이프하므로(Jinja 자동 이스케이프, textContent) 보안상 필요는 낮다.
-3단계 시작 전에 (가) CI3 xss_clean 을 그대로 옮긴다, (나) 옮기지 않고 출력 이스케이프에 맡긴다 중 정한다.
-
+CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속성 제거, `%xx` 반복 해제 등). 전환 기간에 두 서버가 같은 DB 에
+같은 값을 저장하도록 CI3 3.1 의 xss_clean 을 그대로 옮겼다(`app/core/security.py`).
+- PHP 의 `post('x', TRUE)` 는 `post.xss('x')`, `get_request_header(name, TRUE)` 는 `get_request_header(name, True)` 로 옮긴다.
+- CI3 가 요청 시작 때 모든 GET/POST 값에 하는 정리(키 이름 검사, 제어 문자 제거, `_sanitize_globals`)도 `post_data` / `query_data` 가 한다.
+- 남는 차이: URL 디코드로 생긴 잘못된 UTF-8 바이트는 U+FFFD 로 바꾼다(PHP 는 그대로 보내 MySQL 이 경고와 함께 잘라 냄).
 ---
 
 ## 6. 단계별 작업
@@ -241,6 +242,23 @@ PHP 와 FastAPI 가 다른 값을 저장한다. 화면 출력은 이미 이스�
 
 - `api/relay/auth`, `api/realtime/auth`, `api/launcher/{verify,status,heartbeat,version}`.
 - 확인: relay·realtime-msg 의 `PORTAL_ORIGIN` 을 잠시 `http://api:8000` 으로 바꿔 `./scripts/e2e-test.sh` 통과. 끝나면 `http://web` 으로 되돌린다.
+- **결과(2026-10-22 완료)**
+  - 파일: `routers/api_{launcher,relay,realtime_auth}.py`, `models/session_model.py`(전체), `libraries/realtime.py`(전체), `settings.py`(RH_* 상수),
+    `core/security.py`(xss_clean), `core/data/php_html5_entities.json`(PHP 8.2.34 에서 뽑은 엔티티 표), `core/input.py`(json_input, query_data, 입력 정리),
+    `core/php.py`(php_int, php_str, php_empty, utc_str, strtotime_utc).
+  - xss_clean: 웹 컨테이너에서 CI3 `CI_Security::xss_clean()` 을 직접 불러 비교. 알려진 XSS 우회 문자열 121개 + 무작위 조합 2만4천 개 + 엔티티 변형 1만6백 개,
+    모두 불일치 0. 숫자 엔티티 디코드 규칙은 0 ~ 0x110010 전체를 PHP 에서 확인해 정했다.
+  - 입력 정리: 폼 해석(`a[]`, `a[b][c]`, 점·공백 이름) + CI3 `CI_Input` 시작 정리 결과를 PHP 와 16개 사례 비교 일치. (int)/(string) 변환 30개 일치.
+  - 실시간 토큰: PHP 원본 라이브러리와 같은 본문(바이트)을 만들고, PHP 토큰을 FastAPI 가 / FastAPI 토큰을 PHP 가 서로 검증. 변조 토큰은 양쪽 403.
+  - 응답 비교: version, relay/realtime 인증 실패, heartbeat, 입력 형식별(JSON 숫자, 폼, text/plain JSON, 배열) 런처 응답이 PHP 와 바이트 단위로 같음.
+  - e2e: relay·realtime-msg 의 `PORTAL_ORIGIN` 을 `http://api:8000` 으로 바꾸고 `LAUNCHER_BASE=http://localhost:8098` 로 실행 →
+    런처 검증·상태·하트비트와 relay 의 에이전트/뷰어 인증(정상 200, 잘못된·재사용 토큰 403)을 FastAPI 가 처리하고 원격 화면 수신까지 통과.
+    FastAPI 가 발급한 토큰으로 realtime-msg 를 구독하고 FastAPI 가 발행한 이벤트가 도착함을 확인. 끝난 뒤 `http://web` 으로 되돌리고 기준 e2e 다시 통과.
+  - 주의: e2e 스크립트의 `docker compose up agentsim` 이 relay 를 기본 설정으로 다시 만든다. 임시 설정으로 시험할 때는 `COMPOSE_FILE` 에 덮어쓰기 파일을 함께 준다.
+  - 시험 데이터: e2e 가 만든 세션 5, 세션 로그 33, 뷰어 토큰 5, 코드 검증 기록 10, 감사 로그 19건을 지우고 관리자 `last_login_at` 을 되돌렸다.
+    시험 이벤트 1건(`type: presence`, `test` 값)이 조직 1 방에 발행됐다(그 시각 콘솔을 연 상담원이 있었다면 받았음).
+  - 남는 차이: PHP 가 경고를 내는 입력(`code[]=` 배열)에서 PHP 는 경고 HTML + 200, FastAPI 는 400 JSON.
+  - Tailwind: v4 자동 탐색이 `backend/` 의 데이터 파일(`&ring;`)을 클래스로 잡아 `@source not "../../../backend"` 로 뺐다(빌드 결과는 기존 app.css 와 같음).
 - 런처는 시험 빌드 주소를 바꾸지 않는다(전환 때 같은 도메인이 그대로 api 로 가게 됨).
 
 ### 3단계. 소개·로그인·고객 화면
