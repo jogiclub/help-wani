@@ -819,7 +819,7 @@ class Guide_model extends CI_Model {
 
             if ($changed)
             {
-                // 블록 주소만 바꾼다. 나머지 값은 저장된 그대로 넘긴다.
+                // 블록 주소만 바꾼다. 나머지 값은 저장된 그대로 넘긴다(새 기능 표시도 넘겨야 지워지지 않는다).
                 $this->save_article($org_id, $article->id, array(
                     'category_id' => $article->category_id,
                     'slug'        => $article->slug,
@@ -829,6 +829,9 @@ class Guide_model extends CI_Model {
                     'blocks'      => $article->blocks,
                     'status'      => $article->status,
                     'sort_order'  => (int) $article->sort_order,
+                    'is_feature'    => (int) $article->is_feature,
+                    'feature_at'    => $article->feature_at,
+                    'feature_label' => $article->feature_label,
                 ), $agent_id);
                 $changed_articles++;
             }

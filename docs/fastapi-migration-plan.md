@@ -338,6 +338,34 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 - 조직 관리 통계(`/admin`), 상담원 관리, 조직 정보(로고 업로드), 상담 위젯 설정 드로어, 운영 시간·휴일.
 - 가이드 관리(`Admin_guide`): 편집, 미리보기, guide.json 내려받기/올리기, 이미지 업로드, 색인 다시 만들기, 외부 이미지 저장(`fetch_external_image` 의 SSRF 방어 그대로), 샘플 10개 생성.
 - `Guide_matcher` 는 낱말·조사 처리가 미묘하므로 **같은 입력으로 PHP 와 Python 결과를 비교**해 일치시킨다(색인 `guide_terms`, 추천 점수).
+- **결과(2026-10-22 완료)**
+  - 경로: `routers/admin.py`(통계, 상담원, 조직 정보·로고, 위젯 설정 저장·키 재발급, 운영 상태, 휴일 후보·추가·삭제),
+    `routers/admin_guide.py`(목록·편집·미리보기·내려받기, 글 저장·상태·삭제, 이미지, 외부 이미지 저장, 분류·동의어·테마·구성·색인·매칭 시험, 올리기).
+    모두 `Depends(require_admin)`. 템플릿: admin/dashboard, agents, organization, guide, guide_edit.
+  - 모델: `guide_model` 의 저장·검사·색인·이미지·샘플·guide.json 함수 전부(`import` 는 파이썬 예약어라 `import_guide`),
+    `organization_model.statistics`, `chat_hours_model.holiday_candidates`. 설정: `settings/guide_samples.py`, `settings/holidays.py`(PHP 가 읽은 값을 그대로 변환).
+  - 이미지 판별: PHP 는 `finfo`(PHP 에 묶인 libmagic 5.40) + `getimagesize()` 를 함께 본다. file 5.40 의 magic 원본(Magdir/images, jpeg, riff)과
+    php-src 8.2.34 `ext/standard/image.c` 를 확인해 `helpers/app.py` 의 `image_file_ext()` 로 옮겼다(JPEG 표시 탐색, PNG 25바이트, WEBP VP8 덩어리,
+    ff d8 로 시작하는 파일의 XBM 판정까지). 실제 이미지·잘라낸 파일·바이트를 바꾼 파일·위장 파일 4,929개 비교 불일치 0.
+  - `parse_url()` 은 php-src `php_url_parse_ex2` 를 그대로 옮겼다(`helpers/php_url.py`, `parse_str` 포함). `json_decode` 대응 `php_json_decode`
+    (깊이 511단, 짝 없는 서로게이트·NaN 거부, int64 초과는 실수), `php_json_encode(pretty=True)`(JSON_PRETTY_PRINT) 를 더했다.
+  - 검사 비교: `clean_article`(제목·주소·분류·블록·키워드·새 기능 날짜, 서머타임 시간대 포함), `youtube_id`, `parse_url` 을 무작위 입력
+    9,000 + 12,000 줄로 PHP 와 비교 불일치 0(PHP 가 예외를 내는 줄은 아래 차이로 따로 셈).
+  - 화면·API 비교: 읽기 16가지, 쓰기 시나리오 97단계(상담원·조직·로고·위젯 설정·운영 상태·휴일·가이드 글·이미지·외부 이미지 저장·분류·동의어·테마·구성·
+    색인·가져오기 병합/교체·내려받기·샘플 생성)를 PHP → 복원 → FastAPI → 복원으로 실행해 응답이 같음(JS 안 주소 따옴표 표기만 다름).
+    실행 뒤 DB 상태(조직 53열, 상담원, 가이드 표, 운영 시간·휴일), 감사 로그 38건, 올린 파일 12개 내용까지 같음.
+  - 외부 이미지 저장은 실제로 받아 확인했다(구글 로고 PNG 저장 성공, favicon.ico 는 형식 거부, localhost·127.0.0.1·10.x·169.254.x 는 접속 전 거부,
+    리다이렉트를 따라가 다시 검사, 만료 인증서 거부). 확인한 IP 로 고정 접속하고 인증서와 SNI 는 원래 호스트 이름으로 검사한다(`_PinnedHTTPSConnection`).
+  - PHP 버그 수정: `Guide_model::localize_external_images()` 가 `save_article()` 에 새 기능 표시를 넘기지 않아, 외부 이미지를 저장하면 그 글의
+    "새 기능" 표시·출시일·버전이 지워졌다. PHP 와 FastAPI 모두 넘기도록 고쳤다.
+  - FastAPI 쪽 수정: `guide_model.org_timezone()` 이 시간대를 프로세스 전역에 기억해 조직 정보에서 시간대를 바꿔도 예전 값을 썼다(PHP 는 요청마다). 매번 읽는다.
+    `format_duration()` 이 평균 시간(소수 문자열)에서 오류가 나던 것을 PHP `(int)` 와 같게 고쳤다.
+  - 남은 차이(PHP 가 오류를 내거나 쓸 수 없는 값):
+    `watch?v[]=` 처럼 v 가 배열이면 PHP 는 TypeError(500), FastAPI 는 "알아보지 못했습니다".
+    출시일 0000 년은 PHP 가 받지만(DATETIME 범위 밖) FastAPI 는 형식 오류. 외부 이미지 접속 실패 문구는 curl 대신 파이썬 오류 문구.
+    8MB(PHP post_max_size) 를 넘는 요청은 PHP 가 본문을 버려 CSRF 403, FastAPI 는 크기 오류 문구. ff d8 로 시작하는 AVIF 겸용 파일은 FastAPI 만 거부.
+  - 시험 데이터: 데모 조직(1)의 조직 행, 상담원, 가이드 표, 운영 시간·휴일, 감사 로그, 올린 파일을 시작 전 상태로 되돌렸고(스냅샷과 비교해 같음),
+    자동 증가 번호도 맞춰 두었다. 웹하우스(9) 조직은 건드리지 않았다. 외부 이미지 시험으로 google.com, upload.wikimedia.org 에 GET 요청을 보냈다.
 
 ### 7단계. 플랫폼 운영자
 

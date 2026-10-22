@@ -29,14 +29,18 @@ def _php_numbers(value):
     return value
 
 
-def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False, hex_tag=False):
+def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False, hex_tag=False, pretty=False):
     """PHP json_encode() 와 같은 문자열을 만든다.
 
     - 기본으로 '/' 를 '\\/' 로 바꾼다. <script> 안에 넣어도 '</script>' 로 닫히지 않는다.
     - JSON_UNESCAPED_UNICODE 가 없으면 한글 등을 \\uXXXX(소문자 16진수)로 바꾼다.
     - JSON_UNESCAPED_UNICODE 여도 U+2028, U+2029 는 바꾼다(PHP 7.1 이후 기본 동작).
+    - pretty: JSON_PRETTY_PRINT(4칸 들여쓰기, "키": 값, 빈 배열 [] / 빈 객체 {}).
     """
-    encoded = json.dumps(_php_numbers(value), ensure_ascii=not unescaped_unicode, separators=(',', ':'))
+    if pretty:
+        encoded = json.dumps(_php_numbers(value), ensure_ascii=not unescaped_unicode, indent=4, separators=(',', ': '))
+    else:
+        encoded = json.dumps(_php_numbers(value), ensure_ascii=not unescaped_unicode, separators=(',', ':'))
 
     if not unescaped_unicode:
         encoded = _DEL_ESCAPE.sub(lambda m: m.group(1) + '\x7f', encoded)
@@ -53,6 +57,54 @@ def php_json_encode(value, unescaped_unicode=False, unescaped_slashes=False, hex
         encoded = encoded.replace('<', '\\u003C').replace('>', '\\u003E')
 
     return encoded
+
+
+# json_decode 기본 깊이 512 는 배열·객체 511단까지 받는다(PHP 8.2.34 에서 확인: 511 통과, 512 NULL).
+_JSON_MAX_DEPTH = 511
+_INT64 = (-(1 << 63), (1 << 63) - 1)
+
+
+def _json_reject(name):
+    raise ValueError(name)
+
+
+def _json_int(text):
+    """PHP 는 int64 를 넘는 정수를 실수로 읽는다."""
+    value = int(text)
+    return value if _INT64[0] <= value <= _INT64[1] else float(text)
+
+
+def _json_check(value):
+    """511단 초과, 짝 없는 UTF-16 서로게이트(\\ud800)는 PHP 가 NULL 로 돌려준다. 깊은 값도 되도록 반복문으로 본다."""
+    stack = [(value, 1)]
+    while stack:
+        item, depth = stack.pop()
+        if isinstance(item, str):
+            if any(0xD800 <= ord(ch) <= 0xDFFF for ch in item):
+                return False
+        elif isinstance(item, (list, dict)):
+            if depth > _JSON_MAX_DEPTH:
+                return False
+            if isinstance(item, dict):
+                stack.extend((k, depth) for k in item)
+                stack.extend((v, depth + 1) for v in item.values())
+            else:
+                stack.extend((v, depth + 1) for v in item)
+    return True
+
+
+def php_json_decode(text):
+    """PHP json_decode($text, TRUE) 대응. 객체는 dict, 배열은 list. 잘못된 JSON 이면 None(PHP NULL).
+
+    bytes 는 UTF-8 로 읽는다(잘못된 UTF-8 은 NULL). NaN/Infinity 는 받지 않는다.
+    """
+    try:
+        if isinstance(text, bytes):
+            text = text.decode('utf-8')
+        value = json.loads(str(text), parse_constant=_json_reject, parse_int=_json_int)
+    except (ValueError, RecursionError):
+        return None
+    return value if _json_check(value) else None
 
 
 _DAY_SHORT = ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun')

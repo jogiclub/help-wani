@@ -397,6 +397,13 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 - CSV 는 `helpers/php_csv.py`(PHP fgetcsv/fputcsv 와 같은 결과)를 씁니다. 파이썬 `csv` 모듈은 PHP 와 다르게 읽고 씁니다.
   PHP 의 `/\s/u` 는 `core/php.PCRE_U_SPACE` 로 옮깁니다(파이썬 `\s` 와 범위가 다릅니다).
 - PHP `filter_var` 대응은 `helpers/validation.valid_email`(이메일), `helpers/php_filter.validate_https_url`(https 주소)을 씁니다. 파이썬 표준 검사로 바꾸면 PHP 와 결과가 달라집니다.
+  `parse_url`/`parse_str` 은 `helpers/php_url.py`, `json_decode($x, TRUE)` 는 `core/php.php_json_decode`(깊이 511단, NaN·짝 없는 서로게이트 거부)를 씁니다.
+- 이미지 형식 판별은 `helpers/app.image_file_ext()`(PHP finfo + getimagesize 를 옮김), 업로드 검사는 `check_uploaded_image()` 하나입니다(검사가 잡습니다).
+  업로드 파일은 `guide_model.portal_file('assets/...')` 로 실제 경로를 얻습니다(api 컨테이너는 `portal/assets` 를 `/srv/assets` 로 붙입니다).
+- 서버가 외부 주소로 요청하는 곳은 `guide_model.fetch_external_image()` 하나입니다. 다른 파일에서 `http.client`·`httpx`·`socket` 등을 쓰면 검사가 잡습니다
+  (내부 발행 `libraries/realtime.py` 와 메일 `libraries/mailer.py` 는 예외). 가이드 표(`guide_articles/categories/synonyms/terms`)는 `guide_model` 만 고칩니다.
+- 조직 관리 경로(`routers/admin.py`, `routers/admin_guide.py`)는 모두 `Depends(require_admin)` 입니다. 샘플 가이드·공휴일 후보(`settings/guide_samples.py`, `settings/holidays.py`)는
+  PHP 설정과 같아야 합니다(검사가 잡습니다). 해마다 공휴일을 갱신할 때 두 곳을 함께 고칩니다.
 - 고객 IP 는 `client_ip()` 하나로 얻습니다. 믿는 프록시 주소(`TRUSTED_PROXY_IP`)는 cloudflared 고정 주소와 같아야 합니다(검사가 잡습니다).
 - 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.
 

@@ -577,6 +577,74 @@ def _php_config_array(text, key):
     return re.findall(r"'([^']*)'", re.sub(r'//[^\n]*', '', match.group(1))) if match else None
 
 
+# PHP 설정 배열을 PHP 없이 읽는다(설정 대조용). 작은따옴표/큰따옴표 문자열, '.' 이어 붙이기, array(키 => 값), 숫자만 다룬다.
+_TOKEN = re.compile(r"""\s+|//[^\n]*|/\*.*?\*/|'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|=>|array\(|[(),.\]\[]|-?\d+(?:\.\d+)?|TRUE|FALSE|NULL|true|false|null""", re.S)
+_DQ = {'n': '\n', 't': '\t', 'r': '\r', 'v': '\v', 'f': '\f', '\\': '\\', '$': '$', '"': '"', '0': '\0', 'e': '\x1b'}
+
+
+def _php_tokens(text):
+    pos, out = 0, []
+    while pos < len(text):
+        m = _TOKEN.match(text, pos)
+        if not m:
+            raise ValueError('PHP 배열 해석 실패: ' + text[pos:pos + 40])
+        tok = m.group(0)
+        pos = m.end()
+        if tok.strip() == '' or tok.startswith(('//', '/*')):
+            continue
+        out.append(tok)
+    return out
+
+
+def _php_string(tok):
+    body = tok[1:-1]
+    if tok[0] == "'":
+        return re.sub(r"\\([\\'])", r'\1', body)
+    return re.sub(r'\\(.)', lambda m: _DQ.get(m.group(1), '\\' + m.group(1)), body)
+
+
+def _php_value(text):
+    """PHP 설정의 값(array(...), 문자열 . 이어 붙이기, 숫자)을 파이썬 값으로. 키가 있으면 dict, 없으면 list."""
+    toks = _php_tokens(text)
+    pos = 0
+
+    def scalar():
+        nonlocal pos
+        tok = toks[pos]
+        pos += 1
+        if tok == 'array(':
+            items, keyed = [], False
+            while toks[pos] != ')':
+                value = scalar()
+                if toks[pos] == '=>':
+                    pos += 1
+                    items.append((value, scalar()))
+                    keyed = True
+                else:
+                    items.append((None, value))
+                if toks[pos] == ',':
+                    pos += 1
+            pos += 1
+            return {k: v for k, v in items} if keyed else [v for _, v in items]
+        if tok[0] in '\'"':
+            value = _php_string(tok)
+            while pos < len(toks) and toks[pos] == '.':
+                pos += 1
+                value += _php_string(toks[pos])
+                pos += 1
+            return value
+        if tok.upper() in ('TRUE', 'FALSE', 'NULL'):
+            return {'TRUE': True, 'FALSE': False, 'NULL': None}[tok.upper()]
+        return float(tok) if '.' in tok else int(tok)
+
+    return scalar()
+
+
+def _php_config(text, key):
+    m = re.search(r"\$config\['" + key + r"'\]\s*=\s*(array\(.*?\));\s*(?=\$config|\Z|\n\s*\n)", text, re.S)
+    return _php_value(m.group(1)) if m else None
+
+
 def check_fastapi_screens():
     """FastAPI 로 옮긴 화면이 PHP 와 같은 규칙을 지키고, 두 서버가 같아야 하는 목록이 어긋나지 않는지 본다(CLAUDE.md 3.3, 3.8, 3.15, 3.19)."""
     if not os.path.isdir(os.path.join(ROOT, 'backend/app/templates/guide')):
@@ -756,6 +824,67 @@ def check_fastapi_chat():
         fail('FastAPI 상담 규칙 위반', '\n    '.join(problems[:12]))
     else:
         ok('FastAPI 상담 규칙 확인 (availability 한 곳, 발행 전 저장, 조직 방 이벤트, visitors·macros 는 모델만, 답장 팔로업, 매크로 설정, CSRF 제외 경로)')
+
+
+
+def check_fastapi_admin():
+    """FastAPI 로 옮긴 조직 관리·가이드 관리 규칙(CLAUDE.md 3.6, 3.14, 3.15, 3.19)."""
+    if not os.path.isfile(os.path.join(ROOT, 'backend/app/routers/admin_guide.py')):
+        ok('FastAPI 조직 관리 없음')
+        return
+
+    problems = []
+    py_files = list(walk('backend/app', ('.py',), ('__pycache__',)))
+
+    # 1) 조직 관리 경로는 모두 조직 관리자만(require_admin) 쓴다.
+    for rel in ('backend/app/routers/admin.py', 'backend/app/routers/admin_guide.py'):
+        text = read(rel)
+        for match in re.finditer(r"@router\.api_route\('([^']*)'.*?\n(?:async )?def \w+\((.*?)\):", text, re.S):
+            if 'Depends(require_admin)' not in match.group(2):
+                problems.append(f"{rel} {match.group(1) or '/'} 는 Depends(require_admin) 로 막습니다")
+
+    # 2) 가이드 표는 guide_model 만 고친다(검사 clean_article, 색인 rebuild_index 를 함께 처리).
+    guide_write = re.compile(r"""db\.(update|insert)\(\s*'guide_(articles|categories|synonyms|terms)'|(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\s+`?guide_(articles|categories|synonyms|terms)`?\b""", re.I)
+    for rel, full in py_files:
+        if rel == 'backend/app/models/guide_model.py':
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if guide_write.search(line):
+                problems.append(f'{rel}:{number} 가이드 글·분류·동의어·색인은 guide_model 로만 고칩니다(CLAUDE.md 3.15)')
+
+    # 3) 서버가 외부 주소로 요청하는 곳은 guide_model.fetch_external_image() 하나다(SSRF 검사). 내부 발행(realtime)과 메일은 예외.
+    allowed = {'backend/app/models/guide_model.py': ('http.client', 'socket', 'ssl'),
+               'backend/app/libraries/realtime.py': ('httpx',),
+               'backend/app/libraries/mailer.py': ('smtplib', 'ssl')}
+    net = re.compile(r'^\s*(?:import|from)\s+(httpx|requests|urllib\.request|http\.client|socket|ssl|smtplib|aiohttp|pycurl)\b', re.M)
+    for rel, full in py_files:
+        for match in net.finditer(open(full, encoding='utf-8').read()):
+            if match.group(1) not in allowed.get(rel, ()):
+                problems.append(f'{rel} 에서 {match.group(1)} 를 씁니다. 외부 요청은 guide_model.fetch_external_image() 를 거칩니다')
+    model = read('backend/app/models/guide_model.py')
+    block = re.search(r'\ndef fetch_external_image\(.*?(?=\n\ndef |\Z)', model, re.S)
+    if not block or not all(part in block.group(0) for part in ('is_external_image(', 'public_ipv4(', 'store_fetched_image(', 'FETCH_MAX_REDIRECTS')):
+        problems.append('fetch_external_image() 는 매번 is_external_image / public_ipv4 로 다시 검사하고 store_fetched_image 로 저장합니다')
+    if 'image_file_ext(body)' not in model:
+        problems.append('store_fetched_image() 는 올린 이미지와 같은 image_file_ext() 검사를 거칩니다')
+
+    # 4) 이미지 업로드 경로는 check_uploaded_image() 로 검사한다(내용 기준 형식 판별, SVG 거부).
+    for rel, field in (('backend/app/routers/admin.py', 'logo'), ('backend/app/routers/admin_guide.py', 'image')):
+        if f"check_uploaded_image(post.files.get('{field}')" not in read(rel):
+            problems.append(f'{rel} 의 {field} 업로드는 check_uploaded_image() 로 검사합니다')
+
+    # 5) 샘플 가이드와 공휴일 후보는 PHP 설정과 같아야 한다(전환 기간).
+    samples = read('portal/application/config/guide_samples.php')
+    for key, name in (('categories', 'CATEGORIES'), ('synonyms', 'SYNONYMS'), ('articles', 'ARTICLES')):
+        if _php_config(samples, key) != _py_literal('backend/app/settings/guide_samples.py', name=name):
+            problems.append(f'settings/guide_samples.py {name} 가 PHP config/guide_samples.php 와 다릅니다')
+    if _php_config(read('portal/application/config/holidays.php'), 'holidays') != _py_literal('backend/app/settings/holidays.py', name='HOLIDAYS'):
+        problems.append('settings/holidays.py HOLIDAYS 가 PHP config/holidays.php 와 다릅니다')
+
+    if problems:
+        fail('FastAPI 조직 관리 규칙 위반', '\n    '.join(problems[:12]))
+    else:
+        ok('FastAPI 조직 관리 규칙 확인 (require_admin, 가이드 표는 guide_model 만, 외부 요청 한 곳, 업로드 검사, 샘플·공휴일 설정)')
 
 
 # ------------------------------------------------------------------ 실행 점검
@@ -1081,6 +1210,7 @@ def main():
     check_fastapi()
     check_fastapi_screens()
     check_fastapi_chat()
+    check_fastapi_admin()
 
     if '--live' in sys.argv:
         check_live()

@@ -158,6 +158,17 @@ def present_holiday(found):
     }
 
 
+def holiday_candidates(org):
+    """조직 국가의 공휴일 후보(settings/holidays.py). 오늘(조직 시간대) 이후만, 이미 넣은 날(매년 반복 제외)은 added."""
+    from app.settings.holidays import HOLIDAYS
+
+    candidates = HOLIDAYS.get(php_str(org.get('country')), {})
+    today = datetime.now(_org_timezone(org)).strftime('%Y-%m-%d')
+    added = {found.start_date for found in list_holidays(org['id']) if php_int(found.repeat_yearly) == 0}
+
+    return [{'date': day, 'name': name, 'added': day in added} for day, name in candidates.items() if day >= today]
+
+
 def _valid_date(text):
     match = re.match(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$', text)
     if not match:

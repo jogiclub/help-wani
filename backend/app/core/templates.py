@@ -19,7 +19,7 @@ from app import config
 from app.core import csrf
 from app.core.i18n import (current_locale, current_timezone, lang_text, load_messages, supported_locales,
                            timezone_offset_label, to_timezone)
-from app.core.php import number_format, php_date, php_empty, php_int, php_json_encode, php_str
+from app.core.php import number_format, php_date, php_empty, php_int, php_json_encode, php_str, php_round
 from app.core.request import base_url, uri_string
 from app.helpers.app import (asset_url, customer_url, format_duration, guide_image_url, guide_text_html,
                              relay_viewer_ws_url, status_label)
@@ -84,6 +84,7 @@ env.globals.update(
     nl2br=_nl2br,
     php_int=php_int,
     php_str=php_str,
+    php_round=php_round,
     csrf_token_name=csrf.TOKEN_NAME,
 )
 

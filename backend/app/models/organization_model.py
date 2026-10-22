@@ -36,6 +36,29 @@ def update(org_id, data):
     return db.update(TABLE, data, {'id': int(org_id)})
 
 
+def statistics(org_id, days=30):
+    """최근 days 일 원격지원 통계(일별 건수, 합계·정상 종료·평균 원격 시간, 만족도). DB 시간대가 UTC 라 날짜도 UTC 기준이다."""
+    params = {'org': int(org_id), 'days': int(days)}
+
+    daily = db.query(
+        'SELECT DATE(created_at) AS day, COUNT(*) AS cnt FROM sessions '
+        'WHERE org_id = :org AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY) '
+        'GROUP BY DATE(created_at) ORDER BY day', params)
+
+    summary = db.row(
+        "SELECT COUNT(*) AS total, SUM(status = 'ended') AS ended, "
+        'AVG(CASE WHEN started_at IS NOT NULL AND ended_at IS NOT NULL '
+        'THEN TIMESTAMPDIFF(SECOND, started_at, ended_at) END) AS avg_seconds '
+        'FROM sessions WHERE org_id = :org AND created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)', params)
+
+    survey = db.row(
+        'SELECT COUNT(*) AS cnt, AVG(sv.score) AS avg_score FROM surveys sv '
+        'JOIN sessions s ON s.id = sv.session_id '
+        'WHERE s.org_id = :org AND sv.created_at >= DATE_SUB(NOW(), INTERVAL :days DAY)', params)
+
+    return {'daily': daily, 'summary': summary, 'survey': survey}
+
+
 # ------------------------------------------------------------------ 상담 위젯
 
 def get_by_widget_key(widget_key):
