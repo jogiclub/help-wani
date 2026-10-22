@@ -1,24 +1,17 @@
 /**
- * 파일 위치: assets/js/common.js
- * 역할: 공통 UI 함수(showToast, showConfirmModal, openModal/closeModal)와 AJAX 래퍼
+ * 파일 위치: backend/assets/js/common.js
+ * 역할: 공통 UI 함수(showToast, showConfirmModal, openModal/closeModal, openDrawer/closeDrawer)와 AJAX 래퍼
  *
- * 화면 방식(RH_UI_KIT, layouts/_head.html)에 따라 두 가지로 그린다. 함수 이름과 인자는 같다.
- *   tailwind  : 아직 바꾸지 않은 레이아웃. Tailwind 클래스와 자체 모달/드로어.
+ * 화면 방식(RH_UI_KIT, layouts/_head.html)에 따라 그린다. 함수 이름과 인자는 같다.
  *   bootstrap : Bootstrap 6 + 왔니(docs/frontend-bootstrap6-plan.md). 네이티브 <dialog class="dialog|drawer"> 와
  *               Bootstrap 의 Dialog/Drawer/Toast. Bootstrap 은 bs.js(ESM)가 window.RHBootstrap 에 넘긴다.
  *   plain     : 고객 화면(customer.css). Bootstrap 없이 토스트만 rhc-* 클래스로 그린다.
+ *               공개 가이드('guide', guide-themes.css)도 이 방식으로 다룬다.
  */
 (function (window, $) {
     'use strict';
 
-    var KIT = (window.RH_UI_KIT === 'bootstrap' || window.RH_UI_KIT === 'plain') ? window.RH_UI_KIT : 'tailwind';
-
-    var TOAST_STYLE = {
-        success: 'bg-emerald-600',
-        danger: 'bg-red-600',
-        warning: 'bg-amber-500',
-        info: 'bg-slate-700'
-    };
+    var KIT = (window.RH_UI_KIT === 'plain' || window.RH_UI_KIT === 'guide') ? 'plain' : 'bootstrap';
 
     var TOAST_THEME = {
         success: 'theme-success',
@@ -28,40 +21,24 @@
     };
 
     /**
-     * 화면 방식별 클래스. 배지·버튼을 JS 로 만드는 곳(grid.js 등)은 여기서 고른다.
-     * 이름은 톤(primary, secondary, success, danger, ghost / gray, blue, amber, green, red, dark)이며,
-     * 예전 이름('btn-primary', 'badge-amber')도 받는다. Bootstrap 쪽에 5.3 이름(btn-primary 등)을 쓰지 않는다.
+     * 배지·버튼을 JS 로 만드는 곳(grid.js 등)이 쓰는 Bootstrap 6 클래스.
+     * 이름은 톤(버튼 primary, secondary, success, danger, ghost / 배지 gray, blue, amber, green, red, dark)이다.
+     * 앞에 'btn-' / 'badge-' 가 붙은 예전 이름도 톤으로 읽는다.
      */
     var UI_CLASS = {
-        tailwind: {
-            button: {
-                primary: 'btn btn-sm btn-primary',
-                secondary: 'btn btn-sm btn-secondary',
-                success: 'btn btn-sm btn-success',
-                danger: 'btn btn-sm btn-danger',
-                ghost: 'btn btn-sm btn-ghost'
-            },
-            badge: {
-                gray: 'badge badge-gray', blue: 'badge badge-blue', amber: 'badge badge-amber',
-                green: 'badge badge-green', red: 'badge badge-red', dark: 'badge badge-dark'
-            },
-            actions: 'flex h-full items-center gap-1'
+        button: {
+            primary: 'btn-solid theme-primary btn-sm',
+            secondary: 'btn-outline theme-secondary btn-sm',
+            success: 'btn-solid theme-success btn-sm',
+            danger: 'btn-outline theme-danger btn-sm',
+            ghost: 'btn-text theme-secondary btn-sm'
         },
-        bootstrap: {
-            button: {
-                primary: 'btn-solid theme-primary btn-sm',
-                secondary: 'btn-outline theme-secondary btn-sm',
-                success: 'btn-solid theme-success btn-sm',
-                danger: 'btn-outline theme-danger btn-sm',
-                ghost: 'btn-text theme-secondary btn-sm'
-            },
-            badge: {
-                gray: 'badge badge-subtle theme-secondary', blue: 'badge badge-subtle theme-primary',
-                amber: 'badge badge-subtle theme-warning', green: 'badge badge-subtle theme-success',
-                red: 'badge badge-subtle theme-danger', dark: 'badge rh-badge-dark'
-            },
-            actions: 'rh-grid-actions'
-        }
+        badge: {
+            gray: 'badge badge-subtle theme-secondary', blue: 'badge badge-subtle theme-primary',
+            amber: 'badge badge-subtle theme-warning', green: 'badge badge-subtle theme-success',
+            red: 'badge badge-subtle theme-danger', dark: 'badge rh-badge-dark'
+        },
+        actions: 'rh-grid-actions'
     };
 
     function toneOf(name, prefix, fallback) {
@@ -72,19 +49,13 @@
     var RHUi = {
         kit: KIT,
         button: function (name) {
-            // 예전 Tailwind 화면은 넘긴 클래스를 그대로 덧붙인다(텍스트 색 등 추가 클래스 유지).
-            if (KIT === 'tailwind' && name && !UI_CLASS.tailwind.button[name]) {
-                return 'btn btn-sm ' + name;
-            }
-            var map = (UI_CLASS[KIT] || UI_CLASS.tailwind).button;
-            return map[toneOf(name, 'btn-', 'secondary')] || map.secondary;
+            return UI_CLASS.button[toneOf(name, 'btn-', 'secondary')] || UI_CLASS.button.secondary;
         },
         badge: function (name) {
-            var map = (UI_CLASS[KIT] || UI_CLASS.tailwind).badge;
-            return map[toneOf(name, 'badge-', 'gray')] || map.gray;
+            return UI_CLASS.badge[toneOf(name, 'badge-', 'gray')] || UI_CLASS.badge.gray;
         },
         actions: function () {
-            return (UI_CLASS[KIT] || UI_CLASS.tailwind).actions;
+            return UI_CLASS.actions;
         }
     };
 
@@ -129,42 +100,10 @@
             return;
         }
 
-        if (KIT === 'bootstrap') {
-            showBootstrapToast($container[0], message, type);
-            return;
-        }
         if (KIT === 'plain') {
             showPlainToast($container[0], message, type);
-            return;
-        }
-
-        var color = TOAST_STYLE[type] || TOAST_STYLE.info;
-
-        var $toast = $('<div>')
-            .addClass('pointer-events-auto flex items-start gap-3 rounded-lg px-4 py-3 ' +
-                      'text-sm text-white shadow-lg transition-all duration-200 ' +
-                      'opacity-0 translate-x-4 ' + color);
-
-        $('<div>').addClass('flex-1').text(message).appendTo($toast);
-        $('<button type="button" aria-label="닫기">')
-            .addClass('shrink-0 text-white/70 hover:text-white')
-            .text('×')
-            .on('click', function () { dismiss(); })
-            .appendTo($toast);
-
-        $container.append($toast);
-
-        // 다음 프레임에 전환 효과를 준다.
-        window.requestAnimationFrame(function () {
-            $toast.removeClass('opacity-0 translate-x-4');
-        });
-
-        var timer = window.setTimeout(dismiss, 4000);
-
-        function dismiss() {
-            window.clearTimeout(timer);
-            $toast.addClass('opacity-0 translate-x-4');
-            window.setTimeout(function () { $toast.remove(); }, 200);
+        } else {
+            showBootstrapToast($container[0], message, type);
         }
     }
 
@@ -216,61 +155,38 @@
     }
 
     /**
-     * 모달 열기 / 닫기
-     * tailwind : id 로 지정한 요소의 hidden 클래스를 토글한다.
-     * bootstrap: <dialog class="dialog"> 를 Bootstrap Dialog 로 연다(배경 클릭·ESC 는 Bootstrap 이 처리).
+     * 모달 열기 / 닫기: <dialog class="dialog"> 를 Bootstrap Dialog 로 연다(배경 클릭·ESC 는 Bootstrap 이 처리).
      */
     function openModal(id) {
         var el = document.getElementById(id);
         if (isNativeDialog(el)) {
             withBootstrap(function (bs) { bs.Dialog.getOrCreateInstance(el).show(); });
-            return;
         }
-        $('#' + id).removeClass('hidden').addClass('flex');
     }
 
     function closeModal(id) {
         var el = document.getElementById(id);
         if (isNativeDialog(el)) {
             withBootstrap(function (bs) { bs.Dialog.getOrCreateInstance(el).hide(); });
-            return;
         }
-        $('#' + id).addClass('hidden').removeClass('flex');
     }
 
     /**
-     * 드로어 열기 / 닫기 (오른쪽에서 밀려 나오는 설정 패널)
-     * Bootstrap 화면: <dialog class="drawer drawer-end rh-drawer"> (예: templates/console/_widget_settings.html).
-     * Tailwind 화면(전환 전): .drawer-root > .drawer-backdrop + .drawer-panel.
+     * 드로어 열기 / 닫기 (왔니 방식의 오른쪽 패널)
+     * 마크업: <dialog class="drawer drawer-end rh-drawer"> (예: templates/console/_widget_settings.html).
+     * 열고 닫을 때 drawer:open / drawer:close jQuery 이벤트가 난다. 닫기 버튼(data-bs-dismiss)·ESC·바탕 클릭으로
+     * 닫아도 나도록 아래에서 Bootstrap 의 show/hidden.bs.drawer 이벤트에 잇는다.
      */
     function openDrawer(id) {
         var $drawer = $('#' + id);
-        if (isNativeDialog($drawer[0])) {
-            withBootstrap(function (bs) { bs.Drawer.getOrCreateInstance($drawer[0]).show(); });
-            $drawer.trigger('drawer:open');
-            return;
-        }
-        $drawer.addClass('is-open').attr('aria-hidden', 'false');
-        $('body').addClass('overflow-hidden');
-        // 패널이 다 밀려 나온 뒤 첫 입력 요소에 초점을 둔다.
-        window.setTimeout(function () {
-            $drawer.find('.drawer-panel').trigger('focus');
-        }, 200);
-        $drawer.trigger('drawer:open');
+        if (!isNativeDialog($drawer[0])) { return; }
+        withBootstrap(function (bs) { bs.Drawer.getOrCreateInstance($drawer[0]).show(); });
     }
 
     function closeDrawer(id) {
         var $drawer = $('#' + id);
-        if (isNativeDialog($drawer[0])) {
-            withBootstrap(function (bs) { bs.Drawer.getOrCreateInstance($drawer[0]).hide(); });
-            $drawer.trigger('drawer:close');
-            return;
-        }
-        $drawer.removeClass('is-open').attr('aria-hidden', 'true');
-        if (!$('.drawer-root.is-open').length) {
-            $('body').removeClass('overflow-hidden');
-        }
-        $drawer.trigger('drawer:close');
+        if (!isNativeDialog($drawer[0])) { return; }
+        withBootstrap(function (bs) { bs.Drawer.getOrCreateInstance($drawer[0]).hide(); });
     }
 
     /**
@@ -362,37 +278,8 @@
         return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
     }
 
-    $(function () {
-        // data-modal-close 속성이 있는 요소와 배경 클릭으로 모달을 닫는다.
-        $(document).on('click', '[data-modal-close]', function () {
-            closeModal($(this).attr('data-modal-close'));
-        });
-
-        $(document).on('click', '[data-modal-backdrop]', function (e) {
-            if (e.target === this) {
-                closeModal($(this).attr('id'));
-            }
-        });
-
-        // data-drawer-close 속성이 있는 요소(닫기 버튼, 배경)로 드로어를 닫는다.
-        $(document).on('click', '[data-drawer-close]', function () {
-            closeDrawer($(this).attr('data-drawer-close'));
-        });
-
-        // ESC 는 맨 위의 것부터 닫는다. 드로어 위에 뜬 확인 모달이 있으면 모달만 닫는다.
-        // Bootstrap 화면은 네이티브 <dialog> 가 ESC 를 처리한다.
-        $(document).on('keydown', function (e) {
-            if (e.key !== 'Escape' || KIT === 'bootstrap') { return; }
-
-            var $modals = $('.modal-root').not('.hidden');
-            if ($modals.length) {
-                $modals.each(function () { closeModal($(this).attr('id')); });
-                return;
-            }
-
-            $('.drawer-root.is-open').each(function () { closeDrawer($(this).attr('id')); });
-        });
-    });
+    document.addEventListener('show.bs.drawer', function (e) { $(e.target).trigger('drawer:open'); });
+    document.addEventListener('hidden.bs.drawer', function (e) { $(e.target).trigger('drawer:close'); });
 
     window.RHUi = RHUi;
     window.withBootstrap = withBootstrap;

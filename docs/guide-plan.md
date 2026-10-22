@@ -405,7 +405,7 @@ HAVING score >= ?
 5. 공개 목록/상세/검색 (`Guide` 컨트롤러)
 6. 상담원 콘솔 추천 영역 + [보내기] 카드 메시지 + 발행
 7. 위젯 자동 추천(조직 설정) + 카드 표시
-8. 다국어 키 세 사전 추가, 아이콘 `landing_icons()` 추가, Tailwind 재빌드
+8. 다국어 키 세 사전 추가, 아이콘은 Bootstrap Icons 이름(CLAUDE.md 3.3)
 9. `check-conventions.py` 검사 추가(10장)
 
 ### 2단계
@@ -513,7 +513,7 @@ HAVING score >= ?
 - 미리보기는 `/{조직코드}/guide?theme=키` 이며 그 조직 관리자로 로그인한 세션에서만 받습니다. 다른 방문자에게는 저장된 테마가 보입니다.
 - 구조: `guide_model.page_data()` 가 목록/검색/상세 데이터를 만들고 `templates/guide/page.html` 이 테마 템플릿을 고릅니다.
   관리자 미리보기(`/admin/guide/preview/{id}`)도 같은 경로를 탑니다. 레이아웃은 `layouts/guide.html`.
-- 테마 2~5 의 모양은 `assets/css/guide-themes.css` 입니다. 레이어 밖 일반 CSS 라 Tailwind 유틸리티보다 우선하며,
+- 테마 2~5 의 모양은 `assets/css/guide-themes.css` 입니다. 공개 가이드가 싣는 유일한 화면 CSS 이며(`ui_kit = 'guide'`),
   공통 본문 조각의 `guide-*` 클래스에 테마별 모양을 덧입힙니다.
 - 아이콘은 SVG 를 마크업에 직접 넣었습니다(Material Symbols 목록 등록 불필요).
 

@@ -391,7 +391,7 @@ CREATE TABLE IF NOT EXISTS macro_terms (
 | `assets/js/image-drop.js` | 실패 응답 본문을 받는 `onError` 옵션(파일 등록 오류 행 표시) |
 | `assets/js/console/chat.js` | 전송에 `macro_id` 추가, 내 메시지 hover [매크로로 저장] |
 | `assets/lang/{ko,en,ja}.json` | `macro.visitor_fallback`(고객 이름이 없을 때). **세 파일 모두**(3.2). 콘솔 화면 문구는 다른 콘솔 화면처럼 한국어로 둠 |
-| `assets/css/tailwind.src.css` | 팝업 스타일이 필요하면 추가 후 `./scripts/build-css.sh`(3.1) |
+| `assets/css/wani-chat.css` | 매크로 선택 팝업 모양(`.rh-macro-*`, 3.1) |
 | `sql/migrations/010-macros.sql`, `sql/01-schema.sql` | 5장 |
 | `scripts/check-conventions.py` | 아래 검사 추가 |
 

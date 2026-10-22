@@ -2,12 +2,12 @@
   파일 위치: backend/app/templates/guide/_unsolved.html
   역할: 공개 가이드 하단의 원격지원 안내 (가이드로 해결되지 않을 때 고객 접속 페이지로 보낸다)
 -#}
-<div class="card mt-6">
-  <div class="card-body flex flex-wrap items-center gap-3">
-    <div class="min-w-0 flex-1">
-      <div class="font-semibold text-slate-800">{{ lang_text('guide.unsolved') }}</div>
-      <div class="text-sm text-slate-500">{{ lang_text('guide.unsolved_body') }}</div>
+<div class="gt-panel gt-unsolved">
+  <div class="gt-panel-body gt-unsolved-body">
+    <div class="gt-unsolved-text">
+      <div class="gt-unsolved-title">{{ lang_text('guide.unsolved') }}</div>
+      <div class="gt-unsolved-desc">{{ lang_text('guide.unsolved_body') }}</div>
     </div>
-    <a class="btn btn-primary shrink-0" href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
+    <a class="gt-btn" href="{{ base_url(org.org_code ~ '/') }}">{{ lang_text('guide.remote_button') }}</a>
   </div>
 </div>

@@ -44,7 +44,7 @@
 | 경로 | 내용 |
 |---|---|
 | `backend/` | FastAPI 포털(화면·API, Jinja2 템플릿 `backend/app/templates/`) |
-| `backend/assets/` | 정적 파일(JS, CSS, 사전, 아이콘, 업로드). 주소는 `/assets/...`. Apache 가 직접 내주고 FastAPI 도 같은 폴더를 붙인다 |
+| `backend/assets/` | 정적 파일(JS, CSS, 사전, 업로드). 주소는 `/assets/...`. Apache 가 직접 내주고 FastAPI 도 같은 폴더를 붙인다. 외부 라이브러리는 `vendor/{이름}/{버전}/`(Bootstrap 6, Bootstrap Icons, Pretendard, wgrid) |
 | `relay/` | Node.js 중계 서버(원격 화면 중계) |
 | `realtime/` | Node.js 상담 실시간 메시지 서버(realtime-msg) |
 | `launcher/` | .NET 8 WPF 런처 + 원격제어 엔진 |
@@ -63,22 +63,29 @@
 
 어기면 조용히 깨지는 것들입니다. `./scripts/check-conventions.sh` 가 자동으로 검사합니다.
 
-### 3.1 Tailwind — 클래스를 추가하면 다시 빌드
+### 3.1 화면 — Bootstrap 6 + 왔니, 고객 화면은 일반 CSS
 
-> **전환 중(2026-10-22~):** 화면을 레이아웃 단위로 Bootstrap 6 + 왔니 디자인 시스템으로 옮기고 있습니다.
-> 아직 바꾸지 않은 레이아웃은 아래 Tailwind 규칙을, 바꾼 레이아웃은 `docs/frontend-bootstrap6-plan.md` 를 따릅니다.
-> 한 화면에 Tailwind(`app.css`)와 Bootstrap 을 함께 불러오지 않습니다(`.btn` `.card` 이름 충돌). 끝나면 이 절을 새 규칙으로 바꿉니다.
+화면은 레이아웃이 정한 **화면 방식(`ui_kit`)** 하나로 그립니다. `_head.html` 이 그 방식의 CSS·JS 만 싣고, 빌드 단계는 없습니다.
+설계와 변환 규칙·함정은 `docs/frontend-bootstrap6-plan.md`(특히 부록 A)에 있습니다.
 
-템플릿이나 JS 에 **새 Tailwind 클래스를 쓰면 CSS 를 다시 만들어야** 화면에 반영됩니다.
+| `ui_kit` | 레이아웃 | 싣는 것 |
+|---|---|---|
+| `bootstrap` | main, operator, blank, public | Bootstrap 6.0.0-alpha.1 + Bootstrap Icons + Pretendard + `wani.css`(+ 화면 묶음 `wani-*.css`) + `bs.js` |
+| `plain` | customer | Pretendard + `customer.css` 하나 |
+| `guide` | guide(공개 가이드) | Pretendard + `guide-themes.css` |
 
-```bash
-./scripts/build-css.sh
-```
-
-- 입력 `backend/assets/css/tailwind.src.css`, 출력 `backend/assets/css/app.css`(저장소에 포함)
-- 클래스는 `backend/app`(템플릿과 파이썬 코드)과 `backend/assets/js` 에서만 모읍니다(`source(none)` + `@source`). 데이터 폴더 `backend/app/core/data` 는 뺍니다.
-- 새 색상 단계가 필요하면 `@theme` 에 먼저 추가합니다. 없는 단계를 `@apply` 하면 빌드가 실패합니다.
-- 공통 컴포넌트는 `.btn` `.card` `.form-input` `.badge` `.table` `.icon-tile` 을 조합해 씁니다.
+- **Bootstrap 은 알파판을 버전 폴더째 고정**합니다(`backend/assets/vendor/bootstrap/6.0.0-alpha.1/`). 올릴 때는 `_head.html` 의 CSS 경로와
+  `bs.js` 의 import 경로를 함께 고칩니다(검사가 sha384 와 버전 일치를 봅니다).
+- Bootstrap 6 은 ESM 전용이라 전역이 없습니다. 화면 JS 는 `withBootstrap(fn)` 또는 `common.js` 함수를 거칩니다(`bootstrap.` 전역 금지, 검사가 잡습니다).
+- 색·글꼴·간격은 왔니 디자인 시스템 값(`wani.css` 의 `--wani-*`)만 씁니다. 화면 묶음 전용 모양은 그 묶음의 `wani-*.css` 에 둡니다.
+- **5.3 이름과 Tailwind 클래스를 쓰지 않습니다**: `btn-primary`(→ `btn-solid theme-primary`), `form-select`(→ `form-control`), `text-muted`(→ `fg-3`),
+  `modal*`(→ `<dialog class="dialog">`), `offcanvas*`(→ `<dialog class="drawer">`), `dropdown-*`(→ `menu`), `bg-slate-*`, `text-sm` 등(검사가 잡습니다).
+  간격 키가 5.3 과 다릅니다(`p-3` = 8px, `p-5` = 16px). 대응표는 계획 문서 부록 A.5.
+- JS 로 만드는 배지·버튼은 `RHUi.badge('green')`, `RHUi.button('primary')` 톤 이름으로 클래스를 받습니다.
+- **고객 화면(`plain`)과 공개 가이드(`guide`)는 Bootstrap 을 싣지 않습니다.** 고객의 브라우저를 고를 수 없어서이며(Bootstrap 6 하한 Safari 18·Chrome 130),
+  `oklch`·`color-mix`·`light-dark`·`:has()`·범위식 미디어 쿼리·`dvh` 를 쓰지 않습니다. 고객 화면 클래스는 `rhc-*` 만 씁니다(검사가 잡습니다).
+- Bootstrap 6 함정: 유틸리티가 `@layer` 안이라 `wani*.css` 의 `display` 규칙이 `d-none` 을 이깁니다(`wani.css` 가 `.d-none` 을 보정).
+  `vstack` 은 `flex: 1 1 auto` 라 세로 flex 부모 안에서 벌어집니다. 연한 테마 색은 `wani.css` 가 sRGB 로 직접 정합니다(알파의 oklch 혼합이 틀어짐).
 - 템플릿에서 JS/CSS 를 넣을 때는 **`asset_url('assets/...')`** 를 씁니다(파일 수정 시각을 `?v=` 로 붙임). `base_url()` 로 넣으면
   Cloudflare 가 예전 파일을 몇 시간 동안 내주어, 고친 화면이 반영되지 않습니다(검사가 잡습니다).
 
@@ -104,7 +111,7 @@ Material Symbols 는 2026-10-22 에 뺐습니다(상담 위젯은 의존성 없�
 
 - 글꼴에 없는 이름을 쓰면 아이콘 자리가 비어 보입니다. 템플릿·화면 JS 의 `bi-이름` 과 소개 페이지의 `routers/home.py` `landing_icons()` 를 글꼴 CSS 와 대조합니다(검사가 잡습니다).
 - 동작 버튼 아이콘: 저장 `check-lg`, 취소·닫기 `x-lg`, 삭제 `trash`, 추가 `plus-lg`, 수정 `pencil-square`, 검색 `search`, 초기화 `arrow-counterclockwise`(`docs/frontend-bootstrap6-plan.md` 부록 A.2).
-- 아직 Tailwind 인 화면(고객 화면)은 아이콘 글꼴을 싣지 않습니다. 그 화면에서 아이콘이 필요하면 5단계에서 함께 정합니다.
+- 고객 화면(`plain`)과 공개 가이드(`guide`)는 아이콘 글꼴을 싣지 않습니다. 필요하면 글자나 인라인 SVG 를 씁니다.
 
 ### 3.4 시간 — UTC 로 저장하고 표시할 때만 변환
 
@@ -132,8 +139,8 @@ FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py), 지금 시각�
   고른 값은 그리드 컨테이너 id 별로 localStorage(`rh-grid-page-size:{id}`)에 기억합니다. 컨테이너에 id 가 있어야 합니다.
 - 그리드 컨테이너에 높이를 주지 않으면 wgrid 가 한 쪽 행 수만큼 늘어납니다(가이드 관리가 이 방식). 화면 안에서 스크롤시키려면 `height` 를 줍니다.
 - 날짜 열은 `format: RHGrid.dateTime` / `RHGrid.shortDateTime` 을 씁니다(조직 시간대 적용).
-- **Pro 모듈(`wgridPro`)은 쓰지 않습니다.** 운영 도메인에서 라이선스 키가 필요합니다. 포털 색은 `tailwind.src.css` 끝의 `body .wgrid` 변수로 맞춥니다
-  (wgrid.css 는 레이어 밖 스타일이라 `@layer` 안에서 덮어쓰면 집니다).
+- **Pro 모듈(`wgridPro`)은 쓰지 않습니다.** 운영 도메인에서 라이선스 키가 필요합니다. 포털 색은 `wani.css` 의 `body .wgrid` 변수로 맞춥니다
+  (wgrid.css 는 레이어 밖 스타일이라 한 단계 구체적인 선택자로 덮어씁니다).
 
 ### 3.6 메뉴와 권한 — 사용자와 운영자는 분리
 
@@ -157,10 +164,10 @@ FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py), 지금 시각�
 
 - 모든 API 응답은 `{ "result": true|false, "message": "", "data": {} }` 형식입니다. `api_response()` 를 씁니다(빈 data 는 `{}`).
 - 알림은 `showToast(message, type)`, 확인은 `showConfirmModal(title, message, onConfirm, onCancel)`,
-  모달은 `openModal(id)` / `closeModal(id)` 를 씁니다. 외부 UI 프레임워크를 쓰지 않습니다.
-- 설정처럼 화면 옆에서 여는 패널은 드로어 `openDrawer(id)` / `closeDrawer(id)` 를 씁니다.
-  마크업은 `.drawer-root > .drawer-backdrop + .drawer-panel(.drawer-header / .drawer-body / .drawer-footer)`,
-  닫기 요소에 `data-drawer-close="id"`. 예: `templates/console/_widget_settings.html`(상담 대화 > 설정)
+  짧은 입력·확인 창은 `<dialog class="dialog">` + `openModal(id)` / `closeModal(id)` 를 씁니다. 함수가 Bootstrap 6 Dialog/Toast 를 부릅니다.
+- 상세 수정·설정처럼 화면 옆에서 여는 패널은 왔니 방식의 오른쪽 드로어 `openDrawer(id)` / `closeDrawer(id)` 를 씁니다.
+  마크업은 `<dialog class="drawer drawer-end rh-drawer" tabindex="-1">` + `.drawer-header / .drawer-body / .drawer-footer`(바닥 취소·저장 반반),
+  닫기 요소에 `data-bs-dismiss="drawer"`. 열고 닫을 때 `drawer:open` / `drawer:close` jQuery 이벤트가 납니다. 예: `templates/console/_widget_settings.html`
 - **JS 에서 API 주소를 상대 경로로 적지 않습니다.** 템플릿에서 `base_url()` 로 만든 절대 주소를
   `XXX_URLS` 전역에 `|js` 로 담아 넘깁니다. 상대 경로는 보는 화면의 깊이에 따라 `/console/console/...` 로 어긋납니다.
 - 관리 행위는 `audit_logs`(`log_model.audit`), 세션 이벤트는 `session_logs`(`log_model.add`) 에 남깁니다.
@@ -176,7 +183,7 @@ FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py), 지금 시각�
 `backend/assets/js/widget.js` 는 **우리 화면이 아니라 고객사 웹사이트에 삽입**됩니다.
 포털의 자산을 쓸 수 없고, 써도 고객사 스타일과 충돌합니다.
 
-- **Tailwind(`app.css`), `common.js`, `i18n.js`, jQuery 를 쓰지 않습니다.** 의존성 없이 혼자 돕니다.
+- **포털 CSS(`wani.css`·Bootstrap), `common.js`, `i18n.js`, jQuery 를 쓰지 않습니다.** 의존성 없이 혼자 돕니다.
 - 화면은 `attachShadow` 안에 그리고 CSS 도 그 안에 넣습니다. 고객사 CSS 와 섞이면 안 됩니다.
 - 문구는 위젯이 사전을 읽지 않고 **서버가 `/api/widget/init` 응답에 담아 내려줍니다.**
   언어는 조직 설정을 따릅니다(고객이 보는 화면, 3.2 표).
@@ -264,7 +271,7 @@ web(10.250.88.2) --X-RemoteHelp-Client-IP(set)--> api(10.250.88.3)      (FastAPI
 - `<input type="file">` 을 직접 쓰지 않습니다(검사가 잡습니다). 서버 검사(내용 기준 형식 판별, SVG 거부)는 그대로 둡니다.
 - 업로드 파일의 실제 경로는 `guide_model.asset_file('assets/...')` 로 얻습니다(api 컨테이너는 `backend/assets` 를 `/srv/assets` 로 붙입니다).
 - 버전은 `dropzone@6.3.5` 의 `dist/dropzone-min.js`(window.Dropzone). `dist/dropzone.js` 와 cdnjs 판은 CommonJS 라
-  `<script>` 로 넣으면 동작하지 않습니다. 기본 CSS 대신 `tailwind.src.css` 의 `.image-drop` 으로 그립니다.
+  `<script>` 로 넣으면 동작하지 않습니다. 기본 CSS 대신 `wani.css` 의 `.image-drop` 으로 그립니다.
 
 ### 3.15 가이드 — 원본은 DB, guide.json 은 주고받는 형식
 
@@ -296,7 +303,7 @@ web(10.250.88.2) --X-RemoteHelp-Client-IP(set)--> api(10.250.88.3)      (FastAPI
 - 위젯 자동 추천은 조직 설정 `guide_autosuggest`(기본 꺼짐)일 때만, 같은 글 1번, 대화당 3번까지입니다.
 - 매칭 가중치, 기준 점수, 조사/불용어는 `settings/guide_match.py` 한 곳에서 고칩니다.
 - 공개 화면은 조직이 고른 **테마**(`organizations.guide_theme`)로 그립니다. 테마 목록은 `guide_model.themes()` 한 곳,
-  템플릿은 `templates/guide/themes/{키}.html`, 모양은 `assets/css/guide-themes.css`(Tailwind 빌드 밖의 일반 CSS)입니다.
+  템플릿은 `templates/guide/themes/{키}.html`, 모양은 `assets/css/guide-themes.css`(고객 화면과 같은 원칙의 일반 CSS, `ui_kit = 'guide'`)입니다.
   테마를 더하면 목록과 템플릿을 함께 만듭니다(검사가 누락을 잡습니다). 화면 데이터는 `guide_model.page_data()` 하나로 만들고,
   본문 블록은 모든 테마가 `templates/guide/_article.html` 을 씁니다. `?theme=` 미리보기는 그 조직 관리자 세션에서만 받습니다.
 - 가이드 관리를 처음 열 때 글이 없으면 샘플 10개(`settings/guide_samples.py`, 이미지 `assets/img/guide-samples/`)를
@@ -410,7 +417,6 @@ state      = 운영 중이 아니면 closed / 운영 중이고 응대 가능 상
 ./scripts/check-conventions.sh   # 이 문서의 규칙을 자동 점검
 ./scripts/check-conventions.sh --live   # 실행 중인 개발 서버까지 점검
 ./scripts/e2e-test.sh            # 포털 -> 중계 -> 화면 수신까지 전 구간
-./scripts/build-css.sh           # Tailwind 빌드
 ```
 
 작업을 마치기 전에 `check-conventions.sh` 를 통과시킵니다.
@@ -466,7 +472,7 @@ docker compose up -d --build
 | 시험 서버 뷰어 연결 | **relay 가 자체 서명 인증서라 상담원 브라우저는 포털 경유로 붙는다.** `.env` 의 `RELAY_VIEWER_WS_URL=auto` 이면 접속한 주소 기준 `ws(s)://<호스트>/relay-viewer`, web(Apache)이 relay 인증서(`relay-ca` 볼륨)로 검증한 wss 로 넘긴다. 런처(`/agent`)는 그대로 8443 직결. 운영은 공인 인증서 + `wss://<도메인>/viewer` |
 | 시험 서버 외부 주소 | **`https://help.wani.im` 은 Cloudflare Tunnel(cloudflared 컨테이너)로 받는다.** 고객 IP 를 얻는 유일한 경로이며 https 인증서도 해결된다. `help.wani.im` 은 Cloudflare 프록시라 `:8099` 로는 접속되지 않는다. 런처 relay 접속은 IP(`118.36.197.219:8443`) 유지 |
 | 상담 위젯 | **별도 사이트가 아니라 이 포털 안의 기능.** 조직·상담원 체계를 그대로 쓴다 (`docs/widget-plan.md`) |
-| 화면(프론트) | **Bootstrap `6.0.0-alpha.1`(알파, 버전 폴더째 저장소에 고정) + 왔니 디자인 시스템**으로 전환 중. 조직 사용자·운영자는 왔니 앱 셸(사이드바), 로그인·소개는 왔니 색·글꼴, 고객 화면은 브라우저 하한(Safari 18) 때문에 Bootstrap 없이 일반 CSS, 공개 가이드·위젯은 그대로. 아이콘은 Bootstrap Icons 1.13.2 로 바꾼다 (`docs/frontend-bootstrap6-plan.md`) |
+| 화면(프론트) | **Bootstrap `6.0.0-alpha.1`(알파, 버전 폴더째 저장소에 고정) + 왔니 디자인 시스템(2026-10-22 전환, Tailwind 삭제).** 조직 사용자·운영자는 왔니 앱 셸(사이드바), 로그인·소개는 왔니 색·글꼴, 고객 화면(`customer.css`)과 공개 가이드(`guide-themes.css`)는 브라우저 하한(Safari 18) 때문에 Bootstrap 없이 일반 CSS, 위젯은 Shadow DOM 자체 CSS. 아이콘은 Bootstrap Icons 1.13.2. jQuery 는 우리 코드가 쓰므로 유지 (`docs/frontend-bootstrap6-plan.md`) |
 | 포털 서버 | **FastAPI(2026-10-22 전환, PHP 삭제).** Jinja2 서버 렌더링, SQLAlchemy Core(동기). 앞단은 PHP 없는 Apache(정적 파일, 고객 IP, 웹소켓 경유) (`docs/fastapi-migration-plan.md`) |
 | 상담 실시간 | **`realtime-msg` 컨테이너(Node + ws)로 전달.** 폴링은 연결이 끊겼을 때의 보조 수단으로 남긴다 |
 | 상담 운영 시간 | **1차: 요일별 운영 시간(하루 3구간), 휴일(공휴일 후보는 KR 만), 조직 수동 전환, 상담원 개인 상태, 부재중 자동 응답, 운영 시간 외 위젯(받기/안내만/숨기기). 2차: 답변 속도 안내(직접 지정/실제 기록), 중복 응대 방지(담당 표시·가져오기, 보는 중/입력 중, 새 문의 브라우저 알림 1회), 위젯 전화 버튼, 조직 관리 통계의 상담 숫자.** 모두 조직이 켤 때만 동작(기본 꺼짐) (`docs/chat-operation-plan.md`) |

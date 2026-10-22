@@ -163,8 +163,8 @@ GET  /api/widget/poll     widget.poll    (realtime=1 이면 새 구독 토큰도
 <script src="https://help.example.com/widget.js" data-key="WIDGET_KEY" defer></script>
 ```
 
-- `widget.js` 는 **Tailwind 도 `common.js` 도 `i18n.js` 도 쓰지 않습니다.**
-  고객사 사이트 안에서 도는 코드라 `app.css` 가 없고, 있어도 고객사 스타일과 충돌합니다.
+- `widget.js` 는 **포털 CSS(`wani.css`·Bootstrap)도 `common.js` 도 `i18n.js` 도 쓰지 않습니다.**
+  고객사 사이트 안에서 도는 코드라 포털 CSS 가 없고, 있어도 고객사 스타일과 충돌합니다.
   Shadow DOM(`attachShadow`) 안에 자체 CSS 를 넣습니다. (`CLAUDE.md` 3.9)
 - 문구는 `/api/widget/init` 응답에 담아 서버가 내려줍니다. 위젯이 사전 파일을 직접 읽지 않습니다.
 - 언어는 **조직 설정**을 따릅니다. 고객이 보는 화면이기 때문입니다(`CLAUDE.md` 3.2 표).
@@ -241,7 +241,7 @@ GET  /api/widget/poll     widget.poll    (realtime=1 이면 새 구독 토큰도
 
 | 원본 | 이 저장소 | 이유 |
 |---|---|---|
-| Bootstrap 5.3 | Tailwind + `.btn` `.card` `.form-input` `.badge` `.table` | 3.1. 외부 UI 프레임워크를 쓰지 않는다 |
+| Bootstrap 5.3 | 포털 화면은 Bootstrap 6 + 왔니(2026-10-22 전환), 위젯은 Shadow DOM 안의 자체 CSS | 3.1, 3.9 |
 | pqGrid | wgrid 0.1.0 코어, 기본 20개 | 3.5 |
 | `companies` 테이블 신설 | `organizations` 재사용 | 조직·상담원·권한 체계가 이미 있다 |
 | 다국어는 2단계 | **1단계 필수**, ko/en/ja 세 사전 동시 수정 | 3.2. 키가 빠지면 그 언어에서 키가 그대로 보인다 |
@@ -277,5 +277,4 @@ jQuery, AJAX MVC, Toast/Modal, 한국어 화면·커밋은 원본 그대로입�
 브라우저에서 위젯이 실제로 그려지는 모습은 아직 육안으로 확인하지 않았습니다.
 API 왕복과 서버 응답까지는 개발 환경에서 확인했습니다.
 
-각 단계마다 `./scripts/check-conventions.sh` 를 통과시키고, 새 Tailwind 클래스를 썼으면
-`./scripts/build-css.sh` 를 돌립니다.
+각 단계마다 `./scripts/check-conventions.sh` 를 통과시킵니다.

@@ -1,11 +1,51 @@
 /*
- * 파일 위치: portal/assets/css/guide-themes.css
- * 역할: 공개 가이드 테마 2~5 의 모양 (1번 기본 카드형은 app.css 의 Tailwind 클래스만 쓴다)
+ * 파일 위치: backend/assets/css/guide-themes.css
+ * 역할: 공개 가이드(/{조직코드}/guide) 화면의 모양 전부 — 기본 바탕, 1번 기본 카드형, 공통 본문, 테마 2~5, 모음 페이지
  *
- * Tailwind 빌드를 거치지 않는 일반 CSS 다. 레이어 밖에 있으므로 app.css 의 유틸리티(@layer)보다 우선해
- * 공통 본문 조각(views/guide/_article.php)의 guide-* 자리에 테마 모양을 덧입힐 수 있다.
+ * 공개 가이드는 고객이 보는 화면이라 Tailwind(app.css)·Bootstrap 을 싣지 않고 이 파일 하나만 쓴다
+ * (layouts/guide.html 의 ui_kit 'guide', _head.html 은 글꼴만 싣는다. docs/frontend-bootstrap6-plan.md 4.4).
+ * 새 규칙은 오래된 브라우저에서도 되는 문법만 쓴다: 16진/rgba 색(oklch·color-mix·light-dark 금지), min-width/max-width 미디어 쿼리,
+ * :has()·dvh·@layer·@container 금지. (아래 테마 2~5 와 모음 규칙에 남아 있는 color-mix() 는 예전부터 있던 것이다.)
+ *
+ * 공통 본문 조각(templates/guide/_article.html 등)은 guide-* 클래스로 기본 모양을 받고, 테마는 .gt-{테마} 를 앞에 붙인
+ * 규칙(더 높은 우선순위)으로 덧입힌다. 이 파일에만 있는 클래스는 gt- 로 시작한다.
  * 테마는 body 의 .gt-{테마} 로, 강조색은 --gt-accent(조직 상담 위젯 색)로 받는다.
  */
+
+/* ------------------------------------------------------------------
+ * 기본 바탕(예전 app.css 의 preflight 와 같은 값). 요소 선택자만 쓰므로 아래 클래스 규칙이 항상 이긴다.
+ * ------------------------------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }
+html {
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -moz-tab-size: 4;
+  tab-size: 4;
+  -webkit-tap-highlight-color: transparent;
+}
+h1, h2, h3, h4, h5, h6 { font-size: inherit; font-weight: inherit; }
+a { color: inherit; text-decoration: inherit; }
+b, strong { font-weight: bolder; }
+small { font-size: 80%; }
+summary { display: list-item; }
+ol, ul, menu { list-style: none; }
+img, svg, video, canvas, audio, iframe, embed, object { display: block; vertical-align: middle; }
+img, video { max-width: 100%; height: auto; }
+button, input, select, optgroup, textarea {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  opacity: 1;
+  background-color: transparent;
+  border-radius: 0;
+}
+/* 자리표시 글자: 글자색의 절반 투명도(예전 preflight 의 currentcolor 50% 와 같은 결과) */
+::-webkit-input-placeholder { color: inherit; opacity: .5; }
+::-moz-placeholder { color: inherit; opacity: .5; }
+::placeholder { color: inherit; opacity: .5; }
+textarea { resize: vertical; }
+::-webkit-search-decoration { -webkit-appearance: none; }
+[hidden] { display: none !important; }
 
 .gt {
   --gt-accent: #2563eb;
@@ -13,13 +53,18 @@
   --gt-muted: #6b7280;
   --gt-text: #111827;
   margin: 0;
+  background: #f1f5f9;
   color: var(--gt-text);
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* 링크 색은 각 테마 규칙이 정한다. 테마 규칙에서 a 색을 줄 때는 .gt 를 앞에 붙이거나 이 규칙보다 뒤에 둔다. */
 .gt a { color: inherit; }
 .gt .guide-text a { color: var(--gt-accent); }
+/* 글 블록 안의 https 주소(helpers/app.py 의 guide_text_html) */
+.gt .gt-link { color: var(--gt-accent); text-decoration: underline; }
 
 .gt-preview-bar {
   position: sticky;
@@ -32,6 +77,31 @@
   text-align: center;
 }
 
+/* 토스트 (common.js 의 showToast 가 plain 방식으로 rhc-toast 를 만든다. 모양은 customer.css 와 같다) */
+.rhc-toasts {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  left: 16px;
+  z-index: 1090;
+  max-width: 320px;
+  margin-left: auto;
+}
+.rhc-toast {
+  margin-bottom: 8px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  color: #ffffff;
+  font-size: 14px;
+  background: #3a3f4b;
+  transition: opacity .2s;
+}
+.rhc-toast-success { background: #1c8716; }
+.rhc-toast-danger { background: #cb1414; }
+.rhc-toast-warning { background: #ecaf3b; color: #212529; }
+.rhc-toast.is-hiding { opacity: 0; }
+
 /* 검색창 공통 */
 .gt input[type="search"] {
   width: 100%;
@@ -41,6 +111,88 @@
   outline: none;
 }
 .gt input[type="search"]:focus { border-color: var(--gt-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gt-accent) 20%, transparent); }
+
+/* ------------------------------------------------------------------
+ * 공통 본문 (templates/guide/_article.html, _video.html) — 모든 테마의 기본 모양. 테마별 차이는 .gt-{테마} 규칙이 덧입힌다.
+ * 줄 높이는 글자 크기의 배수로 둔다(테마가 글자 크기만 바꿔도 예전과 같은 비율이 되도록).
+ * ------------------------------------------------------------------ */
+.guide-title { color: #1d293d; font-size: 1.5rem; line-height: 1.3333333333; font-weight: 700; }
+.guide-subtitle { margin-top: 4px; color: #62748e; }
+.guide-meta { margin-top: 8px; color: #90a1b9; font-size: 12px; line-height: 1.3333333333; }
+.guide-body.gt-after-heading { margin-top: 24px; }
+.guide-body > * { margin-bottom: 20px; }
+.guide-body > :last-child { margin-bottom: 0; }
+.guide-text { color: #314158; line-height: 1.625; white-space: pre-line; overflow-wrap: break-word; word-wrap: break-word; }
+.guide-img { max-width: 100%; border: 1px solid #e2e8f0; border-radius: 8px; }
+.guide-caption { margin-top: 4px; color: #62748e; font-size: 14px; line-height: 1.4285714286; }
+.guide-video { width: 100%; aspect-ratio: 16 / 9; border-radius: 8px; background: #0f172b; }
+
+/* ===================================================================
+ * 1. 기본 카드형 (templates/guide/themes/card.html, _header.html, _unsolved.html)
+ *    _header / _unsolved 는 카드형만 쓴다. 상자는 .gt-panel 이다(.gt-card 는 body 의 테마 이름이라 쓰지 않는다).
+ * =================================================================== */
+.gt-card-main { max-width: 48rem; margin: 0 auto; padding: 32px 16px; }
+.gt-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 1px 2px -1px rgba(0, 0, 0, .1);
+}
+.gt-panel-body { padding: 20px; }
+
+.gt-btn {
+  display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 16px; border-radius: 6px; background: #1f6feb; color: #fff;
+  font-size: 14px; line-height: 1.4285714286; font-weight: 500; cursor: pointer;
+  transition: color .15s cubic-bezier(.4, 0, .2, 1), background-color .15s cubic-bezier(.4, 0, .2, 1), border-color .15s cubic-bezier(.4, 0, .2, 1);
+}
+.gt-btn:hover { background: #1a5ed0; }
+.gt-input {
+  flex: 1 1 0%; width: 100%; padding: 8px 12px;
+  border: 1px solid #cad5e2; border-radius: 6px; font-size: 14px; line-height: 1.4285714286;
+}
+.gt-input::-webkit-input-placeholder { color: #90a1b9; opacity: 1; }
+.gt-input::-moz-placeholder { color: #90a1b9; opacity: 1; }
+.gt-input::placeholder { color: #90a1b9; opacity: 1; }
+.gt-input:focus { border-color: #1f6feb; outline: none; box-shadow: 0 0 0 2px #d9e8ff; }
+
+/* 머리말 (조직 로고, 이름, 안내) */
+.gt-header { display: flex; align-items: center; gap: 16px; }
+.gt-header-logo { flex-shrink: 0; max-width: 128px; max-height: 48px; }
+.gt-header-initial {
+  display: flex; flex-shrink: 0; align-items: center; justify-content: center; width: 48px; height: 48px;
+  border-radius: 12px; background: #1a5ed0; color: #fff; font-size: 1.25rem; line-height: 1.4; font-weight: 700;
+}
+.gt-header-text { min-width: 0; }
+.gt-header-title { color: #1d293d; font-size: 1.125rem; line-height: 1.5555555556; font-weight: 700; }
+.gt-header-title:hover { text-decoration: underline; }
+.gt-header-desc { color: #62748e; font-size: 14px; line-height: 1.4285714286; }
+
+/* 목록·검색·상세 */
+.gt-card-collection { margin-top: 16px; }
+.gt-card-back { margin: 16px 0 8px; }
+.gt-card-link { color: #1a5ed0; font-size: 14px; line-height: 1.4285714286; }
+.gt-card-link:hover { text-decoration: underline; }
+.gt-card-search { display: flex; gap: 8px; margin-top: 16px; }
+.gt-card-bar { display: flex; align-items: center; gap: 12px; margin: 20px 0 8px; }
+.gt-card-bar-link { margin-left: auto; }
+.gt-card-heading { color: #314158; font-weight: 600; }
+.gt-card-group { margin: 24px 0 8px; }
+.gt-card-muted { color: #62748e; font-size: 14px; line-height: 1.4285714286; }
+.gt-card-center { text-align: center; }
+.gt-card-empty { margin-top: 20px; }
+.gt-card-item { display: block; padding: 12px 20px; border-bottom: 1px solid #f1f5f9; }
+.gt-card-item:last-child { border-bottom-width: 0; }
+.gt-card-item:hover { background: #f8fafc; }
+.gt-card-item-title { color: #1d293d; font-weight: 500; }
+.gt-card-item-sub { margin-top: 2px; color: #62748e; font-size: 14px; line-height: 1.4285714286; }
+
+/* 원격지원 안내 */
+.gt-unsolved { margin-top: 24px; }
+.gt-unsolved-body { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.gt-unsolved-text { flex: 1 1 0%; min-width: 0; }
+.gt-unsolved-title { color: #1d293d; font-weight: 600; }
+.gt-unsolved-desc { color: #62748e; font-size: 14px; line-height: 1.4285714286; }
 
 /* ===================================================================
  * 2. 문서형 (왼쪽 목차)
@@ -378,7 +530,7 @@ details.gt-faq-item[open] > .gt-faq-summary::after { content: "−"; color: var(
 
 /* ------------------------------------------------------------------
  * 모음 페이지 공통 (탭, 새 기능 모음, 동영상 모음, NEW 배지, 새 기능 띠) — 모든 테마
- * 조각: views/guide/_tabs.php, _features.php, _videos.php, _new_badge.php, _feature_strip.php
+ * 조각: templates/guide/_tabs.html, _features.html, _videos.html, _new_badge.html, _feature_strip.html
  * 테마별 차이는 아래 .gt-{테마} 규칙으로 덧입힌다. (docs/guide-collections-plan.md)
  * ------------------------------------------------------------------ */
 .guide-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 16px 0; padding: 4px; border: 1px solid var(--gt-border); border-radius: 12px; background: #fff; }

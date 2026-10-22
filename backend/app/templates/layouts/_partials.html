@@ -4,11 +4,11 @@
 
   ui_kit 은 레이아웃이 정한 값(_head.html 과 같음). Bootstrap 화면은 네이티브 <dialog class="dialog"> 를 쓴다.
 -#}
-{%- set ui_kit = ui_kit|default('tailwind') -%}
-{% if ui_kit == 'plain' %}
-<!-- 토스트 (고객 화면, customer.css). 확인 다이얼로그는 고객 화면에서 쓰지 않으므로 두지 않는다(없으면 브라우저 confirm). -->
+{%- set ui_kit = ui_kit|default('bootstrap') -%}
+{% if ui_kit == 'plain' or ui_kit == 'guide' %}
+<!-- 토스트 (고객 화면 customer.css, 공개 가이드 guide-themes.css 에 같은 rhc-toast 모양이 있다). 확인 다이얼로그는 고객 화면에서 쓰지 않으므로 두지 않는다(없으면 브라우저 confirm). -->
 <div id="toastContainer" class="rhc-toasts" aria-live="polite"></div>
-{% elif ui_kit == 'bootstrap' %}
+{% else %}
 <!-- 토스트 (common.js 의 showToast 가 .toast 를 만들어 넣는다) -->
 <div id="toastContainer" class="rh-toasts" aria-live="polite" aria-atomic="false"></div>
 
@@ -27,21 +27,4 @@
     </button>
   </div>
 </dialog>
-{% else %}
-<!-- 토스트 -->
-<div id="toastContainer"
-     class="pointer-events-none fixed top-4 right-4 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-2"></div>
-
-<!-- 확인 모달 -->
-<div id="confirmModal" data-modal-backdrop
-     class="modal-root fixed inset-0 z-50 hidden items-center justify-center bg-slate-900/50 p-4">
-  <div class="w-full max-w-md rounded-lg bg-white shadow-xl">
-    <div class="px-5 py-4 text-base font-semibold text-slate-800" id="confirmModalTitle"></div>
-    <div class="px-5 pb-5 text-sm text-slate-600" id="confirmModalBody"></div>
-    <div class="flex justify-end gap-2 border-t border-slate-200 px-5 py-3">
-      <button type="button" class="btn btn-secondary" id="confirmModalCancel">취소</button>
-      <button type="button" class="btn btn-primary" id="confirmModalOk">확인</button>
-    </div>
-  </div>
-</div>
 {% endif %}

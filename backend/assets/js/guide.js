@@ -1,8 +1,8 @@
 /**
- * 파일 위치: assets/js/guide.js
+ * 파일 위치: backend/assets/js/guide.js
  * 역할: 공개 가이드 화면의 문서형 테마 목차 열고 닫기와 목차 너비 조절(Split.js)
  *
- * 유튜브 동영상은 views/guide/_article.php 가 처음부터 iframe 으로 그린다.
+ * 유튜브 동영상은 templates/guide/_video.html 이 처음부터 iframe 으로 그린다.
  */
 (function () {
     'use strict';

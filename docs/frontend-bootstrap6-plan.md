@@ -19,7 +19,7 @@ Bootstrap `6.0.0-alpha.1` 고정 사용, 고객 화면은 Bootstrap 없이 일�
 | 로그인·가입 | `layouts/blank.html` | Bootstrap 6 | 왔니 색·글꼴, 가운데 카드 하나 |
 | 소개 페이지(방문자) | `layouts/public.html` | Bootstrap 6 | 왔니 색·글꼴을 쓰되 셸 없이 소개용으로 새로 구성 |
 | 고객 화면(접속 안내, 만족도, 다운로드 불가) | `layouts/customer.html` | **Bootstrap 미사용**, 일반 CSS | 왔니 색·글꼴 토큰만 공유(4.4 이유) |
-| 공개 가이드 | `layouts/guide.html` + 테마 | **바꾸지 않음** | `guide-themes.css` 그대로(이미 Tailwind 밖) |
+| 공개 가이드 | `layouts/guide.html` + 테마 | **Bootstrap 미사용**, 일반 CSS(`ui_kit = 'guide'`) | `guide-themes.css` 하나. 6단계에서 카드형 테마·공통 조각의 Tailwind 클래스를 `gt-*` 로 옮김(처음 계획의 "이미 Tailwind 밖"은 틀렸음) |
 | 상담 위젯 | `assets/js/widget.js` | **바꾸지 않음** | 고객사 사이트 안의 shadow DOM(CLAUDE.md 3.9) |
 
 하지 않는 것
@@ -255,7 +255,7 @@ iOS 17 이하나 업데이트가 막힌 회사 PC 에서 다운로드 버튼이 
 | 3 | 상담원 콘솔 | `console/chat` `queue` `viewer` `macro` `_macro_edit` `_widget_settings` | 대기 |
 | 4 | 로그인·가입·소개 | `blank.html`, `auth/*`, `public.html`, `home/landing` | **완료(2026-10-22)**. 아이콘을 Bootstrap Icons 로 바꾸고 Material Symbols 를 뺌(CLAUDE.md 3.3) |
 | 5 | 고객 화면(일반 CSS) | `customer.html`, `customer/*` | **완료(2026-10-22)**. `ui_kit = 'plain'`, `customer.css` 하나(oklch·:has·범위식 미디어 쿼리 없음) |
-| 6 | 정리: Tailwind·`app.css`·`build-css.sh`·`.tools/tailwindcss`·Material Symbols 제거, `ui_kit` 분기 삭제, CLAUDE.md 정식 반영 | — | 대기 |
+| 6 | 정리: 공개 가이드를 `ui_kit = 'guide'`(guide-themes.css 의 gt-* 클래스)로 옮김, Tailwind·`app.css`·`tailwind.src.css`·`build-css.sh`·`.tools/` 삭제, `common.js`·`grid.js`·`_head`·`_partials` 의 Tailwind 분기 삭제, CLAUDE.md 3.1·3.5·3.7·3.14·4·6장 정식 반영 | — | **완료(2026-10-22)** |
 
 - `main.html` 은 콘솔(3단계)과 같은 레이아웃이므로 2·3단계는 **한 브랜치에서 함께 끝낸 뒤** 합칩니다.
 - 각 단계 끝에 `./scripts/check-conventions.sh --live` 와 화면 확인을 하고, 3단계는 원격 화면 때문에 `./scripts/e2e-test.sh` 도 돌립니다.

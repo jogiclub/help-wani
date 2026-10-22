@@ -4,14 +4,14 @@
 
   각 화면의 인라인 스크립트가 본문에서 바로 실행되므로 라이브러리를 먼저 불러온다.
 
-  ui_kit: 레이아웃이 include 전에 정한다. 'tailwind'(기본, 아직 바꾸지 않은 레이아웃) / 'bootstrap'(Bootstrap 6 + 왔니) /
-          'plain'(고객 화면: customer.css 하나만. 오래된 브라우저에서도 열려야 해서 Bootstrap 6 을 싣지 않는다).
-  Tailwind 의 .btn .card 와 Bootstrap 의 같은 이름이 부딪히므로 한 화면에는 하나만 싣는다(docs/frontend-bootstrap6-plan.md 5장).
+  ui_kit: 레이아웃이 include 전에 정한다(CLAUDE.md 3.1). 'bootstrap'(기본, Bootstrap 6 + 왔니) /
+          'plain'(고객 화면: customer.css 하나만. 오래된 브라우저에서도 열려야 해서 Bootstrap 6 을 싣지 않는다) /
+          'guide'(공개 가이드: 글꼴만 싣는다. 모양은 layouts/guide.html 이 싣는 guide-themes.css 하나, 고객 화면과 같은 원칙).
   Bootstrap 6 은 ESM 전용이라 bs.js(type=module)가 불러와 window.RHBootstrap 에 넘긴다.
 -#}
 {%- set use_grid = use_grid|default(false) -%}
 {%- set use_dropzone = use_dropzone|default(false) -%}
-{%- set ui_kit = ui_kit|default('tailwind') -%}
+{%- set ui_kit = ui_kit|default('bootstrap') -%}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="csrf-name" content="{{ csrf_token_name }}">
@@ -33,8 +33,8 @@
 {% elif ui_kit == 'plain' %}
 <link href="{{ asset_url('assets/vendor/pretendard/1.3.9/pretendardvariable-dynamic-subset.css') }}" rel="stylesheet">
 <link href="{{ asset_url('assets/css/customer.css') }}" rel="stylesheet">
-{% else %}
-<link href="{{ asset_url('assets/css/app.css') }}" rel="stylesheet">
+{% elif ui_kit == 'guide' %}
+<link href="{{ asset_url('assets/vendor/pretendard/1.3.9/pretendardvariable-dynamic-subset.css') }}" rel="stylesheet">
 {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>
@@ -45,7 +45,7 @@
 <script src="{{ asset_url('assets/js/i18n.js') }}"></script>
 {% if use_grid %}
 <!-- wgrid 0.1.0 코어(MIT). npm 배포 전이라 assets/vendor/wgrid/ 에 둔다. window.wgrid 를 만든다.
-     포털 색은 tailwind.src.css 끝(Bootstrap 화면은 wani.css)의 .wgrid 변수 덮어쓰기로 맞춘다. -->
+     포털 색은 wani.css 의 .wgrid 변수 덮어쓰기로 맞춘다. -->
 <link href="{{ asset_url('assets/vendor/wgrid/0.1.0/wgrid.css') }}" rel="stylesheet">
 <script src="{{ asset_url('assets/vendor/wgrid/0.1.0/wgrid.global.js') }}"></script>
 <script src="{{ asset_url('assets/js/grid.js') }}"></script>
@@ -53,7 +53,7 @@
 <script src="{{ asset_url('assets/js/common.js') }}"></script>
 {% if use_dropzone %}
 <!-- Dropzone.js 6.3.5 (MIT). dist/dropzone-min.js 가 window.Dropzone 을 만드는 브라우저용 빌드다.
-     기본 CSS 는 쓰지 않고 tailwind.src.css 의 .image-drop 으로 그린다. 이미지 선택은 모두 image-drop.js 를 거친다. -->
+     기본 CSS 는 쓰지 않고 wani.css 의 .image-drop 으로 그린다. 이미지 선택은 모두 image-drop.js 를 거친다. -->
 <script src="https://cdn.jsdelivr.net/npm/dropzone@6.3.5/dist/dropzone-min.js"></script>
 <script src="{{ asset_url('assets/js/image-drop.js') }}"></script>
 {% endif %}

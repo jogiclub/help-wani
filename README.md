@@ -15,7 +15,7 @@
 ## 작업 규칙
 
 이 저장소에서 작업할 때 지켜야 할 규칙은 **[CLAUDE.md](CLAUDE.md)** 에 모아 두었습니다.
-Tailwind 재빌드, 다국어 사전 3종 동기화, 아이콘 목록, UTC 시간 처리처럼
+Bootstrap 6 화면 규칙, 다국어 사전 3종 동기화, 아이콘 목록, UTC 시간 처리처럼
 어기면 조용히 깨지는 것들이라 자동 검사를 붙여 두었습니다.
 
 ```bash
@@ -198,19 +198,16 @@ DIRECT_DOWNLOAD_ENABLED=true
 켜면 `/{조직코드}/download` 가 열리고, 파일 이름이 `RemoteHelp_{조직코드}.exe` 로 내려갑니다.
 런처는 자기 실행 파일 이름에서 조직 코드를 읽습니다. 꺼져 있으면 그 경로는 안내 페이지로 되돌립니다.
 
-## 화면 스타일 (Tailwind CSS)
+## 화면 스타일 (Bootstrap 6 + 왔니 디자인 시스템)
 
-```bash
-./scripts/build-css.sh           # backend/assets/css/app.css 생성
-./scripts/build-css.sh --watch   # 뷰를 수정하며 작업할 때
-```
+빌드 단계가 없습니다. 레이아웃이 정한 화면 방식에 따라 `layouts/_head.html` 이 필요한 파일만 싣습니다.
 
-- 입력: `backend/assets/css/tailwind.src.css`
-- 출력: `backend/assets/css/app.css` (저장소에 포함하므로 빌드 없이도 화면은 동작)
-- 뷰나 JS 에 **새 Tailwind 클래스를 추가하면 반드시 다시 빌드**해야 합니다.
+- 상담원·관리자·운영자·로그인·소개: Bootstrap 6.0.0-alpha.1(저장소에 고정) + Bootstrap Icons + `backend/assets/css/wani.css`
+- 고객 화면: `backend/assets/css/customer.css` 하나(오래된 브라우저 대비)
+- 공개 가이드: `backend/assets/css/guide-themes.css`
 
-알림과 모달은 외부 UI 프레임워크 없이 `assets/js/common.js` 의
-`showToast` / `showConfirmModal` / `openModal` / `closeModal` 로 처리합니다.
+알림과 모달은 `assets/js/common.js` 의 `showToast` / `showConfirmModal` / `openModal` / `openDrawer` 로 처리합니다.
+규칙과 변환표는 [CLAUDE.md](CLAUDE.md) 3.1, [docs/frontend-bootstrap6-plan.md](docs/frontend-bootstrap6-plan.md) 를 봅니다.
 
 ## 진행 상황
 

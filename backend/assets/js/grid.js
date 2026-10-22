@@ -6,7 +6,7 @@
  * 컬럼은 wgrid 형식({ key, title, width, format, render, pinned })으로 쓰고, 이 파일이 더하는 키는 셋이다.
  *   flex: 1    남는 너비를 나눠 갖는 컬럼(없으면 width 고정). 그리드 너비가 바뀔 때마다 다시 나눈다.
  *   tooltip    true 면 셀 글자 전체를 title 로 띄운다(말줄임된 긴 글).
- *   cellClass  셀 글자에 붙일 클래스(Tailwind 유틸리티). render 가 없을 때만 쓴다.
+ *   cellClass  셀 글자에 붙일 클래스(Bootstrap 6 유틸리티, 예: fw-medium fg-1). render 가 없을 때만 쓴다.
  * key 는 컬럼 사이에서 유일해야 한다. 버튼 칸처럼 값이 없는 컬럼도 '_actions' 같은 key 를 준다.
  */
 (function (window) {
@@ -254,7 +254,7 @@
 
     /**
      * 배지 형태로 보여주는 render 함수를 만든다.
-     * classMap: { 값: 'badge-green' } (또는 톤 이름 'green')
+     * classMap: { 값: 'green' } (톤 이름: gray, blue, amber, green, red, dark)
      * labelMap: { 값: '표시문구' }
      */
     function badgeRenderer(classMap, labelMap) {
@@ -263,12 +263,12 @@
                 return '-';
             }
 
-            var cls = (classMap && classMap[value]) || 'badge-gray';
+            var cls = (classMap && classMap[value]) || 'gray';
             var label = (labelMap && labelMap[value]) || value;
             var span = document.createElement('span');
 
-            // 화면 방식(Tailwind / Bootstrap 6)에 맞는 클래스는 common.js 의 RHUi 가 고른다.
-            span.className = window.RHUi ? window.RHUi.badge(cls) : 'badge ' + cls;
+            // 배지 클래스는 common.js 의 RHUi 가 톤 이름으로 고른다.
+            span.className = window.RHUi.badge(cls);
             span.textContent = label;
             return span;
         };
@@ -281,7 +281,7 @@
     function buttonsRenderer(buttons) {
         return function (row) {
             var wrapEl = document.createElement('div');
-            wrapEl.className = window.RHUi ? window.RHUi.actions() : 'flex h-full items-center gap-1';
+            wrapEl.className = window.RHUi.actions();
 
             buttons.forEach(function (def) {
                 if (def.show && !def.show(row)) {
@@ -290,8 +290,7 @@
 
                 var btn = document.createElement('button');
                 btn.type = 'button';
-                btn.className = window.RHUi ? window.RHUi.button(def.className || 'btn-secondary')
-                                            : 'btn btn-sm ' + (def.className || 'btn-secondary');
+                btn.className = window.RHUi.button(def.className || 'secondary');
                 btn.textContent = def.label;
                 btn.addEventListener('click', function (event) {
                     // 행 클릭(상세 모달 열기)까지 번지지 않게 막는다.

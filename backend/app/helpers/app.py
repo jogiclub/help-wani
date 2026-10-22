@@ -75,7 +75,7 @@ def guide_text_html(text):
         # 문장 끝의 마침표, 괄호는 주소에서 뺀다.
         url = part.rstrip('.,);:!?')
         tail = part[len(url):]
-        html.append('<a class="text-brand-600 underline" href="' + htmlspecialchars(url)
+        html.append('<a class="gt-link" href="' + htmlspecialchars(url)
                     + '" target="_blank" rel="noopener">' + htmlspecialchars(url) + '</a>' + htmlspecialchars(tail))
 
     return Markup(''.join(html))

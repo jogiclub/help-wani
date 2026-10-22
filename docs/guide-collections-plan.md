@@ -225,9 +225,9 @@ ALTER TABLE organizations
 - `guide_model.page_data()` 에 `view`(`list` / `features` / `videos`)를 받아 값을 더합니다.
   `features` 면 `features`(월별 묶음), `videos` 면 `videos` 와 `video_total`, 공통으로 `options`, `tabs` 를 돌려줍니다.
 - 테마 템플릿은 목록을 그리던 자리에서 `view` 를 보고 `_features` / `_videos` 를 부릅니다. 모양 차이는 `assets/css/guide-themes.css` 에
-  `.gt-{테마} .guide-feature-*`, `.guide-video-grid` 로 덧입힙니다(일반 CSS, Tailwind 빌드 밖).
+  `.gt-{테마} .guide-feature-*`, `.guide-video-grid` 로 덧입힙니다(일반 CSS, 공개 가이드는 `ui_kit = 'guide'` 로 이 파일만 쓴다).
 - `docs` 테마의 왼쪽 목차와 `portal` 테마의 분류 카드 위에도 같은 `_tabs.html` 를 둡니다.
-- 새 Tailwind 클래스를 공통 조각에 쓰면 `./scripts/build-css.sh` 로 다시 빌드합니다(3.1).
+- 공통 조각의 모양은 `guide-themes.css` 의 `gt-*` 클래스로 둡니다. 고객이 보는 화면이라 오래된 브라우저 문법만 씁니다(CLAUDE.md 3.1).
 - 아이콘은 테마와 같이 SVG 를 마크업에 직접 넣습니다(Material Symbols 목록 등록 불필요).
 - 상세 하단 "해결되지 않았나요?" 와 상담 위젯 열기는 모음 페이지에도 그대로 둡니다.
 - 문구는 조직 설정 언어를 따릅니다(3.2, 고객 화면). 조회수는 모음 페이지에서 올리지 않습니다.
@@ -287,7 +287,7 @@ ALTER TABLE organizations
 4. 공통 조각 `_tabs` / `_features` / `_videos` / `_video` / `_feature_strip`, 테마 5종에 연결, `guide-themes.css`
 5. 가이드 관리: "공개 페이지 구성" 카드, `api_page_options_save`, 목록의 새 기능 열과 거르기
 6. 가이드 편집: 새 기능 표시 / 출시일 / 버전
-7. 다국어 키 세 사전, Tailwind 재빌드
+7. 다국어 키 세 사전, `check-conventions.sh`
 8. `check-conventions.py` 검사 추가(10장), 일부러 어겨 보고 잡히는지 확인
 9. `CLAUDE.md` 3.15 에 요약 추가, `docs/guide-plan.md` 12장에 구현 현황 추가
 

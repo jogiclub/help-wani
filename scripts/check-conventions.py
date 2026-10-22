@@ -127,60 +127,14 @@ def render_calls():
     return calls
 
 
-# ---------------------------------------------------------------- 3.1 Tailwind
-def check_tailwind():
-    css_path = os.path.join(ROOT, 'backend/assets/css/app.css')
-
-    if not os.path.isfile(css_path):
-        fail('Tailwind 결과물이 없습니다', 'backend/assets/css/app.css — ./scripts/build-css.sh 실행')
-        return
-
-    source = read('backend/assets/css/tailwind.src.css')
-    if '../../../backend/app' not in source:
-        fail('Tailwind 가 FastAPI 템플릿을 읽지 않습니다', 'tailwind.src.css 에 @source "../../../backend/app" 가 있어야 합니다')
-        return
-
-    cli = os.path.join(ROOT, '.tools/tailwindcss')
-
-    if os.access(cli, os.X_OK):
-        # CLI 가 있으면 다시 빌드해 내용이 같은지 정확히 비교한다.
-        tmp = os.path.join(ROOT, '.tools/_check.css')
-        result = subprocess.run(
-            [cli, '-i', os.path.join(ROOT, 'backend/assets/css/tailwind.src.css'), '-o', tmp, '--minify'],
-            capture_output=True, text=True, cwd=ROOT)
-
-        if result.returncode != 0:
-            fail('Tailwind 빌드 실패', result.stderr.strip().splitlines()[-1] if result.stderr else '')
-            return
-
-        same = open(tmp, encoding='utf-8').read() == open(css_path, encoding='utf-8').read()
-        os.remove(tmp)
-
-        if same:
-            ok('Tailwind CSS 가 최신입니다')
-        else:
-            fail('Tailwind CSS 가 소스와 다릅니다', './scripts/build-css.sh 를 실행해 다시 만드세요')
-        return
-
-    # CLI 가 없으면 수정 시각으로 어림 판단한다.
-    newest = os.path.getmtime(os.path.join(ROOT, 'backend/assets/css/tailwind.src.css'))
-    for rel, full in list(walk(TEMPLATES, ('.html',))) + list(walk(JS, ('.js',))) + py_files():
-        newest = max(newest, os.path.getmtime(full))
-
-    if os.path.getmtime(css_path) < newest:
-        warn('Tailwind CSS 가 오래되었을 수 있습니다', './scripts/build-css.sh 로 확인하세요')
-    else:
-        ok('Tailwind CSS 수정 시각 확인')
-
-
-# ------------------------------------------------- 3.1 Bootstrap 6 + 왔니 (전환 중)
+# ------------------------------------------------- 3.1 Bootstrap 6 + 왔니
 BOOTSTRAP_DIR = 'backend/assets/vendor/bootstrap/6.0.0-alpha.1'
 # 공식 설치 문서(getbootstrap.com/docs/6.0/getting-started/install)의 무결성 값
 BOOTSTRAP_SHA384 = {
     'bootstrap.min.css': 'B/GM4XqrwHnWXNOWMbloTmrYXZg10cakYGmpfsR/bbzQ6JAJI4ihuyADKLnBgrCe',
     'bootstrap.bundle.min.js': '1a/pXj49ZQ1aHEmrJ+gMw1otqoVsYwlEnlD8mIfY2TV03r20Y0CN7uqx1tQogjPL',
 }
-# Bootstrap 화면에 남으면 안 되는 5.3 이름과 예전 Tailwind 화면 전용 이름(조용히 모양이 사라진다)
+# Bootstrap 화면에 남으면 안 되는 5.3 이름과 예전(Tailwind 시절) 포털 전용 이름(조용히 모양이 사라진다)
 BOOTSTRAP_LEGACY = re.compile(
     r"""data-bs-(?:toggle|dismiss)=["'](?:modal|offcanvas|dropdown)["']"""
     r"""|(?<![\w-])(?:offcanvas(?:-[a-z]+)?|dropdown-(?:menu|item|toggle)|form-select|text-muted"""
@@ -188,7 +142,7 @@ BOOTSTRAP_LEGACY = re.compile(
     r"""|(?<![\w-])btn-(?:primary|secondary|success|danger|warning|info|ghost|outline-[a-z]+)\b"""
     r"""|(?<![\w-])badge-(?:gray|blue|amber|green|red|dark)\b|(?<![\w-])form-(?:input|help|error)\b"""
     r"""|data-(?:modal|drawer)-(?:close|backdrop)""")
-# Tailwind 에만 있는 클래스. Bootstrap 화면에서는 아무 모양도 내지 않는다.
+# Tailwind 클래스. 2026-10-22 에 Tailwind 를 뺐으므로 어느 화면에서도 아무 모양을 내지 않는다(다시 들어오지 않게 막는다).
 TAILWIND_ONLY = re.compile(
     r"""(?<![\w-])(?:bg|text|border|ring)-(?:slate|gray|zinc|neutral|stone|red|amber|emerald|blue|brand)-\d{2,3}\b"""
     r"""|(?<![\w-])(?:space-[xy]|divide-[xy])-\d\b|(?<![\w-])(?:sm|md|lg|xl):(?:flex|grid|hidden|inline|block|grid-cols-\d)\b"""
@@ -266,8 +220,6 @@ def check_bootstrap():
         if re.search(r'window\.bootstrap\b|\bbootstrap\.(?:Dialog|Drawer|Toast|Tooltip|Menu|Tab)\b', open(full, encoding='utf-8').read()):
             problems.append(f'{rel} 가 bootstrap 전역을 씀(Bootstrap 6 은 전역이 없음, withBootstrap() 을 씁니다)')
 
-    excluded = [os.path.normpath(os.path.join('backend/assets/css', target))
-                for target in re.findall(r'@source\s+not\s+"([^"]+)"', read('backend/assets/css/tailwind.src.css'))]
 
     layouts = bootstrap_layouts()
     files = bootstrap_files(layouts)
@@ -277,9 +229,6 @@ def check_bootstrap():
                 found = pattern.search(line)
                 if found:
                     problems.append(f'{rel}:{number} {label} "{found.group(0)}"')
-        norm = os.path.normpath(rel)
-        if not any(norm == e or norm.startswith(e + os.sep) for e in excluded):
-            problems.append(f'{rel} 가 Tailwind 추출 대상에 남아 있음(tailwind.src.css 에 @source not 을 더합니다)')
 
     if problems:
         fail('Bootstrap 6 규칙 위반 (docs/frontend-bootstrap6-plan.md)', '\n    '.join(problems[:15]))
@@ -301,7 +250,7 @@ def check_customer_css():
         return
 
     head = read(f'{TEMPLATES}/layouts/_head.html')
-    plain = re.search(r"ui_kit == 'plain' %\}(.*?)\{% (?:else|elif)", head, re.S)
+    plain = re.search(r"ui_kit == 'plain' %\}(.*?)\{% (?:else|elif|endif)", head, re.S)
     if not plain or 'bootstrap' in plain.group(1) or 'app.css' in plain.group(1) or 'customer.css' not in plain.group(1):
         problems.append("_head.html 의 plain 분기는 customer.css 만 실어야 함(Bootstrap·app.css 금지)")
 
@@ -593,7 +542,7 @@ def check_widget():
     # 규칙을 설명하는 주석에 금지어가 나오므로 주석을 걷어내고 본다.
     body = re.sub(r'//[^\n]*', '', re.sub(r'/\*.*?\*/', '', raw, flags=re.S))
 
-    for needle, label in (('app.css', '포털 Tailwind CSS'), ('common.js', '포털 공통 스크립트'), ('i18n.js', '포털 번역 스크립트'),
+    for needle, label in (('wani.css', '포털 CSS'), ('bootstrap.min', 'Bootstrap'), ('common.js', '포털 공통 스크립트'), ('i18n.js', '포털 번역 스크립트'),
                           ('RH_I18N', '포털 번역 전역 변수'), ('jQuery', 'jQuery')):
         if needle in body:
             problems.append(f'widget.js 가 {label}({needle}) 에 기대고 있습니다')
@@ -1012,7 +961,6 @@ def check_live():
 
 
 def main():
-    check_tailwind()
     check_bootstrap()
     check_customer_css()
     check_asset_version()

@@ -20,27 +20,27 @@
 </p>
 {% endif %}
 {% if not hide_heading %}
-<h1 class="guide-title text-2xl font-bold text-slate-800">{{ article.title }}</h1>
+<h1 class="guide-title">{{ article.title }}</h1>
 {% if not empty(article.subtitle) %}
-<p class="guide-subtitle mt-1 text-slate-500">{{ article.subtitle }}</p>
+<p class="guide-subtitle">{{ article.subtitle }}</p>
 {% endif %}
-<p class="guide-meta mt-2 text-xs text-slate-400">
+<p class="guide-meta">
   {{ lang_text('guide.updated') }}
   <span data-i18n-date="{{ article.updated_at }}" data-i18n-date-style="date"></span>
 </p>
 {% endif %}
 
-<div class="guide-body {{ '' if hide_heading else 'mt-6' }} space-y-5">
+<div class="guide-body{{ '' if hide_heading else ' gt-after-heading' }}">
 {% for block in article.blocks %}
   {% if block.type == 'text' %}
-  <div class="guide-text whitespace-pre-line break-words leading-relaxed text-slate-700">{{ guide_text_html(block.text) }}</div>
+  <div class="guide-text">{{ guide_text_html(block.text) }}</div>
 
   {% elif block.type == 'image' %}
   <figure class="guide-figure">
-    <img class="guide-img max-w-full rounded-lg border border-slate-200" loading="lazy" referrerpolicy="no-referrer"
+    <img class="guide-img" loading="lazy" referrerpolicy="no-referrer"
          src="{{ guide_image_url(block.src) }}" alt="{{ block.caption }}">
     {% if block.caption != '' %}
-    <figcaption class="guide-caption mt-1 text-sm text-slate-500">{{ block.caption }}</figcaption>
+    <figcaption class="guide-caption">{{ block.caption }}</figcaption>
     {% endif %}
   </figure>
 
@@ -48,7 +48,7 @@
   <figure class="guide-figure guide-figure-video">
     {% with yt_id = block.youtube_id, yt_title = block.caption %}{% include 'guide/_video.html' %}{% endwith %}
     {% if block.caption != '' %}
-    <figcaption class="guide-caption mt-1 text-sm text-slate-500">{{ block.caption }}</figcaption>
+    <figcaption class="guide-caption">{{ block.caption }}</figcaption>
     {% endif %}
   </figure>
   {% endif %}

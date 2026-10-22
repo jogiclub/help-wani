@@ -4,7 +4,10 @@
 
   테마 모양은 assets/css/guide-themes.css 에 있다. body 의 gt-{테마} 클래스와 --gt-accent(강조색)로 고른다.
   조직이 상담 위젯을 켜 두면 그 조직의 상담 버블을 함께 띄운다(layouts/customer.html 와 같다).
+
+  ui_kit 'guide': Tailwind·Bootstrap 없이 글꼴(Pretendard)만 _head.html 이 싣는다. 고객이 보는 화면이라 오래된 브라우저 문법만 쓴다.
 -#}
+{%- set ui_kit = 'guide' -%}
 <!doctype html>
 <html lang="{{ i18n.locale }}">
 <head>
