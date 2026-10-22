@@ -1,6 +1,6 @@
 #!/bin/bash
 # 파일 위치: scripts/build-css.sh
-# 역할: Tailwind 독립 실행 CLI 로 portal/assets/css/app.css 를 생성
+# 역할: Tailwind 독립 실행 CLI 로 backend/assets/css/app.css 를 생성
 #
 # Node.js 없이 동작한다. CLI 바이너리는 저장소에 포함하지 않고 필요할 때 내려받는다.
 set -e
@@ -23,8 +23,8 @@ if [ ! -x "$TW_BIN" ]; then
 fi
 
 "$TW_BIN" \
-    -i "$ROOT/portal/assets/css/tailwind.src.css" \
-    -o "$ROOT/portal/assets/css/app.css" \
+    -i "$ROOT/backend/assets/css/tailwind.src.css" \
+    -o "$ROOT/backend/assets/css/app.css" \
     --minify $WATCH
 
-echo "[build-css] 생성 완료: portal/assets/css/app.css"
+echo "[build-css] 생성 완료: backend/assets/css/app.css"

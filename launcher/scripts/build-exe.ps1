@@ -7,7 +7,7 @@
     사용 예:
       .\build-exe.ps1
       .\build-exe.ps1 -SignPfx 인증서.pfx -SignPassword 비밀번호
-      .\build-exe.ps1 -OutDir ..\..\portal\assets\downloads
+      .\build-exe.ps1 -OutDir ..\..\backend\assets\downloads
       .\build-exe.ps1 -TestBuild
       .\build-exe.ps1 -Viewer -TestBuild
 
@@ -20,7 +20,7 @@
                  시험 서버(https://help.wani.im/demo/download) 전용이며
                  서명과 함께 쓸 수 없고, 운영 고객에게 배포하면 안 된다.
 
-    산출물은 항상 -OutDir(기본 portal\assets\downloads)에 RemoteHelp.exe 로 복사한다.
+    산출물은 항상 -OutDir(기본 backend\assets\downloads)에 RemoteHelp.exe 로 복사한다.
     시험 서버는 이 파일을 RemoteHelp_<조직코드>.exe 로 내려주므로 빌드가 끝나면 곧 배포된 상태가 된다.
 #>
 [CmdletBinding()]
@@ -41,7 +41,7 @@ if ($TestBuild -and $SignPfx) {
 }
 
 if (-not $OutDir) {
-    $OutDir = if ($Viewer) { "$PSScriptRoot\..\publish-viewer" } else { "$PSScriptRoot\..\..\portal\assets\downloads" }
+    $OutDir = if ($Viewer) { "$PSScriptRoot\..\publish-viewer" } else { "$PSScriptRoot\..\..\backend\assets\downloads" }
 }
 
 $projectDir = if ($Viewer) { "RemoteHelp.Viewer" } else { "RemoteHelp.App" }

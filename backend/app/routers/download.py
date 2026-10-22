@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse
 from app import config
 from app.core.php import php_date, php_round, php_str
 
-# 배포 파일이 놓이는 곳 (빌드 산출물을 이 이름으로 올린다). portal/assets/downloads 를 본다.
+# 배포 파일이 놓이는 곳 (빌드 산출물을 이 이름으로 올린다). backend/assets/downloads 를 본다.
 LAUNCHER_FILE = 'RemoteHelp.exe'
 
 

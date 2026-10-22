@@ -129,7 +129,7 @@ Store 설치가 막힌 기업 환경의 수요가 확인되면 인증서를 구�
 | 항목 | Store(MSIX) | 직접 다운로드(EXE) |
 |---|---|---|
 | 서명 | Microsoft 가 수행 | **직접 코드 서명 필요** |
-| 배포 위치 | Microsoft Store | `portal/assets/downloads/RemoteHelp.exe` |
+| 배포 위치 | Microsoft Store | `backend/assets/downloads/RemoteHelp.exe` |
 | 빌드 | `launcher/scripts/sideload-test.ps1` / Partner Center | `launcher/scripts/build-exe.ps1` |
 | 조직 코드 전달 | `remotehelp://connect?org=...` 프로토콜 | 파일 이름 `RemoteHelp_{조직코드}.exe` |
 | 업데이트 | Store 자동 업데이트 | 재다운로드 안내(최소 버전 확인 API) |

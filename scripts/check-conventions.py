@@ -24,7 +24,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = 'backend/app'
 TEMPLATES = 'backend/app/templates'
 ROUTERS = 'backend/app/routers'
-JS = 'portal/assets/js'
+JS = 'backend/assets/js'
 
 errors = []
 warnings = []
@@ -103,8 +103,8 @@ def template_text(view, seen=None):
     for inc in re.findall(r"""\{%-?\s*include\s+['"]([^'"]+)['"]""", text):
         out.append(template_text(inc, seen))
     for js in re.findall(r"""asset_url\(\s*['"]assets/(js/[^'"]+\.js)['"]""", text):
-        if exists('portal/assets/' + js):
-            out.append(read('portal/assets/' + js))
+        if exists('backend/assets/' + js):
+            out.append(read('backend/assets/' + js))
     return '\n'.join(out)
 
 
@@ -129,13 +129,13 @@ def render_calls():
 
 # ---------------------------------------------------------------- 3.1 Tailwind
 def check_tailwind():
-    css_path = os.path.join(ROOT, 'portal/assets/css/app.css')
+    css_path = os.path.join(ROOT, 'backend/assets/css/app.css')
 
     if not os.path.isfile(css_path):
-        fail('Tailwind 결과물이 없습니다', 'portal/assets/css/app.css — ./scripts/build-css.sh 실행')
+        fail('Tailwind 결과물이 없습니다', 'backend/assets/css/app.css — ./scripts/build-css.sh 실행')
         return
 
-    source = read('portal/assets/css/tailwind.src.css')
+    source = read('backend/assets/css/tailwind.src.css')
     if '../../../backend/app' not in source:
         fail('Tailwind 가 FastAPI 템플릿을 읽지 않습니다', 'tailwind.src.css 에 @source "../../../backend/app" 가 있어야 합니다')
         return
@@ -146,7 +146,7 @@ def check_tailwind():
         # CLI 가 있으면 다시 빌드해 내용이 같은지 정확히 비교한다.
         tmp = os.path.join(ROOT, '.tools/_check.css')
         result = subprocess.run(
-            [cli, '-i', os.path.join(ROOT, 'portal/assets/css/tailwind.src.css'), '-o', tmp, '--minify'],
+            [cli, '-i', os.path.join(ROOT, 'backend/assets/css/tailwind.src.css'), '-o', tmp, '--minify'],
             capture_output=True, text=True, cwd=ROOT)
 
         if result.returncode != 0:
@@ -163,7 +163,7 @@ def check_tailwind():
         return
 
     # CLI 가 없으면 수정 시각으로 어림 판단한다.
-    newest = os.path.getmtime(os.path.join(ROOT, 'portal/assets/css/tailwind.src.css'))
+    newest = os.path.getmtime(os.path.join(ROOT, 'backend/assets/css/tailwind.src.css'))
     for rel, full in list(walk(TEMPLATES, ('.html',))) + list(walk(JS, ('.js',))) + py_files():
         newest = max(newest, os.path.getmtime(full))
 
@@ -188,7 +188,7 @@ def check_asset_version():
 
 # ------------------------------------------------------------------ 3.2 다국어
 def check_locales():
-    lang_dir = 'portal/assets/lang'
+    lang_dir = 'backend/assets/lang'
     files = sorted(f for f in os.listdir(os.path.join(ROOT, lang_dir)) if f.endswith('.json'))
 
     if not files:
@@ -264,7 +264,7 @@ def check_utc():
 
 
 # ------------------------------------------------------------------ 3.5 wgrid
-WGRID_DIR = 'portal/assets/vendor/wgrid/0.1.0'
+WGRID_DIR = 'backend/assets/vendor/wgrid/0.1.0'
 
 
 def check_grid():
@@ -287,7 +287,7 @@ def check_grid():
 
     size = re.search(r'DEFAULT_PAGE_SIZE\s*=\s*(\d+)', read(f'{JS}/grid.js'))
     if not size or size.group(1) != '20':
-        fail('그리드 기본 페이지 크기가 20 이 아닙니다', 'portal/assets/js/grid.js')
+        fail('그리드 기본 페이지 크기가 20 이 아닙니다', 'backend/assets/js/grid.js')
     else:
         ok('wgrid 설정 확인 (코어만, 기본 20개)')
 
@@ -701,8 +701,8 @@ def check_guide():
             problems.append(f'{rel} 의 {field} 업로드는 check_uploaded_image() 로 검사합니다')
 
     # 8) 올린 이미지는 git 에 넣지 않는다.
-    if exists('portal/assets/uploads/guides') and 'portal/assets/uploads/guides/*' not in read('.gitignore'):
-        problems.append('.gitignore 에 portal/assets/uploads/guides/* 가 없습니다')
+    if exists('backend/assets/uploads/guides') and 'backend/assets/uploads/guides/*' not in read('.gitignore'):
+        problems.append('.gitignore 에 backend/assets/uploads/guides/* 가 없습니다')
 
     if problems:
         fail('가이드 규칙 위반 (CLAUDE.md 3.15)', '\n    '.join(problems[:12]))

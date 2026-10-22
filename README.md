@@ -30,7 +30,7 @@ Tailwind 재빌드, 다국어 사전 3종 동기화, 아이콘 목록, UTC 시�
 | 경로 | 내용 |
 |---|---|
 | `backend/` | FastAPI 포털 (고객 페이지, 상담원 콘솔, 관리자, API). 2026-10-22 에 CodeIgniter 3 에서 옮김 |
-| `portal/assets/` | 정적 파일 (JS, CSS, 사전, 아이콘, 업로드) |
+| `backend/assets/` | 정적 파일 (JS, CSS, 사전, 아이콘, 업로드) |
 | `relay/` | Node.js 중계 서버 (세션 짝짓기와 바이너리 중계) |
 | `launcher/` | 고객 런처 (.NET 8 WPF) + 원격제어 엔진 + MSIX 패키징 |
 | `docker/` | 개발용 컨테이너 정의 (web = 앞단 Apache, api = FastAPI, relay, realtime, agentsim) |
@@ -113,7 +113,7 @@ python3 scripts/viewer-probe.py --url wss://localhost:8443/viewer \
 | 항목 | 값 |
 |---|---|
 | 지원 언어 | 한국어(ko), English(en), 日本語(ja) |
-| 사전 위치 | `portal/assets/lang/{locale}.json` (서버와 JS 가 같은 파일을 사용) |
+| 사전 위치 | `backend/assets/lang/{locale}.json` (서버와 JS 가 같은 파일을 사용) |
 | 서버 번역 | `lang_text('key', ['org' => '이름'])` |
 | 화면 번역 | `assets/js/i18n.js` — `__('key')`, `data-i18n="key"` 속성 |
 | 방문자 선택 | `/lang/{locale}` → `rh_locale` 쿠키(1년) |
@@ -189,7 +189,7 @@ UPDATE agents SET is_super = 1 WHERE email = '운영자이메일';
 # 1. 윈도우에서 단일 실행 파일 빌드 후 서명
 .\launcher\scripts\build-exe.ps1 -SignPfx 인증서.pfx -SignPassword 비밀번호
 
-# 2. portal/assets/downloads/RemoteHelp.exe 에 배치
+# 2. backend/assets/downloads/RemoteHelp.exe 에 배치
 
 # 3. .env 에서 스위치를 켜고 web 컨테이너 재시작
 DIRECT_DOWNLOAD_ENABLED=true
@@ -201,12 +201,12 @@ DIRECT_DOWNLOAD_ENABLED=true
 ## 화면 스타일 (Tailwind CSS)
 
 ```bash
-./scripts/build-css.sh           # portal/assets/css/app.css 생성
+./scripts/build-css.sh           # backend/assets/css/app.css 생성
 ./scripts/build-css.sh --watch   # 뷰를 수정하며 작업할 때
 ```
 
-- 입력: `portal/assets/css/tailwind.src.css`
-- 출력: `portal/assets/css/app.css` (저장소에 포함하므로 빌드 없이도 화면은 동작)
+- 입력: `backend/assets/css/tailwind.src.css`
+- 출력: `backend/assets/css/app.css` (저장소에 포함하므로 빌드 없이도 화면은 동작)
 - 뷰나 JS 에 **새 Tailwind 클래스를 추가하면 반드시 다시 빌드**해야 합니다.
 
 알림과 모달은 외부 UI 프레임워크 없이 `assets/js/common.js` 의

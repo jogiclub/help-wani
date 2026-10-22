@@ -42,7 +42,7 @@
 | 경로 | 내용 |
 |---|---|
 | `backend/` | FastAPI 포털(화면·API, Jinja2 템플릿 `backend/app/templates/`) |
-| `portal/assets/` | 정적 파일(JS, CSS, 사전, 아이콘, 업로드). Apache 가 직접 내주고 FastAPI 도 같은 폴더를 붙인다 |
+| `backend/assets/` | 정적 파일(JS, CSS, 사전, 아이콘, 업로드). 주소는 `/assets/...`. Apache 가 직접 내주고 FastAPI 도 같은 폴더를 붙인다 |
 | `relay/` | Node.js 중계 서버(원격 화면 중계) |
 | `realtime/` | Node.js 상담 실시간 메시지 서버(realtime-msg) |
 | `launcher/` | .NET 8 WPF 런처 + 원격제어 엔진 |
@@ -69,8 +69,8 @@
 ./scripts/build-css.sh
 ```
 
-- 입력 `portal/assets/css/tailwind.src.css`, 출력 `portal/assets/css/app.css`(저장소에 포함)
-- 클래스는 `backend/app`(템플릿과 파이썬 코드)과 `portal/assets/js` 에서만 모읍니다(`source(none)` + `@source`). 데이터 폴더 `backend/app/core/data` 는 뺍니다.
+- 입력 `backend/assets/css/tailwind.src.css`, 출력 `backend/assets/css/app.css`(저장소에 포함)
+- 클래스는 `backend/app`(템플릿과 파이썬 코드)과 `backend/assets/js` 에서만 모읍니다(`source(none)` + `@source`). 데이터 폴더 `backend/app/core/data` 는 뺍니다.
 - 새 색상 단계가 필요하면 `@theme` 에 먼저 추가합니다. 없는 단계를 `@apply` 하면 빌드가 실패합니다.
 - 공통 컴포넌트는 `.btn` `.card` `.form-input` `.badge` `.table` `.icon-tile` 을 조합해 씁니다.
 - 템플릿에서 JS/CSS 를 넣을 때는 **`asset_url('assets/...')`** 를 씁니다(파일 수정 시각을 `?v=` 로 붙임). `base_url()` 로 넣으면
@@ -78,7 +78,7 @@
 
 ### 3.2 다국어 — 세 사전을 함께 고친다
 
-문구는 `portal/assets/lang/{ko,en,ja}.json` 에 있고 서버와 JS 가 같은 파일을 씁니다.
+문구는 `backend/assets/lang/{ko,en,ja}.json` 에 있고 서버와 JS 가 같은 파일을 씁니다.
 
 - **키를 추가하면 세 파일 모두에 넣습니다.** 빠지면 그 언어에서 키 문자열이 그대로 보입니다.
 - 서버: `lang_text('key', {'org': '이름'})`(파이썬, 템플릿 모두)
@@ -113,9 +113,9 @@ FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py), 지금 시각�
 
 ### 3.5 목록은 wgrid, 기본 20개
 
-- 그리드는 **wgrid 0.1.0 코어(MIT)** 입니다. npm 배포 전이라 `portal/assets/vendor/wgrid/0.1.0/` 에
+- 그리드는 **wgrid 0.1.0 코어(MIT)** 입니다. npm 배포 전이라 `backend/assets/vendor/wgrid/0.1.0/` 에
   `wgrid.global.js`(window.wgrid), `wgrid.css` 를 둡니다. wgrid 저장소에서 `npm run build` 한 `dist/` 의 같은 파일을 복사합니다.
-- 공통 설정은 `portal/assets/js/grid.js` 의 `RHGrid.create()` 를 씁니다. 돌려주는 값은 `{ grid, setRows, removeRow, refresh }` 이며,
+- 공통 설정은 `backend/assets/js/grid.js` 의 `RHGrid.create()` 를 씁니다. 돌려주는 값은 `{ grid, setRows, removeRow, refresh }` 이며,
   주기 갱신은 `setRows()`(페이지·스크롤 유지)로 합니다. wgrid 의 `grid.setRows` 를 바로 부르면 1쪽 맨 위로 돌아갑니다.
 - 컬럼은 wgrid 형식(`key`, `title`, `width`, `format(value,row)`, `render(row,value)`, `pinned`)입니다. `key` 는 유일해야 하므로
   버튼 칸에도 `_actions` 같은 key 를 줍니다. `grid.js` 가 더하는 키: `flex: 1`(남는 너비 채우기), `tooltip: true`, `cellClass`.
@@ -165,7 +165,7 @@ FastAPI  DB 세션 SET time_zone = '+00:00' (backend/app/db.py), 지금 시각�
 
 ### 3.9 상담 위젯 — 고객사 사이트 안에서 도는 코드
 
-`portal/assets/js/widget.js` 는 **우리 화면이 아니라 고객사 웹사이트에 삽입**됩니다.
+`backend/assets/js/widget.js` 는 **우리 화면이 아니라 고객사 웹사이트에 삽입**됩니다.
 포털의 자산을 쓸 수 없고, 써도 고객사 스타일과 충돌합니다.
 
 - **Tailwind(`app.css`), `common.js`, `i18n.js`, jQuery 를 쓰지 않습니다.** 의존성 없이 혼자 돕니다.
@@ -241,20 +241,20 @@ web(10.250.88.2) --X-RemoteHelp-Client-IP(set)--> api(10.250.88.3)      (FastAPI
 - 기준은 `.env` 의 `PUBLIC_BASE_URL`(시험 서버 `https://help.wani.im/`), 비어 있으면 접속한 주소입니다.
 - 고객 접속 페이지 상단에는 조직 로고(`logo_path`), 소개(`intro`, 500자), 대표 전화가 보입니다.
   조직 관리자가 헤더의 `조직 정보` 에서 고칩니다. 로고는 PNG/JPG/WEBP 1MB 이하, SVG 는 받지 않습니다.
-- 로고 폴더 `portal/assets/uploads/logos/` 는 api 컨테이너(www-data)가 쓸 수 있어야 합니다. 올린 파일은 git 에 넣지 않습니다.
+- 로고 폴더 `backend/assets/uploads/logos/` 는 api 컨테이너(www-data)가 쓸 수 있어야 합니다. 올린 파일은 git 에 넣지 않습니다.
 
 ### 3.14 이미지 선택 — Dropzone.js 로만
 
 포털에서 이미지를 고르는 곳은 모두 **Dropzone.js**(끌어다 놓기 + 클릭 선택)를 씁니다.
 
-- 공통 모듈 `portal/assets/js/image-drop.js` 의 `RHImageDrop.create(selector, { url, paramName, onSuccess })` 를 씁니다.
+- 공통 모듈 `backend/assets/js/image-drop.js` 의 `RHImageDrop.create(selector, { url, paramName, onSuccess })` 를 씁니다.
   CSRF 토큰, 허용 형식(PNG/JPG/WEBP), 크기 제한, 한국어 오류 문구, `{ result, message, data }` 처리가 들어 있습니다.
 - 라우터가 `render()` 데이터에 **`'use_dropzone': True`** 를 넘겨야 라이브러리를 불러옵니다(`use_grid` 와 같은 방식, 검사가 잡습니다).
 - 이미지가 아닌 파일(guide.json, 매크로 CSV)도 같은 모듈로 받습니다. `accept`, `maxMb`, `params`, `invalidTypeText`, `tooBigText` 옵션을 씁니다.
 - 서버 검사는 `helpers/app.py` 의 `check_uploaded_image(upload, max_bytes)` 하나를 씁니다(로고, 가이드 이미지 공통).
   형식 판별 `image_file_ext()` 는 파일 내용으로 PNG/JPG/WEBP 만 받습니다(libmagic 5.40 규칙 + getimagesize 와 같은 판정).
 - `<input type="file">` 을 직접 쓰지 않습니다(검사가 잡습니다). 서버 검사(내용 기준 형식 판별, SVG 거부)는 그대로 둡니다.
-- 업로드 파일의 실제 경로는 `guide_model.portal_file('assets/...')` 로 얻습니다(api 컨테이너는 `portal/assets` 를 `/srv/assets` 로 붙입니다).
+- 업로드 파일의 실제 경로는 `guide_model.asset_file('assets/...')` 로 얻습니다(api 컨테이너는 `backend/assets` 를 `/srv/assets` 로 붙입니다).
 - 버전은 `dropzone@6.3.5` 의 `dist/dropzone-min.js`(window.Dropzone). `dist/dropzone.js` 와 cdnjs 판은 CommonJS 라
   `<script>` 로 넣으면 동작하지 않습니다. 기본 CSS 대신 `tailwind.src.css` 의 `.image-drop` 으로 그립니다.
 
@@ -413,7 +413,7 @@ state      = 운영 중이 아니면 closed / 운영 중이고 응대 가능 상
 `.claude/settings.json` 에 훅이 걸려 있어, **파일을 고칠 때마다 규칙 검사가 자동으로 돕니다.**
 
 ```
-backend/ portal/ relay/ launcher/ scripts/ docker/ sql/ server/ 아래 파일을 수정
+backend/ relay/ launcher/ scripts/ docker/ sql/ server/ 아래 파일을 수정
   -> scripts/hooks/post-edit-check.py 실행
   -> 위반이 있을 때만 결과를 알림 (통과하면 조용함)
 ```
@@ -449,8 +449,8 @@ docker compose up -d --build
 
 | 항목 | 결정 |
 |---|---|
-| 배포 경로 | **운영은 1차 Microsoft Store(MSIX) 단독.** 직접 다운로드는 `DIRECT_DOWNLOAD_ENABLED` 로 켜고 끈다(운영 기본 false). 개발 `.env` 는 true 이며 `portal/assets/downloads/RemoteHelp.exe` 를 내려준다. 켜지면 고객 페이지의 주 버튼이 다운로드로 바뀐다 |
-| 런처 빌드 후 배포 | **런처 exe 를 빌드하면 항상 시험 서버에 배포한다(시험 서버 한정, 사용자 승인).** `launcher/scripts/build-exe.ps1 -TestBuild` 가 `portal/assets/downloads/RemoteHelp.exe` 로 복사하고, 그것이 `http://118.36.197.219:8099/demo/download` 로 내려간다(`.env` 의 `DIRECT_DOWNLOAD_ENABLED=true`). 시험 빌드에는 인증서 예외가 들어 있으므로 서명·운영 배포 금지. 배포 후 해시와 다운로드 응답을 확인해 보고한다 |
+| 배포 경로 | **운영은 1차 Microsoft Store(MSIX) 단독.** 직접 다운로드는 `DIRECT_DOWNLOAD_ENABLED` 로 켜고 끈다(운영 기본 false). 개발 `.env` 는 true 이며 `backend/assets/downloads/RemoteHelp.exe` 를 내려준다. 켜지면 고객 페이지의 주 버튼이 다운로드로 바뀐다 |
+| 런처 빌드 후 배포 | **런처 exe 를 빌드하면 항상 시험 서버에 배포한다(시험 서버 한정, 사용자 승인).** `launcher/scripts/build-exe.ps1 -TestBuild` 가 `backend/assets/downloads/RemoteHelp.exe` 로 복사하고, 그것이 `http://118.36.197.219:8099/demo/download` 로 내려간다(`.env` 의 `DIRECT_DOWNLOAD_ENABLED=true`). 시험 빌드에는 인증서 예외가 들어 있으므로 서명·운영 배포 금지. 배포 후 해시와 다운로드 응답을 확인해 보고한다 |
 | 코드 서명 | Store 는 Microsoft 가 서명하므로 불필요. 직접 배포 시 OV 인증서 필요(`docs/code-signing.md`) |
 | 요금 | 연 220,000원 / 상담원 계정 5개. `routers/home.py` 의 `pricing` 한 곳에서 관리 |
 | 화면 캡처 | GDI 우선, 가능하면 DXGI 자동 전환 |

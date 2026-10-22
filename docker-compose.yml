@@ -74,7 +74,7 @@ services:
       - api
     volumes:
       # 정적 파일만 내준다. 업로드는 api 가 쓰고 web 은 읽기만 한다.
-      - ./portal/assets:/var/www/html/assets:ro
+      - ./backend/assets:/var/www/html/assets:ro
       # relay 공개 인증서(뷰어 웹소켓 포털 경유 시 검증용). 개인 키는 포함하지 않는다.
       - relay-ca:/etc/remotehelp/relay-ca:ro
     ports:
@@ -105,7 +105,7 @@ services:
     volumes:
       - ./backend/app:/app/app
       # JS, CSS, 사전(템플릿이 읽음), 업로드. 업로드는 www-data(uid 33)가 쓴다.
-      - ./portal/assets:/srv/assets
+      - ./backend/assets:/srv/assets
     ports:
       - "8098:8000"
     networks:

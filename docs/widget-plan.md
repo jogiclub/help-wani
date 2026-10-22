@@ -144,7 +144,7 @@ messages      id, conversation_id, sender_type ENUM('visitor','agent','system'),
 
 | 파일 | 내용 |
 |---|---|
-| `portal/assets/js/widget.js` | 임베드 스크립트. Shadow DOM, 자체 CSS, 의존성 없음 |
+| `backend/assets/js/widget.js` | 임베드 스크립트. Shadow DOM, 자체 CSS, 의존성 없음 |
 | `portal/application/controllers/Widget.php` | 위젯 공개 API |
 
 라우트 — `$route['(:any)']` **위**에 넣습니다 (`CLAUDE.md` 3.8).
@@ -173,7 +173,7 @@ $route['api/widget/poll']['get']    = 'widget/poll';
 | 파일 | 내용 |
 |---|---|
 | `portal/application/views/console/chat.php` | 대화 목록 + 대화창 |
-| `portal/assets/js/console/chat.js` | 폴링, 전송, 원격지원 연결 |
+| `backend/assets/js/console/chat.js` | 폴링, 전송, 원격지원 연결 |
 
 ```
 $route['console/chat']                       = 'console/chat';

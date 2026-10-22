@@ -255,8 +255,8 @@ async def api_image(agent=Depends(require_admin), post: PostData = Depends(post_
     src = folder + secrets.token_hex(10) + '.' + ext
 
     try:
-        os.makedirs(guide_model.portal_file(folder), mode=0o775, exist_ok=True)
-        with open(guide_model.portal_file(src), 'xb') as handle:
+        os.makedirs(guide_model.asset_file(folder), mode=0o775, exist_ok=True)
+        with open(guide_model.asset_file(src), 'xb') as handle:
             handle.write(content)
     except OSError:
         return api_response(False, '이미지를 저장하지 못했습니다. 업로드 폴더 권한을 확인해 주세요.', None, 500)

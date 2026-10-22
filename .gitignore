@@ -3,7 +3,7 @@
 *.local.env
 
 # 의존성/벤더
-/portal/assets/vendor/novnc/
+/backend/assets/vendor/novnc/
 /vendor/
 
 # 빌드 도구 (scripts/build-css.sh 가 필요할 때 내려받는다)
@@ -28,13 +28,13 @@
 .vscode/
 .idea/
 .DS_Store
-portal/assets/downloads/*.exe
-portal/assets/downloads/*.sha256
+backend/assets/downloads/*.exe
+backend/assets/downloads/*.sha256
 # 조직이 올린 로고 (폴더만 유지)
-portal/assets/uploads/logos/*
-!portal/assets/uploads/logos/.gitkeep
-portal/assets/uploads/guides/*
-!portal/assets/uploads/guides/.gitkeep
+backend/assets/uploads/logos/*
+!backend/assets/uploads/logos/.gitkeep
+backend/assets/uploads/guides/*
+!backend/assets/uploads/guides/.gitkeep
 
 # 파이썬 캐시
 __pycache__/

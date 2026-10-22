@@ -16,7 +16,7 @@ RUN pip install -r requirements.txt
 
 COPY backend/app ./app
 
-# 업로드 폴더(portal/assets/uploads)를 PHP(www-data, uid 33)와 함께 쓰므로 같은 사용자로 돈다.
+# 업로드 폴더(backend/assets/uploads)를 앞단 Apache 와 같은 사용자(www-data, uid 33)로 쓴다. assets 는 docker-compose 에서 /srv/assets 로 붙인다.
 USER www-data
 
 EXPOSE 8000

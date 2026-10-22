@@ -117,7 +117,7 @@
 - **Dropzone.js(`RHImageDrop.create`)** 로만 올립니다(3.14). 컨트롤러는 `'use_dropzone' => TRUE`.
 - PNG/JPG/WEBP, 2MB 이하, SVG 거부. 서버는 로고 업로드와 같은 내용 기준 형식 판별을 씁니다
   (`Admin::api_logo_upload()` 의 검사를 공통 함수로 뽑아 함께 씁니다).
-- 저장 위치 `portal/assets/uploads/guides/{org_id}/{임의이름}.{확장자}`. `.gitignore` 에 추가하고 `.gitkeep` 만 둡니다.
+- 저장 위치 `backend/assets/uploads/guides/{org_id}/{임의이름}.{확장자}`. `.gitignore` 에 추가하고 `.gitkeep` 만 둡니다.
 - 글을 지우거나 블록에서 이미지를 빼면 파일도 지웁니다. 다른 글이 같은 경로를 쓰고 있으면 남깁니다.
 - 올리고 저장하지 않은 파일은 다음 업로드/가져오기 때 하루가 지난 것부터 정리합니다(`Guide_model::cleanup_images`).
 
@@ -423,7 +423,7 @@ HAVING score >= ?
 | 라우트 `(:any)/guide`, `(:any)/guide/(:any)` 가 `(:any)` 보다 위 | 기존 라우팅 순서 검사에 포함되는지 확인, 없으면 추가 |
 | 유튜브 iframe 주소는 `youtube-nocookie.com/embed/` 로만 만든다 | 뷰/JS 에서 `youtube.com/embed` 직접 사용 금지 |
 | 가이드 카드 메시지 저장 뒤 발행 | `send_guide` 에 `publish_message` 호출 존재 |
-| 가이드 업로드 폴더 git 제외 | `.gitignore` 에 `portal/assets/uploads/guides/*` |
+| 가이드 업로드 폴더 git 제외 | `.gitignore` 에 `backend/assets/uploads/guides/*` |
 | 가이드 본문 출력 시 이스케이프 | `_article.php` 에 `html_escape` 없이 블록 출력 금지 |
 
 추가할 라우트 (`$route['(:any)']` 위)

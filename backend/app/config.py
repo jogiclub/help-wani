@@ -33,5 +33,5 @@ DB_NAME = env('DB_NAME', 'remotehelp')
 DB_USER = env('DB_USER', 'remotehelp')
 DB_PASS = env('DB_PASS', 'remotehelp')
 
-# portal/assets(JS, CSS, 사전, 업로드). 앞단 Apache 가 같은 폴더를 내준다. docker-compose 에서 이 경로로 붙인다.
+# backend/assets(JS, CSS, 사전, 업로드). 앞단 Apache 가 같은 폴더를 내준다. docker-compose 에서 이 경로로 붙인다.
 ASSETS_DIR = Path(env('ASSETS_DIR', '/srv/assets'))

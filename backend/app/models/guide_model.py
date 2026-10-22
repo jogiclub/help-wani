@@ -801,8 +801,8 @@ def image_dir(org_id):
     return 'assets/uploads/guides/' + str(php_int(org_id)) + '/'
 
 
-def portal_file(rel):
-    """포털 기준 상대 경로(assets/...)의 실제 파일 경로. api 컨테이너는 portal/assets 를 ASSETS_DIR 로 붙인다."""
+def asset_file(rel):
+    """상대 경로(assets/...)의 실제 파일 경로. api 컨테이너는 backend/assets 를 ASSETS_DIR(/srv/assets) 로 붙인다."""
     rel = str(rel)
     if not rel.startswith('assets/'):
         raise ValueError(rel)
@@ -815,7 +815,7 @@ def _own_image_re(org_id):
 
 def is_own_image(org_id, src):
     src = php_str(src)
-    return bool(_own_image_re(org_id).match(src)) and os.path.isfile(portal_file(src))
+    return bool(_own_image_re(org_id).match(src)) and os.path.isfile(asset_file(src))
 
 
 def image_paths(blocks):
@@ -835,7 +835,7 @@ def remove_images(org_id, paths):
             continue
         in_use = int(db.scalar("SELECT COUNT(*) FROM guide_articles WHERE org_id = :org AND blocks LIKE :p ESCAPE '!'",
                                {'org': int(org_id), 'p': db.like_pattern('"' + path + '"')}))
-        target = portal_file(path)
+        target = asset_file(path)
         if in_use == 0 and os.path.isfile(target):
             try:
                 os.unlink(target)
@@ -845,7 +845,7 @@ def remove_images(org_id, paths):
 
 def cleanup_images(org_id):
     """어떤 글에도 쓰이지 않는 이미지를 지운다. 편집 중에 올리고 아직 저장하지 않은 파일을 지우지 않도록 하루가 지난 것만."""
-    folder = portal_file(image_dir(org_id))
+    folder = asset_file(image_dir(org_id))
     if not os.path.isdir(folder):
         return
 
@@ -1061,10 +1061,10 @@ def store_fetched_image(org_id, body):
     folder = image_dir(org_id)
     src = folder + secrets.token_hex(10) + '.' + ext
     try:
-        os.makedirs(portal_file(folder), mode=0o775, exist_ok=True)
-        with open(portal_file(src), 'xb') as handle:
+        os.makedirs(asset_file(folder), mode=0o775, exist_ok=True)
+        with open(asset_file(src), 'xb') as handle:
             handle.write(body)
-        os.chmod(portal_file(src), 0o664)
+        os.chmod(asset_file(src), 0o664)
     except OSError:
         return {'error': '저장하지 못했습니다. 업로드 폴더 권한을 확인해 주세요.'}
     return src
@@ -1230,14 +1230,14 @@ def _copy_sample_image(org_id, name):
     if not match or name.endswith('\n'):
         return None
 
-    source = portal_file('assets/img/guide-samples/' + name)
+    source = asset_file('assets/img/guide-samples/' + name)
     folder = image_dir(org_id)
     src = folder + secrets.token_hex(10) + '.' + match.group(1)
     try:
-        os.makedirs(portal_file(folder), mode=0o775, exist_ok=True)
+        os.makedirs(asset_file(folder), mode=0o775, exist_ok=True)
         if not os.path.isfile(source):
             return None
-        shutil.copyfile(source, portal_file(src))
+        shutil.copyfile(source, asset_file(src))
     except OSError:
         return None
     return src

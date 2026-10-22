@@ -204,7 +204,7 @@ def _remove_logo_file(logo_path):
     """예전 로고 파일을 지운다. 로고 폴더 밖의 경로는 건드리지 않는다."""
     if php_empty(logo_path) or not _LOGO_RE.match(php_str(logo_path)):
         return
-    target = guide_model.portal_file(logo_path)
+    target = guide_model.asset_file(logo_path)
     if os.path.isfile(target):
         try:
             os.unlink(target)
@@ -221,7 +221,7 @@ async def api_logo_upload(request: Request, agent=Depends(require_admin), post: 
         return api_response(False, ext['error'], None, 400)
 
     org = organization_model.get_by_id(agent.org_id)
-    folder = guide_model.portal_file('assets/uploads/logos/')
+    folder = guide_model.asset_file('assets/uploads/logos/')
     # 이름을 매번 바꿔 브라우저와 런처가 예전 로고를 캐시에서 보여주지 않게 한다.
     name = php_str(org.org_code) + '-' + secrets.token_hex(6) + '.' + ext
 

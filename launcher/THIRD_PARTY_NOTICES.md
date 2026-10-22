@@ -21,15 +21,28 @@ RemoteHelp 는 원격제어 엔진을 직접 구현합니다. **UltraVNC 등 GPL
 | ws | MIT | 웹소켓 서버 |
 | nginx | BSD 2-Clause | TLS 종료와 프록시 |
 
-## 웹 포털 (portal/)
+## 웹 포털 (backend/)
+
+라이선스는 설치된 패키지의 메타데이터(License-Expression, 없으면 분류자)를 따랐다(2026-10-22 확인).
 
 | 구성요소 | 라이선스 | 용도 |
 |---|---|---|
-| CodeIgniter 3 | MIT | 웹 프레임워크 |
+| FastAPI | MIT | 웹 프레임워크 |
+| Starlette | BSD-3-Clause | ASGI 기반(세션, 정적 파일) |
+| Uvicorn | BSD-3-Clause | ASGI 서버 |
+| SQLAlchemy | MIT | DB 접근(Core) |
+| PyMySQL | MIT | MySQL 드라이버 |
+| Jinja2 | BSD | 화면 템플릿 |
+| MarkupSafe | BSD-3-Clause | 템플릿 이스케이프 |
+| itsdangerous | BSD | 세션 쿠키 서명 |
+| python-multipart | Apache-2.0 | 파일 업로드 해석 |
+| bcrypt | Apache-2.0 | 비밀번호 해시 |
+| cryptography | Apache-2.0 OR BSD-3-Clause | DB 인증 암호화 |
+| HTTPX | BSD-3-Clause | 실시간 서버 발행 |
 | jQuery | MIT | AJAX 및 DOM 처리 |
 | Tailwind CSS | MIT | 화면 스타일 |
 
-상담원 화면 뷰어는 자체 구현(`portal/assets/js/console/`)이며 외부 뷰어 라이브러리를 쓰지 않습니다.
+상담원 화면 뷰어는 자체 구현(`backend/assets/js/console/`)이며 외부 뷰어 라이브러리를 쓰지 않습니다.
 
 ## 검증 도구 (docker/agentsim, scripts/)
 
