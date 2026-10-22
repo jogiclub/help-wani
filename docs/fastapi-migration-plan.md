@@ -4,7 +4,7 @@
 > 역할: CodeIgniter 3(PHP) 포털을 FastAPI(Python)로 옮기는 단계별 계획
 
 - 작성일: 2026-10-22
-- 상태: 진행 중 — 0~3단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
+- 상태: 진행 중 — 0~4단계 완료(2026-10-22). 8장의 제안대로 진행하기로 결정
 
 ---
 
@@ -289,6 +289,24 @@ CI3 `input->post('x', TRUE)` 는 값에 xss_clean 을 적용한다(태그·속�
 - `widget.js` 제공, `api/widget/{init,send,poll,contact}`.
 - 같이 옮길 것: `Chat_model`, `Visitor_model`(`clean_contact`, `country_dial_codes`), `Chat_hours_model::availability`, `Chat_greeting`, `Chat_followup`, `Realtime`(발행), `Mailer`, 부재중 자동 응답·인사말 저장 순서(3.16, 3.18).
 - 확인: 시험용 HTML 에 `:8098/widget.js` 를 붙여 PHP 위젯과 같은 흐름(인사말 → 첫 메시지 → 연락처 카드 → 실시간 수신 → 폴링 대체)을 확인.
+- **결과(2026-10-22 완료)**
+  - 경로: `routers/widget.py`(`/widget.js`, `/api/widget/{init,send,contact,poll}`). CI3 처럼 허용하지 않는 메서드도 404(405 없음).
+  - 모델·라이브러리(전체 이식, 5단계 콘솔도 씀): `chat_model.py`, `visitor_model.py`, `chat_hours_model.py`(공휴일 후보만 6단계),
+    `chat_greeting.py`, `chat_followup.py`, `mailer.py`, `organization_model.py` 위젯 함수, `helpers/php_filter.py`(FILTER_VALIDATE_URL).
+  - FILTER_VALIDATE_URL: php-src(logical_filters.c, sanitizing_filters.c, url.c)에서 https 주소 범위를 옮김. PHP 와 5,649개 비교 불일치 0.
+    가이드 외부 이미지 검사도 이것을 쓰도록 고쳤다.
+  - 운영 시간 판정: 원본 Chat_hours_model 을 상속해 DB 조회만 시험값으로 바꾼 PHP 와 비교 — availability 400가지(수동 상태·복귀 시각·휴일·연말 반복 휴일·
+    단축 운영·런던/뉴욕 서머타임 종료 주간 포함), 벽시계→절대 시각 364개(서머타임 시작·종료일의 없는/겹치는 시각), 시각 문구 302개, 요약 400개 모두 일치.
+  - 위젯 시나리오(열기, 다시 열기, 잘못된 방문자, 빈 본문, 연락처 오류·저장·건너뛰기, 메시지 2회, 폴링, 잘못된 위젯 키)를 조직 설정 6가지
+    (기본 / 응대 가능+인사말 변수·버튼+답변 속도+전화 버튼+연락처 필수 / 운영 시간 외 안내만·숨기기·받기 / 가이드 자동 추천)로 실행해 응답이 PHP 와 같음.
+    가이드 자동 추천의 대화당 3번 제한도 같다. 허용 도메인(Origin) 12가지와 CORS 헤더 같음.
+  - 이어 가기 토큰: PHP 와 같은 본문, 서로의 토큰을 검증하고 위젯 열기에서 같은 방문자로 이어짐.
+  - 남는 차이: 키를 배열로 보내는 등 PHP 가 경고를 내는 입력에서 PHP 는 경고 HTML + 200, FastAPI 는 404/400 JSON.
+    메시지 meta 안의 빈 객체 {} 를 PHP 는 [] 로 다시 내보낸다(지금 저장하는 meta 에는 빈 객체가 없다).
+  - 시험 데이터: 방문자·대화 32건과 메시지를 지우고, 데모 조직 설정(31개 항목)·운영 시간, `webhows` 위젯 켜기, 관리자 접속 시각을 되돌렸다.
+    시험 중 위젯 메시지가 데모·webhows 조직 방으로 실시간 발행됐다(그 시각 상담 대화 화면을 연 상담원은 받았음).
+  - 확인 필요: 메일(오프라인 알림, 팔로업)은 개발 환경에 SMTP 가 없어 실제 발송을 확인하지 못했다(두 서버 모두 건너뜀). 브라우저에서 위젯 화면을
+    직접 띄워 보는 확인은 하지 않았고 HTTP 응답 비교로 대신했다.
 
 ### 5단계. 상담원 콘솔
 

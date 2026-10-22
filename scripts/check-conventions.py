@@ -652,6 +652,83 @@ def check_fastapi_screens():
         ok('FastAPI 화면 규칙 확인 (테마 템플릿·탭, 유튜브 한 곳, 모음/조직 주소 순서, PHP 와 같은 매칭 설정·아이콘, 데이터 파일)')
 
 
+def check_fastapi_chat():
+    """FastAPI 의 상담 위젯·실시간 규칙(CLAUDE.md 3.9, 3.11, 3.16, 3.18). PHP 검사와 같은 내용을 backend 에 적용한다."""
+    if not os.path.isfile(os.path.join(ROOT, 'backend/app/routers/widget.py')):
+        ok('FastAPI 위젯 없음')
+        return
+
+    problems = []
+    py_files = list(walk('backend/app', ('.py',), ('__pycache__',)))
+
+    # 1) 운영 여부는 chat_hours_model.availability() 안에서만 본다.
+    allowed = ('backend/app/models/chat_model.py', 'backend/app/models/chat_hours_model.py')
+    for rel, full in py_files:
+        if rel in allowed:
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if re.search(r'\bhas_available_agent\(', line) and 'lambda' not in line:
+                problems.append(f'{rel}:{number} 운영 여부는 chat_hours_model.availability() 로 판단합니다')
+
+    # 2) 인사말·자동 응답·가이드 추천은 send() 가 발행할 메시지를 읽기 전에 저장한다(3.11, 3.18).
+    widget = read('backend/app/routers/widget.py')
+    block = re.search(r'\ndef send\(.*?(?=\n@router|\ndef |\Z)', widget, re.S)
+    if block:
+        body = block.group(0)
+        listing = body.find('chat_model.list_messages(conversation.id, first_id - 1)')
+        for part in ("'type': 'greeting'", '_auto_reply(', '_suggest_guide('):
+            at = body.find(part)
+            if at < 0 or listing < 0 or at > listing:
+                problems.append(f'widget.send 에서 {part} 가 발행할 메시지를 읽기(list_messages) 전에 있어야 합니다')
+        if 'realtime.publish_message(' not in body:
+            problems.append('widget.send 가 저장한 메시지를 발행하지 않습니다(realtime.publish_message)')
+    else:
+        problems.append('routers/widget.py 의 send() 를 찾지 못했습니다')
+    init_block = re.search(r'\ndef init\(.*?(?=\n@router|\ndef |\Z)', widget, re.S)
+    if init_block and 'touch_visitor_seen' in init_block.group(0):
+        problems.append('widget.init 에서 touch_visitor_seen 을 부르지 않습니다(창을 닫아 둔 방문자도 보는 중으로 셈)')
+
+    # 3) 담당 변경, 보는 중/입력 중 이벤트는 조직 방(publish_org)에만 보낸다(고객 위젯으로 새지 않게).
+    for rel, full in py_files:
+        text = open(full, encoding='utf-8').read()
+        for match in re.finditer(r"'type':\s*'(presence|assignment)'", text):
+            call = text.rfind('publish_', 0, match.start())
+            if call < 0 or not text.startswith('publish_org(', call):
+                number = text.count('\n', 0, match.start()) + 1
+                problems.append(f'{rel}:{number} {match.group(1)} 이벤트는 realtime.publish_org() 로만 보냅니다')
+
+    # 4) visitors 는 visitor_model 만 고친다.
+    write = re.compile(r"""db\.(update|insert)\(\s*'visitors'|(UPDATE|INSERT\s+INTO)\s+`?visitors`?\b""", re.I)
+    for rel, full in py_files:
+        if rel == 'backend/app/models/visitor_model.py':
+            continue
+        for number, line in enumerate(open(full, encoding='utf-8'), 1):
+            if write.search(line):
+                problems.append(f'{rel}:{number} visitors 는 visitor_model 로만 고칩니다(연락처 검사 clean_contact)')
+
+    # 5) 상담원 답장을 저장하는 경로는 publish_new_messages() 를 거친다(팔로업 메일 판단 포함).
+    for rel, full in walk('backend/app/routers', ('.py',)):
+        text = open(full, encoding='utf-8').read()
+        for match in re.finditer(r"add_message\([^)]*?'agent'", text):
+            start = text.rfind('\ndef ', 0, match.start())
+            end = text.find('\ndef ', match.end())
+            if 'publish_new_messages(' not in text[start:end if end > 0 else None]:
+                number = text.count('\n', 0, match.start()) + 1
+                problems.append(f'{rel}:{number} 상담원 답장을 저장했으면 publish_new_messages() 로 발행합니다')
+
+    # 6) CSRF 제외 경로는 PHP 설정과 같아야 한다(위젯 API 는 외부 도메인에서 온다).
+    php_ex = re.search(r"\$config\['csrf_exclude_uris'\] = array\((.*?)\);", read('portal/application/config/config.php'), re.S)
+    php_ex = re.findall(r"'([^']+)'", php_ex.group(1)) if php_ex else []
+    py_ex = _py_literal('backend/app/core/csrf.py', name='EXCLUDE_URIS')
+    if list(py_ex or ()) != php_ex:
+        problems.append(f'core/csrf.py EXCLUDE_URIS 가 PHP csrf_exclude_uris 와 다릅니다: {py_ex} / {php_ex}')
+
+    if problems:
+        fail('FastAPI 상담 규칙 위반', '\n    '.join(problems[:12]))
+    else:
+        ok('FastAPI 상담 규칙 확인 (availability 한 곳, 발행 전 저장, 조직 방 이벤트, visitors 는 모델만, init 시청 갱신 없음, CSRF 제외 경로)')
+
+
 # ------------------------------------------------------------------ 실행 점검
 # ------------------------------------- 3.13 고객에게 보내는 주소
 def check_customer_url():
@@ -974,6 +1051,7 @@ def main():
     check_followup()
     check_fastapi()
     check_fastapi_screens()
+    check_fastapi_chat()
 
     if '--live' in sys.argv:
         check_live()

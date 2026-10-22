@@ -17,7 +17,7 @@ from app.core.csrf import CSRFMiddleware, verify_csrf
 from app.core.errors import Halt, show_404
 from app.core.middleware import RequestContextMiddleware
 from app.core.response import api_response
-from app.routers import api_launcher, api_realtime_auth, api_relay, auth, customer, dev, guide, home
+from app.routers import api_launcher, api_realtime_auth, api_relay, auth, customer, dev, guide, home, widget
 from app.static import AssetFiles
 
 logger = logging.getLogger('remotehelp')
@@ -49,7 +49,8 @@ async def halt_handler(request: Request, exc: Halt):
 @app.exception_handler(StarletteHTTPException)
 async def http_error_handler(request: Request, exc: StarletteHTTPException):
     """없는 경로는 CI3 404 화면과 같게."""
-    if exc.status_code == 404:
+    # CI3 에는 405(허용하지 않는 메서드)가 없다. 맞는 경로 규칙이 없으면 모두 404 화면이다.
+    if exc.status_code in (404, 405):
         return show_404()
     return api_response(False, str(exc.detail), None, exc.status_code)
 
@@ -72,6 +73,7 @@ def healthz():
 app.include_router(api_launcher.router)
 app.include_router(api_relay.router)
 app.include_router(api_realtime_auth.router)
+app.include_router(widget.router)
 app.include_router(auth.router)
 app.include_router(home.router)
 

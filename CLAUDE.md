@@ -394,6 +394,7 @@ PHP(`web`)를 그대로 봅니다. 계획과 진행 상태는 `docs/fastapi-migr
 - PHP 와 같아야 하는 목록(가이드 매칭 설정 `settings/guide_match.py`, 소개 아이콘 `home.landing_icons()`, 가이드 테마 `guide_model.themes()`)은
   전환 기간에 두 곳을 함께 고칩니다(검사가 잡습니다).
 - Tailwind 는 `backend/` 를 읽지 않습니다(`tailwind.src.css` 의 `@source not`). backend 템플릿에만 쓰는 새 클래스는 PHP 를 지울 때 `@source` 를 바꾼 뒤 씁니다.
+- PHP `filter_var` 대응은 `helpers/validation.valid_email`(이메일), `helpers/php_filter.validate_https_url`(https 주소)을 씁니다. 파이썬 표준 검사로 바꾸면 PHP 와 결과가 달라집니다.
 - 고객 IP 는 `client_ip()` 하나로 얻습니다. 믿는 프록시 주소(`TRUSTED_PROXY_IP`)는 cloudflared 고정 주소와 같아야 합니다(검사가 잡습니다).
 - 전환 기간에 PHP 에 기능을 더하면 `backend/` 에도 같이 넣습니다.
 

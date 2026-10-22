@@ -16,6 +16,7 @@ from app.core.i18n import lang_text, to_timezone
 from app.core.php import php_empty, php_int, utc_str
 from app.core.request import base_url
 from app.helpers.app import customer_url
+from app.helpers.php_filter import validate_https_url
 from app.libraries import guide_matcher
 
 # guide.json 형식 이름과 버전
@@ -147,9 +148,11 @@ def feature_date(article):
 
 
 def is_external_image(src):
-    """외부 https 이미지 주소인지(PHP is_external_image 의 형식 검사)."""
+    """외부 이미지 주소로 받을 수 있는지. https 만 받는다(https 화면에 http 이미지는 브라우저가 막는다)."""
     src = str(src or '')
-    return len(src) <= 1000 and re.match(r'^https://[^\s"\'<>]+$', src, re.IGNORECASE) is not None
+    if len(src.encode('utf-8')) > 1000 or re.match(r'^https://[^\s"\'<>]+$', src, re.IGNORECASE) is None:
+        return False
+    return validate_https_url(src)
 
 
 def synonym_groups(org_id):
